@@ -1,0 +1,15 @@
+# Thêm vào stack deo-work của PA1:
+#   cd /opt/apps/deo-work && docker compose -f docker-compose.yml -f docker-compose.app.yml up -d deo-app
+name: deo-work
+services:
+  deo-app:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    depends_on: [deo-postgrest]
+    volumes:
+      - ./app/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./app/dist:/srv:ro
+    ports:
+      - "127.0.0.1:8088:8080"
+    deploy:
+      resources: { limits: { memory: 64m } }

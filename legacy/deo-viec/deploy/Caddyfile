@@ -1,0 +1,28 @@
+# Container deo-app: phục vụ PWA + chuyển /api tới PostgREST trong cùng mạng Docker.
+# Chỉ nghe 127.0.0.1:8088 trên host; HTTPS do `tailscale serve` lo (chỉ trong tailnet).
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy deo-postgrest:3000
+	}
+
+	handle {
+		root * /srv
+		header {
+			X-Content-Type-Options nosniff
+			Referrer-Policy no-referrer
+			X-Frame-Options DENY
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'"
+		}
+		@shell path / /index.html /sw.js /app.js /app.css /register-sw.js
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

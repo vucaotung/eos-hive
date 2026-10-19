@@ -1,0 +1,27 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: pw }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      EOS_TEST_DSN: postgres://postgres:pw@127.0.0.1:5432/eos_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: scripts/check_secrets.sh
+      - run: scripts/test_db.sh
+      - run: scripts/test_mcp.sh
+      # Cầu nối cần binary PostgREST; tải bản cố định để lần chạy lặp lại được
+      - name: PostgREST
+        run: |
+          curl -fsSL https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz | tar -xJ
+          sudo mv postgrest /usr/local/bin/ && pip install requests
+      - run: scripts/test_bridge.sh

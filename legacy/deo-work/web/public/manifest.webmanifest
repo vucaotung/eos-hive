@@ -1,0 +1,16 @@
+{
+  "name": "Dẹo Work",
+  "short_name": "Dẹo Work",
+  "description": "Giao việc, theo dõi và duyệt cho các phòng ban",
+  "lang": "vi",
+  "start_url": "/#/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EEF0EC",
+  "theme_color": "#EEF0EC",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

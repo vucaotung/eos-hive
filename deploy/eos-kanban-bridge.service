@@ -1,0 +1,13 @@
+# ~/.config/systemd/user/eos-kanban-bridge.service — chạy cùng user với hermes-gateway trên VPS 173
+[Unit]
+Description=Enterprise OS <-> Hermes Kanban bridge
+After=hermes-gateway.service
+
+[Service]
+EnvironmentFile=%h/.hermes/eos_bridge/.env
+ExecStart=/usr/bin/python3 /opt/apps/enterprise-os/bridge/eos_kanban_bridge.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

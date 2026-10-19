@@ -1,0 +1,17 @@
+{
+  "name": "Dẹo Việc",
+  "short_name": "Dẹo Việc",
+  "description": "Việc, câu hỏi của agent và hàng chờ duyệt của Dẹo Enterprise OS",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EDEFEB",
+  "theme_color": "#EDEFEB",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

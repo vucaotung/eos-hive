@@ -1,0 +1,28 @@
+# Postgres 16 RIÊNG cho Tổ Ong trên VPS 169 (không dùng chung với Ever Teams / WeKnora / evidence-db).
+# Chạy: docker compose -p eos-hive -f docker-compose.postgres.yml up -d
+# Mật khẩu superuser nằm trong /etc/eos/pg_superuser (quyền 600, root) — sinh bằng `openssl rand -hex 24`, KHÔNG đưa vào git.
+services:
+  postgres:
+    image: postgres:16
+    container_name: eos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_superuser
+      POSTGRES_DB: postgres
+    secrets: [pg_superuser]
+    ports: ["127.0.0.1:5434:5432"]      # chỉ nghe localhost
+    volumes: ["eos_pgdata:/var/lib/postgresql/data"]
+    shm_size: 256mb
+    mem_limit: 1g
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=60", "-c", "log_min_duration_statement=500", "-c", "timezone=Asia/Ho_Chi_Minh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+secrets:
+  pg_superuser:
+    file: /etc/eos/pg_superuser
+volumes:
+  eos_pgdata:
+    name: eos_pgdata

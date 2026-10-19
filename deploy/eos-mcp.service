@@ -1,0 +1,18 @@
+# /etc/systemd/system/eos-mcp.service — máy chủ MCP trên VPS 169 (cạnh PostgREST)
+[Unit]
+Description=Enterprise OS MCP server
+After=network-online.target postgresql.service
+
+[Service]
+User=eos
+WorkingDirectory=/opt/apps/enterprise-os/mcp
+EnvironmentFile=/opt/apps/enterprise-os/mcp/.env
+ExecStart=/usr/bin/node src/server.mjs
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

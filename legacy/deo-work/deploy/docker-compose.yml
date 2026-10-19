@@ -1,0 +1,58 @@
+# Dẹo Work trên VPS 169. Cài: ./install.sh (đọc README).
+name: deo-work
+services:
+  db:
+    image: postgres:16.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: deo_work
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_pw
+    secrets: [pg_pw]
+    volumes: [db:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5433:5432"]          # chỉ cho backup và psql trên host
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres -d deo_work"], interval: 10s }
+    deploy: { resources: { limits: { memory: 768m } } }
+
+  api:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PW}@db:5432/deo_work
+      PGRST_DB_SCHEMAS: app
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_MAX_ROWS: 2000
+      PGRST_OPENAPI_MODE: disabled
+    ports: ["${TAILSCALE_IP:-127.0.0.1}:3000:3000"]   # Hermes (VPS 173) gọi qua Tailscale
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  auth:
+    build: ../auth
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      NODE_ENV: production
+      PORT: 8090
+      DATABASE_URL: postgres://auth_svc:${AUTH_SVC_PW}@db:5432/deo_work
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      AGENT_EMAIL: ${AGENT_EMAIL}
+      SESSION_DAYS: 7
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  web:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    depends_on: [api, auth]
+    volumes:
+      - ./Caddyfile.app:/etc/caddy/Caddyfile:ro
+      - ../web/dist:/srv:ro
+    ports: ["127.0.0.1:8095:8080"]          # Caddy trên host: work.enterpriseos.bond → 127.0.0.1:8095
+    deploy: { resources: { limits: { memory: 64m } } }
+
+secrets:
+  pg_pw: { file: ./secrets/pg_pw }
+volumes:
+  db:

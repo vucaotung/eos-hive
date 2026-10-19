@@ -1,0 +1,7 @@
+# /etc/eos/postgrest.conf (chmod 640, root:eos). Điền ở máy đích; giá trị thật không vào git.
+db-uri = "postgres://authenticator:<MẬT-KHẨU>@127.0.0.1:5434/eos"
+db-schemas = "agent"
+db-anon-role = "nobody_anon"
+jwt-secret = "<openssl rand -hex 32>"
+server-host = "127.0.0.1"
+server-port = 3000

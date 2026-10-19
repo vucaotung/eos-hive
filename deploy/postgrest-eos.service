@@ -1,0 +1,16 @@
+# /etc/systemd/system/postgrest-eos.service — PostgREST cho schema agent (cầu nối gọi qua Caddy /api, chỉ IP VPS 173)
+[Unit]
+Description=PostgREST for Enterprise OS (schema agent)
+After=network-online.target docker.service
+
+[Service]
+User=eos
+ExecStart=/usr/local/bin/postgrest /etc/eos/postgrest.conf
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+# Thêm vào /etc/caddy/Caddyfile trên VPS 169 (Caddy chạy trên host), rồi: caddy validate && systemctl reload caddy
+work.enterpriseos.bond {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8095 {
+		header_up X-Forwarded-For {client_ip}
+	}
+}
