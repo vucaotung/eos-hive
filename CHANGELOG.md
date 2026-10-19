@@ -5,6 +5,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Sửa
+- `deploy/setup_agents.sql`: agent `thu-thu` đổi thành `quan-tri-du-lieu` (profile `eos-quan-tri-du-lieu`, module `kb`); thêm `phap-che` giữ chỗ (`specialist`, module `doc` tạm vì cột `module` không cho để trống, `max_level` 0, tắt) cho đến khi được định nghĩa. Cập nhật tài liệu và prompt liên quan. Dữ liệu giả của bộ kiểm thử cầu nối vẫn dùng `thu-thu` (chỉ là mẫu).
+
 ## [0.0.0] — 2026-10-19
 
 Bản nền đầu tiên: lược đồ, lớp AI agent, máy chủ MCP, cầu nối Kanban, tài liệu. **Chưa chạy trên máy thật.**
@@ -15,7 +18,7 @@ Dự án đặt tên Tổ Ong (eos-hive), tách ra từ chuỗi thiết kế PA1
 - **Lớp AI agent** (`db/60_agent.sql`, 15 bảng): danh mục agent (điều phối, phân hệ, chuyên môn), mức tự chủ L0–L3 cho 19 hành động, xác nhận L2 (hết hạn sau 3 ngày), thẻ Kanban, hộp thư đi, sự kiện chống trùng, báo cáo hoàn thành có hợp đồng, làm lại tối đa 2 lần, chia việc (tối đa 8 việc con, 2 tầng, có thứ tự, thẻ tổng hợp), mã MCP, nhật ký MCP, ghi Drive.
 - **Máy chủ MCP** (`mcp/`, Node 22): Streamable HTTP không trạng thái; 15 công cụ cho agent cá nhân, 3 công cụ cho worker agent; 6 chủ đề hướng dẫn; 2 lời nhắc. Mã `eos_` + 48 hex, chỉ lưu băm SHA-256, hạn ≤ 365 ngày, ≤ 5 mã/người, giới hạn 120 lần/phút.
 - **Cầu nối Hermes Kanban** (`bridge/`, Python 3): hộp thư đi → `hermes kanban`; hook → `agent.ingest_event`; đối soát 10 phút. Kèm plugin Hermes `eos_bridge`.
-- **Triển khai** (`deploy/`): đơn vị systemd cho MCP và cầu nối, mẫu biến môi trường, đoạn Caddy, `setup_agents.sql` (4 agent: Điều phối, Văn thư, Nhân sự, Thủ thư), `mint_bridge_jwt.py`.
+- **Triển khai** (`deploy/`): đơn vị systemd cho MCP và cầu nối, mẫu biến môi trường, đoạn Caddy, `setup_agents.sql` (4 agent: Điều phối, Văn thư, Nhân sự, Quản trị dữ liệu; kèm Pháp chế giữ chỗ, tắt), `mint_bridge_jwt.py`.
 - **Kiểm thử**: `test_schema.sql`, `test_agent.sql`, MCP đầu–cuối 16 bước (Drive giả lập), cầu nối 7 bước (PostgREST thật, Hermes giả lập). Script chạy được trên máy bất kỳ có Postgres (`scripts/`), kèm CI GitHub Actions.
 - **Tài liệu** (`docs/`): tổng quan, kiến trúc, hướng dẫn phát triển, sổ tay vận hành, hướng dẫn sử dụng theo vai trò, xử lý sự cố, bảo mật, các giả định cần kiểm chứng. Gói prompt triển khai cho Claude Code (`prompts/`).
 - **Tham chiếu cũ** (`legacy/`): web app Dẹo Work và PWA Dẹo Việc, viết cho lược đồ `work` đời PA1; chưa chuyển sang lược đồ 108 bảng.

@@ -20,7 +20,7 @@ Enterprise OS phục vụ một chủ sở hữu có nhiều công ty, mỗi cô
 
 Có ba loại, mỗi loại một cách vào hệ thống.
 
-1. **Agent hệ thống** (Điều phối, Văn thư, Nhân sự, Thủ thư). Chạy trong Hermes, mỗi agent một profile. Nhận việc qua thẻ Kanban, nộp kết quả qua `kanban_complete` hoặc hỏi lại qua `kanban_block`. Không ghi vào Postgres trực tiếp; chỉ cầu nối ghi.
+1. **Agent hệ thống** (Điều phối, Văn thư, Nhân sự, Quản trị dữ liệu; Pháp chế đang giữ chỗ, tắt). Chạy trong Hermes, mỗi agent một profile. Nhận việc qua thẻ Kanban, nộp kết quả qua `kanban_complete` hoặc hỏi lại qua `kanban_block`. Không ghi vào Postgres trực tiếp; chỉ cầu nối ghi.
 2. **Agent chuyên môn** (tra cứu, pháp chế, soạn thảo, kiểm tra). Không phải tài khoản riêng, là *kỹ năng* gắn vào thẻ.
 3. **Agent cá nhân** của từng người (Claude, ChatGPT, Hermes riêng…). Nối vào MCP bằng mã do người tự tạo. Chỉ thấy và làm trong quyền của chính người đó; ghi kết quả vào Drive của người đó.
 

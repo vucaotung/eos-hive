@@ -6,7 +6,7 @@
     ┌────────────────────────────────────────────┐            ┌─────────────────────────────────────┐
     │ Caddy  work.enterpriseos.bond              │            │ Hermes gateway (nhiều profile)      │
     │  ├ /api/*  → PostgREST :3000 (schema agent)│◄───JWT─────│  ├ eos-dieu-phoi=Điều phối          │
-    │  ├ /mcp*   → MCP :8790                     │ agent_bridge│  ├ eos-van-thu / eos-nhan-su / eos-thu-thu
+    │  ├ /mcp*   → MCP :8790                     │ agent_bridge│  ├ eos-van-thu / eos-nhan-su / eos-quan-tri-du-lieu
     │  └ /       → app web (giai đoạn 1)         │            │ Kanban dispatcher (tick 60 s)       │
     │ Postgres 16 (7 schema, 108 bảng)           │            │ eos_kanban_bridge.py  (không LLM)   │
     │  vai trò: mcp_svc, agent_bridge            │            │ plugin eos_bridge → spool.jsonl     │

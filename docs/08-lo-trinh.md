@@ -36,5 +36,5 @@ Một công ty dùng hằng ngày ≥ 30 ngày; tỷ lệ chấp nhận ngay l�
 ## Câu hỏi mở cần chủ sở hữu quyết (từ thiết kế)
 1. Mặc định mọi kết quả agent phải có người xem trước khi Xong? (v0.0 đặt: **có**.)
 2. Agent được phép nộp việc mà người phụ trách chưa nhìn không? (v0.0: không.)
-3. Skill Hermes nào viết trước: Văn thư (NĐ 30) hay Thủ thư (KB)?
+3. Skill Hermes nào viết trước: Văn thư (NĐ 30) hay Quản trị dữ liệu (KB)?
 4. Cloudflare có proxy `work.enterpriseos.bond` không (ảnh hưởng timeout và giới hạn tốc độ)?

@@ -47,7 +47,7 @@ $$;
 CREATE TABLE agent.agents (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       uuid NOT NULL UNIQUE REFERENCES core.users(id),
-  code          text NOT NULL UNIQUE CHECK (code ~ '^[a-z][a-z-]{1,31}$'),   -- dieu-phoi, van-thu, nhan-su, thu-thu
+  code          text NOT NULL UNIQUE CHECK (code ~ '^[a-z][a-z-]{1,31}$'),   -- dieu-phoi, van-thu, nhan-su, quan-tri-du-lieu, phap-che
   name          text NOT NULL,                                -- "Văn thư AI"
   kind          text NOT NULL CHECK (kind IN ('orchestrator','module','specialist')),
   module        text NOT NULL CHECK (module IN ('core','work','doc','hr','kb','crm')),

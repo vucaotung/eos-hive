@@ -19,7 +19,7 @@ Với `EOS_SMOKE_TOKEN` (nạp từ tệp, không in), gọi MCP bằng client h
 - Mã sai → 401; mã không có phạm vi `hr_self` gọi `eos_my_hr` → từ chối.
 
 ## Bước 3 — Khói vòng đời agent
-Tạo việc thử bằng SQL (chưa có app) trên `eos` với `assignee_id` = người thử, `agent_id` = id agent `thu-thu`, tiêu đề `[SMOKE] kiểm thử Tổ Ong`, mô tả: "Chỉ để kiểm thử. Hãy kanban_block hỏi: 'Áp dụng cho dự án nào?'. Sau khi nhận câu trả lời, kanban_complete với summary ≥ 10 ký tự và metadata.confidence='cao'." Ghi `T-<id>`.
+Tạo việc thử bằng SQL (chưa có app) trên `eos` với `assignee_id` = người thử, `agent_id` = id agent `quan-tri-du-lieu`, tiêu đề `[SMOKE] kiểm thử Tổ Ong`, mô tả: "Chỉ để kiểm thử. Hãy kanban_block hỏi: 'Áp dụng cho dự án nào?'. Sau khi nhận câu trả lời, kanban_complete với summary ≥ 10 ký tự và metadata.confidence='cao'." Ghi `T-<id>`.
 
 Theo dõi và chứng minh từng cạnh (ghi bằng chứng vào ops-log, đường dẫn):
 

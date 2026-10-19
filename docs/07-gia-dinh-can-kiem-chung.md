@@ -22,7 +22,7 @@ Nguồn tham chiếu khi viết: tài liệu Hermes Kanban (hermes-agent.nousres
 | A12 | Thư mục cài plugin và cách bật theo profile (`hermes plugins …`) | docs/03 §3.4 | `hermes plugins --help` | ☐ |
 | A13 | Hook `claimed` chạy ở tiến trình dispatcher, `blocked/completed` ở tiến trình worker; cả hai ghi được `~/.hermes/eos_bridge/spool.jsonl` (cùng người dùng, quyền ghi) | plugin | chạy thẻ thật, xem spool | ☐ |
 | A14 | `kanban_complete(summary, metadata)` lưu `metadata` nguyên dạng JSON và `show --json` trả lại | hợp đồng báo cáo | A5 | ☐ |
-| A15 | Dispatcher của gateway `--multiplex` chạy thẻ cho **mọi** profile `eos-*` (không chỉ profile mặc định) | kiến trúc | thẻ thử cho `eos-thu-thu` | ☐ |
+| A15 | Dispatcher của gateway `--multiplex` chạy thẻ cho **mọi** profile `eos-*` (không chỉ profile mặc định) | kiến trúc | thẻ thử cho `eos-quan-tri-du-lieu` | ☐ |
 | A16 | Worker nối được MCP `enterprise-os` bằng cấu hình `mcp_servers` (HTTP + header Bearer) ở profile | worker đọc việc | cấu hình và gọi `eos_get_task` | ☐ |
 | A17 | PostgREST với `db-schemas="agent"` nhận `POST /rpc/<fn>` kèm `Content-Profile: agent` | `Bridge.rpc` | `curl` | ☐ |
 | A18 | Refresh token Google cấp phạm vi `drive` đầy đủ; tài khoản agent là Editor trên thư mục người dùng | `drive.mjs` | `eos_save_to_drive` thật 1 tệp | ☐ |
@@ -34,7 +34,7 @@ Nguồn tham chiếu khi viết: tài liệu Hermes Kanban (hermes-agent.nousres
 Trên VPS 173, với board thử, **không dùng board công ty thật**:
 
     mkdir -p /tmp/eos-fx && cd /tmp/eos-fx
-    hermes kanban create "EOS smoke" --board eos-smoke --assignee eos-thu-thu --tenant TEST --idempotency-key smoke-1 --body "Hãy gọi kanban_block hỏi 'ứng dụng cho dự án nào?'" --json | tee create.json
+    hermes kanban create "EOS smoke" --board eos-smoke --assignee eos-quan-tri-du-lieu --tenant TEST --idempotency-key smoke-1 --body "Hãy gọi kanban_block hỏi 'ứng dụng cho dự án nào?'" --json | tee create.json
     # đợi worker chạy; trả lời bằng comment + unblock; cho kanban_complete với summary ≥ 10 ký tự
     hermes kanban show <id> --board eos-smoke --json | tee show-blocked.json     # lúc đang blocked
     hermes kanban show <id> --board eos-smoke --json | tee show-done.json        # sau khi xong

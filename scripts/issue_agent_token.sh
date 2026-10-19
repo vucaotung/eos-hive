@@ -2,7 +2,7 @@
 # Cấp mã MCP cho một agent hệ thống (để worker đọc việc) và ghi vào .env của profile Hermes tương ứng, KHÔNG in ra.
 # Dùng: scripts/issue_agent_token.sh vps169 vps173 <mã-agent> <profile-hermes> [số-ngày=90]
 set -euo pipefail
-A="${1:?máy CSDL}"; B="${2:?máy Hermes}"; CODE="${3:?mã agent, ví dụ thu-thu}"; PROFILE="${4:?profile Hermes}"; DAYS="${5:-90}"
+A="${1:?máy CSDL}"; B="${2:?máy Hermes}"; CODE="${3:?mã agent, ví dụ quan-tri-du-lieu}"; PROFILE="${4:?profile Hermes}"; DAYS="${5:-90}"
 [[ "$CODE" =~ ^[a-z][a-z-]{1,30}$ ]] || { echo "mã agent không hợp lệ" >&2; exit 2; }
 [[ "$PROFILE" =~ ^[A-Za-z0-9_-]{1,40}$ ]] || { echo "tên profile không hợp lệ" >&2; exit 2; }
 [[ "$DAYS" =~ ^[0-9]+$ ]] || { echo "số ngày không hợp lệ" >&2; exit 2; }

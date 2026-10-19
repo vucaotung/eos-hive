@@ -8,7 +8,7 @@ Phiên bản **0.0.0** (nền móng, chưa chạy trên máy thật). Hệ thố
                               │  ▲                                  └─► Drive cá nhân (nội dung tệp)
                     hộp thư đi │  │ sự kiện
                               ▼  │
-                       Cầu nối (không LLM) ◄──► Hermes Kanban ──► Agent phân hệ (Điều phối, Văn thư, Nhân sự, Thủ thư)
+                       Cầu nối (không LLM) ◄──► Hermes Kanban ──► Agent phân hệ (Điều phối, Văn thư, Nhân sự, Quản trị dữ liệu, Pháp chế)
 
 - **Postgres là sổ gốc.** Người phụ trách luôn là người thật (được tính KPI); agent chỉ là người thực hiện.
 - **Kanban chỉ là hàng đợi chạy việc** của agent, một board mỗi công ty. Người dùng không cần mở Kanban.

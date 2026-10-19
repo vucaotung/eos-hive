@@ -22,7 +22,7 @@ Làm đúng thứ tự; mỗi bước có cổng kiểm tra, không qua bước 
 4. **VPS 169 — PostgREST**: schema `agent`, anon `nobody_anon`, `JWT_SECRET` ≥ 32 ký tự. Cổng: `curl -s localhost:3000/rpc/outbox_pull` không JWT trả 401.
 5. **VPS 169 — MCP**: `npm ci`, `.env`, `eos-mcp.service`, đoạn Caddy `handle /mcp*`. Cổng: trên VPS 169 `curl -s 127.0.0.1:8790/healthz` → `{"ok":true}`; `curl -s -XPOST https://work.enterpriseos.bond/mcp -H 'Authorization: Bearer eos_sai'` → 401.
 6. **VPS 169 — khởi tạo**: tạo công ty/phòng/người (giai đoạn 1 sẽ có màn hình; tạm thời bằng SQL), chạy `deploy/setup_agents.sql -v company=<uuid>`.
-7. **VPS 173 — Hermes**: tạo 4 profile riêng `eos-dieu-phoi`, `eos-van-thu`, `eos-nhan-su`, `eos-thu-thu` (không dùng `ops-admin`: nó có terminal root), gateway nhiều profile đã `--multiplex`. Cổng: `hermes kanban --help` chạy được.
+7. **VPS 173 — Hermes**: tạo 4 profile riêng `eos-dieu-phoi`, `eos-van-thu`, `eos-nhan-su`, `eos-quan-tri-du-lieu` (`phap-che` chưa tạo profile: chưa định nghĩa) (không dùng `ops-admin`: nó có terminal root), gateway nhiều profile đã `--multiplex`. Cổng: `hermes kanban --help` chạy được.
 8. **VPS 173 — kiểm chứng giả định** (`docs/07`): bắt buộc làm *trước* khi bật cầu nối.
 9. **VPS 173 — cầu nối**: chép plugin, `.env` với JWT `agent_bridge`, bật `eos-kanban-bridge.service`.
 10. **Cả ba — khói đầu–cuối** (mục 7).
@@ -79,7 +79,7 @@ Dịch vụ systemd *user* chỉ chạy khi đăng nhập trừ khi bật linger
 
 Tạo 4 agent, bật cho công ty, đặt board `eos-<slug>`. Rồi cấp mã MCP cho từng agent hệ thống (để worker đọc việc). Hàm chỉ cho **quản trị hệ thống** cấp, nên dùng script (nó đặt danh tính quản trị trong cùng giao dịch và đưa mã thẳng vào `.env` của profile Hermes, không hiện ra):
 
-    scripts/issue_agent_token.sh vps169 vps173 thu-thu eos-thu-thu 90
+    scripts/issue_agent_token.sh vps169 vps173 quan-tri-du-lieu eos-quan-tri-du-lieu 90
 
 Mã chỉ hiện đúng một lần và script không in nó; mất thì thu hồi (`agent.mcp_token_revoke`) và cấp lại. **Cấp lại không tự vô hiệu mã cũ** — thu hồi mã cũ ngay (mỗi tài khoản agent tối đa 5 mã còn hạn).
 
@@ -136,7 +136,7 @@ Các truy vấn trên đã chạy thử trên CSDL thử v0.0.0. Nếu đổi l�
 
 1. Trên VPS 169: `curl -s 127.0.0.1:8790/healthz` → `{"ok":true}` (Caddy chỉ chuyển `/mcp*`, `/healthz` không ra ngoài).
 2. Tạo mã MCP thử, gọi `eos_whoami` (qua MCP Inspector hoặc `curl` JSON-RPC) → thấy đúng tên người.
-3. Tạo việc thử giao cho agent `thu-thu` → trong ≤ 2 phút thấy thẻ ở board `eos-<slug>` (`hermes kanban list --board eos-<slug>`).
+3. Tạo việc thử giao cho agent `quan-tri-du-lieu` → trong ≤ 2 phút thấy thẻ ở board `eos-<slug>` (`hermes kanban list --board eos-<slug>`).
 4. Cho agent `kanban_block` → việc chuyển Vướng, câu hỏi hiện ở `work.comments`; trả lời → thẻ chạy lại.
 5. `kanban_complete` với tóm tắt hợp lệ → việc sang Chờ xem; người chấp nhận → Xong.
 6. Dọn việc thử (hủy việc, `hermes kanban archive`).

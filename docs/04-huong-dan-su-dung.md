@@ -69,7 +69,7 @@ Duyệt hay trả lại thay bạn; cấp số công văn; chốt lương; đổ
   - **Trả lại** kèm lý do cụ thể → agent làm lại (tối đa 2 lần). Lần trả thứ 3 việc về người phụ trách, agent dừng.
 - **Agent đề xuất hành động mức L2** (ví dụ giao việc cho người khác, soạn công văn đi) → bạn nhận yêu cầu xác nhận, hết hạn sau 3 ngày. Không trả lời = hết hạn, agent không làm.
 - **Agent đang hỏi** (Vướng): trả lời trong khung bình luận; agent tự chạy tiếp.
-- Việc lớn → giao cho **Điều phối**: nó chia tối đa 8 việc con cho Văn thư / Nhân sự / Thủ thư theo thứ tự, rồi gom một bản tổng hợp cho bạn duyệt. Bạn chỉ duyệt bản tổng hợp.
+- Việc lớn → giao cho **Điều phối**: nó chia tối đa 8 việc con cho Văn thư / Nhân sự / Quản trị dữ liệu theo thứ tự, rồi gom một bản tổng hợp cho bạn duyệt. Bạn chỉ duyệt bản tổng hợp.
 
 ## 4. Quản trị công ty
 
@@ -88,7 +88,7 @@ Khuyến nghị: để `auto_done` tắt cho **mọi** agent ít nhất 30 ngày
 
 - **Công văn** 🔜: Văn thư AI đọc công văn đến, điền nháp sổ (trích yếu, nơi gửi, độ khẩn), đề xuất người xử lý; **người** cấp số và bấm vào sổ. Văn bản mật: người tự nhập, hệ thống không số hóa.
 - **Nhân sự** 🔜: Nhân sự AI rà chấm công bất thường, đối chiếu đơn nghỉ với số phép, nháp KPI/bảng lương; **người** chốt lương.
-- **Kho dữ liệu chung** 🔜: Thủ thư AI trả lời có trích dẫn (tên tài liệu, trang). Câu không tìm thấy được gom lại để bổ sung tài liệu.
+- **Kho dữ liệu chung** 🔜: Quản trị dữ liệu AI trả lời có trích dẫn (tên tài liệu, trang). Câu không tìm thấy được gom lại để bổ sung tài liệu.
 
 ## 6. Người vận hành
 Xem `docs/03`. Sự cố: `docs/05`.

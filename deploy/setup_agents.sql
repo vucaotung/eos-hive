@@ -7,7 +7,8 @@ INSERT INTO core.users (email, name, kind) VALUES
  ('dieu-phoi@agent.enterpriseos.bond','Điều phối AI','agent'),
  ('van-thu@agent.enterpriseos.bond','Văn thư AI','agent'),
  ('nhan-su@agent.enterpriseos.bond','Nhân sự AI','agent'),
- ('thu-thu@agent.enterpriseos.bond','Thủ thư AI','agent')
+ ('quan-tri-du-lieu@agent.enterpriseos.bond','Quản trị dữ liệu AI','agent'),
+ ('phap-che@agent.enterpriseos.bond','Pháp chế AI','agent')
 ON CONFLICT DO NOTHING;
 INSERT INTO agent.agents (user_id, code, name, kind, module, hermes_profile, skills, max_level, can_delegate, description)
 SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg, v.descr
@@ -18,11 +19,15 @@ SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg,
     'Đọc công văn đến, điền nháp sổ, đề xuất người xử lý, soạn công văn đi để trình ký'),
    ('nhan-su@agent.enterpriseos.bond','nhan-su','Nhân sự AI','module','hr','eos-nhan-su','{}',1,false,
     'Rà chấm công bất thường, kiểm đơn với số phép, nháp KPI và bảng lương'),
-   ('thu-thu@agent.enterpriseos.bond','thu-thu','Thủ thư AI','module','kb','eos-thu-thu','{}',1,false,
-    'Trả lời Kho dữ liệu chung có trích dẫn, gom câu không tìm thấy, đề xuất trang wiki')
+   ('quan-tri-du-lieu@agent.enterpriseos.bond','quan-tri-du-lieu','Quản trị dữ liệu AI','module','kb','eos-quan-tri-du-lieu','{}',1,false,
+    'Quản trị Kho dữ liệu chung: trả lời có trích dẫn, gom câu không tìm thấy, đề xuất trang wiki'),
+   ('phap-che@agent.enterpriseos.bond','phap-che','Pháp chế AI','specialist','doc','eos-phap-che','{}',0,false,
+    'Chưa định nghĩa (chỗ giữ chỗ, đang tắt)')
   ) v(email, code, name, kind, module, profile, skills, lv, dlg, descr)
   JOIN core.users u ON lower(u.email) = v.email
 ON CONFLICT (code) DO NOTHING;
+-- phap-che chưa có nhiệm vụ: tắt cho đến khi được định nghĩa (module doc là giá trị tạm; ràng buộc cột module không cho để trống).
+UPDATE agent.agents SET active = false WHERE code = 'phap-che';
 INSERT INTO agent.company_settings (company_id, enabled, kanban_board)
 SELECT id, true, 'eos-' || slug FROM core.companies WHERE id = :'company' ON CONFLICT (company_id) DO NOTHING;
 INSERT INTO agent.company_agents (company_id, agent_id)
