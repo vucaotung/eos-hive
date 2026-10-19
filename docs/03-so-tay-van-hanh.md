@@ -163,3 +163,7 @@ Thêm một dòng mỗi lần triển khai, khôi phục thử hoặc sự cố.
 | Ngày | Máy | Việc | Kết quả | Người |
 | --- | --- | --- | --- | --- |
 | 2026-10-19 | — | Phát hành v0.0.0 (chưa triển khai máy thật) | kiểm thử CSDL 108 bảng, MCP 16 bước, cầu nối 7 bước (Hermes giả lập) | Claude |
+| 2026-10-19 | z2 | Pha 1: kiểm thử + GitHub riêng tư + SSH tới 2 VPS | test-db 108/5, test-mcp 16, test-bridge 7; CI xanh | Claude + Tùng |
+| 2026-10-19 | vps169 | Pha 2: Postgres 16 riêng (5434), PostgREST (3200), MCP (8790), Caddy work.enterpriseos.bond, công ty Valnex, 5 agent, sao lưu thêm `eos.dump` | 108 bảng/5 view; mã sai 401; /api ngoài 403 | Claude + Tùng |
+| 2026-10-19 | vps173 | Pha 3: 4 profile eos-*, plugin + cầu nối, kiểm chứng A1–A9/A11–A17 với Hermes 0.22.1, sửa cầu nối | fixtures 7 bước; worker đọc MCP | Claude + Tùng |
+| 2026-10-20 | cả ba | Pha 4: nghiệm thu đầu–cuối (T-1 hỏi–đáp–xong, T-2), ghi Drive thật, khôi phục thử trên Z2 | khôi phục: 108 bảng, work.tasks 2, agent.reports 2 khớp VPS 169 | Claude + Tùng |

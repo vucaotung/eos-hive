@@ -6,7 +6,7 @@ Nguồn tham chiếu khi viết: tài liệu Hermes Kanban (hermes-agent.nousres
 
 ## 1. Bảng giả định
 
-Đã kiểm trên **Hermes Agent v0.22.1+85.g3046358.dirty (2026.9.24), kiểm 2026-10-19**. A10 (kỹ năng Hermes chưa viết) và A18 (ghi Drive thật, Pha 4) chưa kiểm (xem cột cuối).
+Đã kiểm trên **Hermes Agent v0.22.1+85.g3046358.dirty (2026.9.24), kiểm 2026-10-19**. Chỉ A10 (kỹ năng Hermes chưa viết) chưa kiểm (xem cột cuối).
 
 
 | # | Giả định | Dùng ở | Cách kiểm | Trạng thái |
@@ -28,7 +28,7 @@ Nguồn tham chiếu khi viết: tài liệu Hermes Kanban (hermes-agent.nousres
 | A15 | Dispatcher của gateway `--multiplex` chạy thẻ cho **mọi** profile `eos-*` (không chỉ profile mặc định) | kiến trúc | thẻ thử cho `eos-quan-tri-du-lieu` | ✔ dispatcher của gateway (`gateway run`, KHÔNG có `--multiplex`) nhận thẻ của profile `eos-*` sau ~30 s: ready → running → done. |
 | A16 | Worker nối được MCP `enterprise-os` bằng cấu hình `mcp_servers` (HTTP + header Bearer) ở profile | worker đọc việc | cấu hình và gọi `eos_get_task` | ✔ cấu hình `mcp_servers.enterprise-os` (`url`, `headers.Authorization: Bearer ${EOS_MCP_TOKEN}`) trong `config.yaml` của profile; Hermes tự nội suy `${VAR}` từ `.env` của profile. `hermes -p P mcp test enterprise-os` → kết nối, thấy 3 công cụ worker (`eos_guide`, `eos_get_task`, `eos_delegate`). Worker gọi `eos_guide topic=agent` thành công. Lưu ý: công cụ MCP là *deferred*, lần đầu model có thể gọi sai tên rồi tự tìm lại. |
 | A17 | PostgREST với `db-schemas="agent"` nhận `POST /rpc/<fn>` kèm `Content-Profile: agent` | `Bridge.rpc` | `curl` | ✔ `POST https://work.enterpriseos.bond/api/rpc/outbox_pull` với `Content-Profile: agent` + JWT `agent_bridge` từ vps173 → 200; không JWT → 401; từ IP khác vps173 → 403 (Caddy). PostgREST nghe cổng 3200 (3000 là Ever Teams). |
-| A18 | Refresh token Google cấp phạm vi `drive` đầy đủ; tài khoản agent là Editor trên thư mục người dùng | `drive.mjs` | `eos_save_to_drive` thật 1 tệp | ☐ |
+| A18 | Refresh token Google cấp phạm vi `drive` đầy đủ; tài khoản agent là Editor trên thư mục người dùng | `drive.mjs` | `eos_save_to_drive` thật 1 tệp | ✔ `eos_save_to_drive` (Pha 4) ghi tệp thật vào `Kết quả/2026-10/T-2 - …md` trong thư mục Drive đã chia sẻ; chủ tệp là tài khoản agent. Phạm vi `drive` đủ. Lưu ý: thư mục thử đang chia sẻ ở chế độ *anyone writer* (nên siết, chỉ chia sẻ riêng cho tài khoản agent) |
 | A19 | Hermes chạy `--multiplex`: tên profile `eos-van-thu`… hợp lệ, không trùng | triển khai | `hermes profile list` | ✔ `hermes profile create eos-*` hợp lệ; `profile list` thấy cả 4, không trùng. |
 | A20 | Độ trễ nhận việc chấp nhận được: dispatcher 60 s + cầu nối 15 s | UX | đo | ✔ sơ bộ: thẻ `ready` → `running` sau 15–30 s; vòng đời thẻ thử ~1–2 phút. |
 
