@@ -62,4 +62,16 @@ assert k(calls[0]) == ["kanban", "--board", "eos-vlx", "list", "--json"], calls[
 assert k(calls[1]) == ["kanban", "--board", "eos-vlx", "unblock", "t_1"], calls[1]
 assert k(calls[2])[:4] == ["kanban", "--board", "eos-vlx", "comment"], calls[2]
 step("lệnh kanban: --board đứng trước động từ")
+# `claimed` ngầm: hook claimed không tới (dispatcher chạy ở profile default) -> blocked/completed vẫn đi qua Đang làm một lần
+rpcs = []
+b.cards = {"t_d69159f5": {"board": "eos-smoke", "task_id": 1, "status": "ready"}}
+b.save = lambda: None
+b.rpc = lambda fn, **kw: (rpcs.append((fn, kw["p_event"], kw["p_event_key"])), "ok")[1]
+b.hermes = lambda verb, *a, **kw: load("show-blocked.json")
+b.push("t_d69159f5", "kanban_task_blocked", "100")
+b.hermes = lambda verb, *a, **kw: load("show-done2.json")
+b.push("t_d69159f5", "kanban_task_completed", "200")
+assert [r[1] for r in rpcs] == ["claimed", "blocked", "completed"], rpcs
+assert rpcs[0][2] == "eos-smoke:t_d69159f5:claimed:implied", rpcs
+step("blocked/completed không có claimed trước -> phát claimed ngầm đúng một lần")
 print(f"fixtures: {ok} bước đạt")

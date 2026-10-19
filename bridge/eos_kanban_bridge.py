@@ -184,9 +184,17 @@ class Bridge:
         if not ev:
             return
         event, payload = ev
+        if event in ("blocked", "completed") and not known.get("claimed"):
+            # Hook `claimed` bắn ở dispatcher (profile default, không có plugin) nên thường không tới; đối soát cũng có thể
+            # lỡ thẻ chạy ngắn. Phát `claimed` ngầm một lần để việc luôn đi qua Đang làm (khóa riêng nên không trùng).
+            self.rpc("ingest_event", p_board=known["board"], p_card=card_id, p_event="claimed",
+                     p_event_key=f"{known['board']}:{card_id}:claimed:implied", p_payload={})
+            known["claimed"] = True
         key = f"{known['board']}:{card_id}:{event}:{stamp}"
         res = self.rpc("ingest_event", p_board=known["board"], p_card=card_id, p_event=event, p_event_key=key, p_payload=payload)
         known["status"] = info.get("task", info).get("status", known.get("status"))
+        if event == "claimed":
+            known["claimed"] = True
         self.save()
         print(f"{card_id} {event} → {res}")
 

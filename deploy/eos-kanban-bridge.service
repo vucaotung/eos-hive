@@ -5,6 +5,7 @@ After=hermes-gateway.service
 
 [Service]
 EnvironmentFile=%h/.hermes/eos_bridge/.env
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /opt/apps/enterprise-os/bridge/eos_kanban_bridge.py
 Restart=always
 RestartSec=10
