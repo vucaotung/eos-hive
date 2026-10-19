@@ -1,0 +1,140 @@
+{
+  "task": {
+    "id": "t_d69159f5",
+    "title": "EOS smoke 2",
+    "body": "Bước 1: hãy gọi công cụ kanban_block với lý do đúng nguyên văn: Ứng dụng cho dự án nào? Bước 2: sau khi có người trả lời (bình luận) và thẻ chạy lại, hãy gọi kanban_complete với summary: Đã nhận câu trả lời và hoàn tất kiểm thử cầu nối bước 2, và metadata JSON: {\"outputs\":[{\"name\":\"bao-cao-thu\",\"url\":\"https://example.invalid/x\"}],\"sources\":[\"nguon-1\"],\"checks\":[\"da-doi-chieu\"],\"confidence\":0.8,\"residual_risk\":\"thap\",\"next_actions\":[\"khong\"]}",
+    "assignee": "eos-quan-tri-du-lieu",
+    "status": "blocked",
+    "priority": 0,
+    "tenant": "TEST",
+    "workspace_kind": "scratch",
+    "workspace_path": "/root/.hermes/kanban/boards/eos-smoke/workspaces/t_d69159f5",
+    "branch_name": null,
+    "project_id": null,
+    "created_by": "user",
+    "created_at": 1792421862,
+    "started_at": 1792421906,
+    "completed_at": null,
+    "result": null,
+    "skills": [],
+    "max_runtime_seconds": null,
+    "max_retries": null,
+    "model_override": null,
+    "provider_override": null,
+    "session_id": null,
+    "workflow_template_id": null,
+    "current_step_key": null,
+    "completion_contract": "local-only",
+    "last_failure_error": null
+  },
+  "latest_summary": "Ứng dụng cho dự án nào?",
+  "parents": [],
+  "children": [],
+  "comments": [],
+  "events": [
+    {
+      "kind": "created",
+      "payload": {
+        "assignee": "eos-quan-tri-du-lieu",
+        "status": "ready",
+        "parents": [],
+        "creator_task_id": null,
+        "tenant": "TEST",
+        "workspace_kind": "scratch",
+        "workspace_path": null,
+        "branch_name": null,
+        "project_id": null,
+        "skills": null,
+        "goal_mode": null,
+        "model_override": null,
+        "provider_override": null
+      },
+      "created_at": 1792421862,
+      "run_id": null
+    },
+    {
+      "kind": "claimed",
+      "payload": {
+        "lock": "vmi3202129:201646",
+        "expires": 1792422806,
+        "run_id": 3
+      },
+      "created_at": 1792421906,
+      "run_id": 3
+    },
+    {
+      "kind": "spawned",
+      "payload": {
+        "pid": 382183,
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9476865"
+      },
+      "created_at": 1792421906,
+      "run_id": 3
+    },
+    {
+      "kind": "owner_admitted",
+      "payload": {
+        "db": "/root/.hermes/profiles/eos-quan-tri-du-lieu/state.db",
+        "session_id": "local-fe09a6612aef62e3e71e4e84f45b7d0ab25056282eed19f6323d6404e9bf00e1",
+        "request_id": "kanban:[\"eos-smoke\",\"t_d69159f5\",3]",
+        "pid": 201646,
+        "birth": 1792377751.28
+      },
+      "created_at": 1792421907,
+      "run_id": 3
+    },
+    {
+      "kind": "worker_bound",
+      "payload": {
+        "pid": 382204,
+        "claim_lock": "vmi3202129:201646",
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9476968"
+      },
+      "created_at": 1792421909,
+      "run_id": 3
+    },
+    {
+      "kind": "heartbeat",
+      "payload": null,
+      "created_at": 1792421911,
+      "run_id": 3
+    },
+    {
+      "kind": "blocked",
+      "payload": {
+        "reason": "Ứng dụng cho dự án nào?",
+        "kind": "needs_input",
+        "recurrences": 1,
+        "source_status": "ready"
+      },
+      "created_at": 1792421921,
+      "run_id": 3
+    },
+    {
+      "kind": "worker_result",
+      "payload": {
+        "pid": 382204,
+        "claim_lock": "vmi3202129:201646",
+        "exit_code": 0,
+        "last_output": "Đã thực hiện Bước 1: chuyển trạng thái thẻ sang blocked với lý do \"Ứng dụng cho dự án nào?\". Thẻ đang chờ phản hồi từ người dùng trước khi tiếp tục Bước 2."
+      },
+      "created_at": 1792421925,
+      "run_id": 3
+    }
+  ],
+  "runs": [
+    {
+      "id": 3,
+      "profile": "eos-quan-tri-du-lieu",
+      "step_key": null,
+      "status": "blocked",
+      "outcome": "blocked",
+      "summary": "Ứng dụng cho dự án nào?",
+      "error": null,
+      "metadata": null,
+      "worker_pid": 382183,
+      "started_at": 1792421906,
+      "ended_at": 1792421921
+    }
+  ]
+}

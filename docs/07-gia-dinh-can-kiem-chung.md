@@ -6,28 +6,31 @@ Nguồn tham chiếu khi viết: tài liệu Hermes Kanban (hermes-agent.nousres
 
 ## 1. Bảng giả định
 
+Đã kiểm trên **Hermes Agent v0.22.1+85.g3046358.dirty (2026.9.24), kiểm 2026-10-19**. A10, A16, A17, A18 chưa kiểm (xem cột cuối).
+
+
 | # | Giả định | Dùng ở | Cách kiểm | Trạng thái |
 | --- | --- | --- | --- | --- |
-| A1 | `hermes kanban create <tiêu đề> --board B --assignee P --tenant T --idempotency-key K --body X [--parent ID] [--skill S]… --json` chạy được và chấp nhận đủ cờ | `handle_outbox` | `hermes kanban create --help` | ☐ |
-| A2 | Có thể tạo thẻ vào board chưa tồn tại (hoặc board tự tạo); nếu không, cần lệnh tạo board trước | `handle_outbox` | thử với board mới `eos-smoke` | ☐ |
-| A3 | `create --json` trả đối tượng có `id` hoặc `task_id` (có thể bọc trong `{"task":…}`) | `hermes()` bóc `task` | chạy và xem | ☐ |
-| A4 | Cùng `--idempotency-key` hai lần → không tạo thẻ đôi (trả thẻ cũ) | chống trùng | chạy hai lần | ☐ |
-| A5 | `hermes kanban show <id> --board B --json` có: `status`, `summary` (hoặc `result`), `metadata` (hoặc `result_metadata`) chứa `outputs/sources/checks/confidence/residual_risk/next_actions`, lý do chặn (`blocked_reason`/`block_reason`/bình luận cuối), `comments[].body` | `event_from_card` | tạo thẻ, cho worker `kanban_block` rồi `kanban_complete`, chụp JSON | ☐ |
-| A6 | `hermes kanban list --board B --json` trả mảng có `id`, `status`, `updated_at` | `reconcile` | chạy | ☐ |
-| A7 | Giá trị `status` đúng bộ: triage, todo, ready, running, blocked, review, done, archived | `STATUS_EVENT` | từ A5/A6 | ☐ |
-| A8 | `kanban comment <id> "<msg>" --board B` và `kanban unblock <id> --board B` đúng thứ tự đối số | outbox `answer` | `--help` + thử | ☐ |
-| A9 | `kanban archive <id> --board B` | outbox `cancel` | thử | ☐ |
+| A1 | `hermes kanban create <tiêu đề> --board B --assignee P --tenant T --idempotency-key K --body X [--parent ID] [--skill S]… --json` chạy được và chấp nhận đủ cờ | `handle_outbox` | `hermes kanban create --help` | ✔ đủ cờ. **`--board` là cờ cấp `kanban`, đứng TRƯỚC động từ** (`kanban --board B create …`); đặt sau động từ báo lỗi cú pháp. Đã sửa cầu nối. |
+| A2 | Có thể tạo thẻ vào board chưa tồn tại (hoặc board tự tạo); nếu không, cần lệnh tạo board trước | `handle_outbox` | thử với board mới `eos-smoke` | ✘ Hermes **không** tự tạo board (`board … does not exist`). Phải `kanban boards create <slug>`. Đã sửa: cầu nối tự tạo board khi gặp lỗi đó rồi thử lại. |
+| A3 | `create --json` trả đối tượng có `id` hoặc `task_id` (có thể bọc trong `{"task":…}`) | `hermes()` bóc `task` | chạy và xem | ✔ `create --json` trả đối tượng **phẳng** có `id` (không bọc `task`). |
+| A4 | Cùng `--idempotency-key` hai lần → không tạo thẻ đôi (trả thẻ cũ) | chống trùng | chạy hai lần | ✔ cùng `--idempotency-key` trả lại thẻ cũ, không tạo thẻ đôi. |
+| A5 | `hermes kanban show <id> --board B --json` có: `status`, `summary` (hoặc `result`), `metadata` (hoặc `result_metadata`) chứa `outputs/sources/checks/confidence/residual_risk/next_actions`, lý do chặn (`blocked_reason`/`block_reason`/bình luận cuối), `comments[].body` | `event_from_card` | tạo thẻ, cho worker `kanban_block` rồi `kanban_complete`, chụp JSON | ✘ một phần. `show --json` = `{task, latest_summary, parents, children, comments, events, runs}`. Không có `summary`/`metadata`/`blocked_reason` ở cấp 1. Thật: `task.status`; tóm tắt = `latest_summary` (và `runs[-1].summary`); metadata = `runs[-1].metadata`; lý do chặn = `events[kind=blocked].payload.reason` (và `latest_summary`); bình luận = `comments[].body`. Đã sửa `event_from_card` + mẫu thật trong `bridge/test/fixtures/`. |
+| A6 | `hermes kanban list --board B --json` trả mảng có `id`, `status`, `updated_at` | `reconcile` | chạy | ✘ một phần. `list --json` là mảng phẳng có `id,status,created_at,started_at,completed_at`, **không có `updated_at`**; thẻ `archived` bị ẩn (dùng `--archived`). Đã sửa dấu đối soát. |
+| A7 | Giá trị `status` đúng bộ: triage, todo, ready, running, blocked, review, done, archived | `STATUS_EVENT` | từ A5/A6 | ✔ bộ trạng thái thật: archived, blocked, done, ready, review, running, scheduled, todo, triage (thêm `scheduled`). |
+| A8 | `kanban comment <id> "<msg>" --board B` và `kanban unblock <id> --board B` đúng thứ tự đối số | outbox `answer` | `--help` + thử | ✔ `kanban --board B comment <id> <text> [--author A]`; `kanban --board B unblock <id>`. Thẻ chạy lại sau unblock. |
+| A9 | `kanban archive <id> --board B` | outbox `cancel` | thử | ✔ `kanban --board B archive <id>`. |
 | A10 | Kỹ năng Hermes (`lap-ke-hoach`, `nd30-van-thu`, `hr-cham-cong`, `kb-tra-cuu`) **chưa được viết**; `setup_agents.sql` để cột `skills` trống cho khỏi `--skill` lỗi. Khi viết xong: `UPDATE agent.agents SET skills='{…}'` | `setup_agents.sql` | `hermes skills list`; thử `create --skill` với tên có thật | ☐ |
-| A11 | Plugin Hermes: gói có hàm `register(ctx)`; `ctx.register_hook(name, fn)` nhận hook `kanban_task_claimed`, `kanban_task_blocked`, `kanban_task_completed`; hàm gọi với kwargs `task_id`, `profile_name`, (có thể) `board` | `hermes_plugin/eos_bridge` | đọc mã Hermes cài trên máy; thêm `print(kwargs)` tạm | ☐ |
-| A12 | Thư mục cài plugin và cách bật theo profile (`hermes plugins …`) | docs/03 §3.4 | `hermes plugins --help` | ☐ |
-| A13 | Hook `claimed` chạy ở tiến trình dispatcher, `blocked/completed` ở tiến trình worker; cả hai ghi được `~/.hermes/eos_bridge/spool.jsonl` (cùng người dùng, quyền ghi) | plugin | chạy thẻ thật, xem spool | ☐ |
-| A14 | `kanban_complete(summary, metadata)` lưu `metadata` nguyên dạng JSON và `show --json` trả lại | hợp đồng báo cáo | A5 | ☐ |
-| A15 | Dispatcher của gateway `--multiplex` chạy thẻ cho **mọi** profile `eos-*` (không chỉ profile mặc định) | kiến trúc | thẻ thử cho `eos-quan-tri-du-lieu` | ☐ |
+| A11 | Plugin Hermes: gói có hàm `register(ctx)`; `ctx.register_hook(name, fn)` nhận hook `kanban_task_claimed`, `kanban_task_blocked`, `kanban_task_completed`; hàm gọi với kwargs `task_id`, `profile_name`, (có thể) `board` | `hermes_plugin/eos_bridge` | đọc mã Hermes cài trên máy; thêm `print(kwargs)` tạm | ✔ hook `kanban_task_claimed/blocked/completed`; kwargs `task_id, board, assignee, run_id, profile_name`; `completed` thêm `summary`, `blocked` thêm `reason` (đọc mã `hermes_cli/plugins.py`, `kanban_db.py`). Chưa chạy plugin thật (bước cài). |
+| A12 | Thư mục cài plugin và cách bật theo profile (`hermes plugins …`) | docs/03 §3.4 | `hermes plugins --help` | ✘ một phần. Plugin thật cần `plugin.yaml` (name, version, description, provides_hooks); đã thêm. Thư mục: `~/.hermes/plugins/<tên>`; bật: `hermes plugins enable <tên>`. Chờ kiểm lúc cài. |
+| A13 | Hook `claimed` chạy ở tiến trình dispatcher, `blocked/completed` ở tiến trình worker; cả hai ghi được `~/.hermes/eos_bridge/spool.jsonl` (cùng người dùng, quyền ghi) | plugin | chạy thẻ thật, xem spool | ✔ theo mã: `claimed` bắn ở dispatcher, `completed/blocked` ở worker. Chờ kiểm bằng spool thật. |
+| A14 | `kanban_complete(summary, metadata)` lưu `metadata` nguyên dạng JSON và `show --json` trả lại | hợp đồng báo cáo | A5 | ✔ `kanban_complete(summary, metadata)` lưu nguyên 6 khóa tại `runs[-1].metadata` (kèm `reason`, `worker_session_id`). |
+| A15 | Dispatcher của gateway `--multiplex` chạy thẻ cho **mọi** profile `eos-*` (không chỉ profile mặc định) | kiến trúc | thẻ thử cho `eos-quan-tri-du-lieu` | ✔ dispatcher của gateway (`gateway run`, KHÔNG có `--multiplex`) nhận thẻ của profile `eos-*` sau ~30 s: ready → running → done. |
 | A16 | Worker nối được MCP `enterprise-os` bằng cấu hình `mcp_servers` (HTTP + header Bearer) ở profile | worker đọc việc | cấu hình và gọi `eos_get_task` | ☐ |
 | A17 | PostgREST với `db-schemas="agent"` nhận `POST /rpc/<fn>` kèm `Content-Profile: agent` | `Bridge.rpc` | `curl` | ☐ |
 | A18 | Refresh token Google cấp phạm vi `drive` đầy đủ; tài khoản agent là Editor trên thư mục người dùng | `drive.mjs` | `eos_save_to_drive` thật 1 tệp | ☐ |
-| A19 | Hermes chạy `--multiplex`: tên profile `eos-van-thu`… hợp lệ, không trùng | triển khai | `hermes profile list` | ☐ |
-| A20 | Độ trễ nhận việc chấp nhận được: dispatcher 60 s + cầu nối 15 s | UX | đo | ☐ |
+| A19 | Hermes chạy `--multiplex`: tên profile `eos-van-thu`… hợp lệ, không trùng | triển khai | `hermes profile list` | ✔ `hermes profile create eos-*` hợp lệ; `profile list` thấy cả 4, không trùng. |
+| A20 | Độ trễ nhận việc chấp nhận được: dispatcher 60 s + cầu nối 15 s | UX | đo | ✔ sơ bộ: thẻ `ready` → `running` sau 15–30 s; vòng đời thẻ thử ~1–2 phút. |
 
 ## 2. Cách chụp mẫu thật (fixtures)
 

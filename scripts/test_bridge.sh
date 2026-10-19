@@ -28,3 +28,5 @@ echo '{"tasks":{},"calls":[],"seq":0}' > "$T/fake.json"
 cd "$ROOT/bridge/test"
 EOS_API=http://127.0.0.1:3901 EOS_BRIDGE_TOKEN="$TOKEN" BRIDGE_STATE_DIR="$T/state" FAKE_HERMES_DB="$T/fake.json" \
   HERMES_BIN="python3 $ROOT/bridge/test/fake_hermes.py" python3 test_bridge.py | tail -3
+# Mẫu thật từ Hermes 0.22.1 (không cần Postgres): bảo vệ ánh xạ JSON và vị trí --board
+BRIDGE_STATE_DIR="$T/state-fx" python3 test_fixtures.py | tail -2

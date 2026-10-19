@@ -1,0 +1,30 @@
+[
+  {
+    "id": "t_e7e3c534",
+    "title": "EOS smoke 1",
+    "body": "Hãy gọi công cụ kanban_complete với summary: Kiểm thử cầu nối: hoàn tất bước 1",
+    "assignee": "eos-quan-tri-du-lieu",
+    "status": "done",
+    "priority": 0,
+    "tenant": "TEST",
+    "workspace_kind": "scratch",
+    "workspace_path": "/root/.hermes/kanban/boards/eos-smoke/workspaces/t_e7e3c534",
+    "branch_name": null,
+    "project_id": null,
+    "created_by": "user",
+    "created_at": 1792420837,
+    "started_at": 1792420866,
+    "completed_at": 1792421740,
+    "result": null,
+    "skills": [],
+    "max_runtime_seconds": null,
+    "max_retries": null,
+    "model_override": null,
+    "provider_override": null,
+    "session_id": null,
+    "workflow_template_id": null,
+    "current_step_key": null,
+    "completion_contract": "local-only",
+    "last_failure_error": null
+  }
+]

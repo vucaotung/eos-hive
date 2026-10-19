@@ -26,7 +26,8 @@ assert t["board"] == "eos-vlx" and t["assignee"] == "eos-thu-thu" and t["tenant"
 assert t["skills"] == ["kb-tra-cuu", "phap-che"] and t["key"] == "eos-7001-1", t
 assert "eos_get_task T-7001" in t["body"]
 assert sql("select card_id||'|'||status from agent.cards where task_id=7001") == f"{card}|todo"
-step("việc giao cho agent → thẻ Kanban đúng board, profile, tenant, skill, khóa chống trùng")
+assert "eos-vlx" in st["boards"] and any(c[:2] == ["boards", "create"] for c in st["calls"]), st["calls"]
+step("việc giao cho agent → thẻ Kanban đúng board, profile, tenant, skill, khóa chống trùng; board mới được tự tạo")
 
 b.run_once()
 assert len(hermes_state()["tasks"]) == 1

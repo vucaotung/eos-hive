@@ -59,15 +59,15 @@ class Bridge:
         return r.json() if r.text else None
 
     # ---------- Hermes ----------
-    def hermes(self, *args: str, json_out: bool = False):
-        cmd = [*HERMES, "kanban", *args] + (["--json"] if json_out else [])
+    def hermes(self, verb: str, *args: str, board: str | None = None, json_out: bool = False):
+        # Hermes 0.22: --board là cờ của `kanban`, phải đứng TRƯỚC động từ (docs/07). `--json` đứng sau động từ.
+        cmd = [*HERMES, "kanban", *(["--board", board] if board else []), verb, *args] + (["--json"] if json_out else [])
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if p.returncode != 0:
-            raise RuntimeError(f"{' '.join(cmd[:4])}… exit {p.returncode}: {p.stderr.strip()[:300]}")
+            raise RuntimeError(f"kanban {verb} exit {p.returncode}: {p.stderr.strip()[:300]}")
         if not json_out:
             return p.stdout
-        out = json.loads(p.stdout or "null")
-        return out.get("task", out) if isinstance(out, dict) else out
+        return json.loads(p.stdout or "null")
 
     def save(self) -> None:
         tmp = self.cards_file.with_suffix(".tmp")
@@ -100,18 +100,28 @@ class Bridge:
                   "Không duyệt, không cấp số, không chốt lương, không xóa."]
         return "\n".join(lines)
 
+    def create_card(self, board: str, args: list[str]) -> dict:
+        # A2: Hermes KHÔNG tự tạo board ("board … does not exist"); gặp lỗi đó thì tạo board một lần rồi thử lại.
+        try:
+            return self.hermes("create", *args, board=board, json_out=True)
+        except RuntimeError as e:
+            if "does not exist" not in str(e):
+                raise
+            self.hermes("boards", "create", board, "--name", f"Tổ Ong · {board}")
+            return self.hermes("create", *args, board=board, json_out=True)
+
     def handle_outbox(self, o: dict) -> str | None:
         p = o["payload"]
         if o["kind"] == "dispatch":
-            args = ["create", p["title"], "--board", p["board"], "--assignee", p["profile"],
+            args = [p["title"], "--assignee", p["profile"],
                     "--tenant", p["tenant"], "--idempotency-key", p["idempotency_key"],
                     "--body", self.card_body(o)]
             if p.get("parent_card_id"):
                 args += ["--parent", p["parent_card_id"]]
             for s in p.get("skills") or []:
                 args += ["--skill", s]
-            card = self.hermes(*args, json_out=True)
-            card_id = str(card.get("id") or card.get("task_id"))
+            card = self.create_card(p["board"], args)  # đối tượng phẳng có "id" (A3)
+            card_id = str(card["id"])
             self.cards[card_id] = {"board": p["board"], "task_id": o["task_id"], "status": card.get("status", "todo")}
             self.save()
             return card_id
@@ -124,11 +134,11 @@ class Bridge:
                        + (f" Ghi chú: {p['note']}" if p.get("note") else ""))
             else:
                 msg = f"[TRA-LOI] {p.get('by', 'người')}: {p['body']}"
-            self.hermes("comment", card, msg, "--board", board)
-            self.hermes("unblock", card, "--board", board)
+            self.hermes("comment", card, msg, "--author", "eos-bridge", board=board)
+            self.hermes("unblock", card, board=board)
             return None
         if o["kind"] == "cancel" and p.get("card_id"):
-            self.hermes("archive", p["card_id"], "--board", p["board"])
+            self.hermes("archive", p["card_id"], board=p["board"])
         return None
 
     def drain_outbox(self) -> None:
@@ -141,21 +151,27 @@ class Bridge:
                 self.rpc("outbox_ack", p_id=o["id"], p_card_id=None, p_error=str(e))
 
     # ---------- 2. Sự kiện từ hook ----------
+    @staticmethod
+    def _last_run(info: dict) -> dict:
+        runs = info.get("runs") or []
+        return next((r for r in reversed(runs) if r.get("outcome") == "completed"), runs[-1] if runs else {})
+
     def event_from_card(self, card_id: str, info: dict, hook: str | None) -> tuple[str, dict] | None:
-        status = info.get("status")
+        # `show --json` = {task, latest_summary, comments, events, runs, …}; mẫu thật ở bridge/test/fixtures (docs/07 A5)
+        task = info.get("task", info)
+        status = task.get("status")
         event = {"kanban_task_claimed": "claimed", "kanban_task_blocked": "blocked",
                  "kanban_task_completed": "completed"}.get(hook or "", STATUS_EVENT.get(status))
         if event is None:
             return None
         payload: dict = {}
         if event == "blocked":
-            payload["reason"] = info.get("blocked_reason") or info.get("block_reason") or (info.get("metadata") or {}).get("blocked_reason")
-            if not payload["reason"]:
-                comments = info.get("comments") or []
-                payload["reason"] = comments[-1].get("body") if comments else None
+            blocked = [e for e in info.get("events") or [] if e.get("kind") == "blocked"]
+            payload["reason"] = ((blocked[-1].get("payload") or {}).get("reason") if blocked else None) or info.get("latest_summary")
         if event == "completed":
-            meta = info.get("metadata") or info.get("result_metadata") or {}
-            payload = {"summary": info.get("summary") or info.get("result"),
+            run = self._last_run(info)
+            meta = run.get("metadata") or {}
+            payload = {"summary": info.get("latest_summary") or run.get("summary") or task.get("result"),
                        **{k: meta.get(k) for k in ("outputs", "sources", "checks", "confidence", "residual_risk", "next_actions") if meta.get(k) is not None}}
         return event, payload
 
@@ -163,14 +179,14 @@ class Bridge:
         known = self.cards.get(card_id)
         if not known:
             return  # thẻ không do cầu nối tạo (thẻ nội bộ của agent)
-        info = self.hermes("show", card_id, "--board", known["board"], json_out=True) or {}
+        info = self.hermes("show", card_id, board=known["board"], json_out=True) or {}
         ev = self.event_from_card(card_id, info, hook)
         if not ev:
             return
         event, payload = ev
         key = f"{known['board']}:{card_id}:{event}:{stamp}"
         res = self.rpc("ingest_event", p_board=known["board"], p_card=card_id, p_event=event, p_event_key=key, p_payload=payload)
-        known["status"] = info.get("status", known.get("status"))
+        known["status"] = info.get("task", info).get("status", known.get("status"))
         self.save()
         print(f"{card_id} {event} → {res}")
 
@@ -196,14 +212,16 @@ class Bridge:
     def reconcile(self) -> None:
         boards = {c["board"] for c in self.cards.values() if c.get("status") not in ("done", "archived")}
         for board in boards:
-            for info in self.hermes("list", "--board", board, json_out=True) or []:
+            for info in self.hermes("list", board=board, json_out=True) or []:
                 card_id = str(info.get("id"))
                 known = self.cards.get(card_id)
                 if not known or info.get("status") == known.get("status"):
                     continue
                 if info.get("status") in STATUS_EVENT:
                     # mốc = trạng thái mới; nếu hook đã gửi cùng sự kiện, ingest_event vẫn nhận lần nữa nhưng việc đã đúng trạng thái
-                    self.push(card_id, None, f"reconcile-{info.get('status')}-{info.get('updated_at', '')}")
+                    # `list --json` không có updated_at: dùng mốc thời gian có thật của thẻ làm dấu
+                    stamp = info.get("completed_at") or info.get("started_at") or info.get("created_at") or ""
+                    self.push(card_id, None, f"reconcile-{info.get('status')}-{stamp}")
         self.last_reconcile = time.time()
 
     def run_once(self) -> None:

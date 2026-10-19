@@ -6,6 +6,7 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 ## [Chưa phát hành]
 
 ### Sửa
+- **Cầu nối ↔ Hermes thật** (`bridge/`, nhánh `fix/real-hermes`; kiểm chứng trên Hermes 0.22.1, `docs/07`): `--board` đứng trước động từ; tự tạo board khi chưa có; đọc `show --json` đúng chỗ (`task.status`, `latest_summary`, `runs[-1].metadata`, `events[blocked].payload.reason`); đối soát không dùng `updated_at`; thêm `plugin.yaml` cho plugin; `fake_hermes.py` khớp dạng thật; thêm `bridge/test/test_fixtures.py` + mẫu thật `bridge/test/fixtures/`.
 - `deploy/setup_agents.sql`: agent `thu-thu` đổi thành `quan-tri-du-lieu` (profile `eos-quan-tri-du-lieu`, module `kb`); thêm `phap-che` giữ chỗ (`specialist`, module `doc` tạm vì cột `module` không cho để trống, `max_level` 0, tắt) cho đến khi được định nghĩa. Cập nhật tài liệu và prompt liên quan. Dữ liệu giả của bộ kiểm thử cầu nối vẫn dùng `thu-thu` (chỉ là mẫu).
 
 ## [0.0.0] — 2026-10-19

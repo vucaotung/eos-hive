@@ -1,0 +1,257 @@
+{
+  "task": {
+    "id": "t_e7e3c534",
+    "title": "EOS smoke 1",
+    "body": "Hãy gọi công cụ kanban_complete với summary: Kiểm thử cầu nối: hoàn tất bước 1",
+    "assignee": "eos-quan-tri-du-lieu",
+    "status": "done",
+    "priority": 0,
+    "tenant": "TEST",
+    "workspace_kind": "scratch",
+    "workspace_path": "/root/.hermes/kanban/boards/eos-smoke/workspaces/t_e7e3c534",
+    "branch_name": null,
+    "project_id": null,
+    "created_by": "user",
+    "created_at": 1792420837,
+    "started_at": 1792420866,
+    "completed_at": 1792421740,
+    "result": null,
+    "skills": [],
+    "max_runtime_seconds": null,
+    "max_retries": null,
+    "model_override": null,
+    "provider_override": null,
+    "session_id": null,
+    "workflow_template_id": null,
+    "current_step_key": null,
+    "completion_contract": "local-only",
+    "last_failure_error": null
+  },
+  "latest_summary": "Kiểm thử cầu nối: hoàn tất bước 1",
+  "parents": [],
+  "children": [],
+  "comments": [],
+  "events": [
+    {
+      "kind": "created",
+      "payload": {
+        "assignee": "eos-quan-tri-du-lieu",
+        "status": "ready",
+        "parents": [],
+        "creator_task_id": null,
+        "tenant": "TEST",
+        "workspace_kind": "scratch",
+        "workspace_path": null,
+        "branch_name": null,
+        "project_id": null,
+        "skills": null,
+        "goal_mode": null,
+        "model_override": null,
+        "provider_override": null
+      },
+      "created_at": 1792420837,
+      "run_id": null
+    },
+    {
+      "kind": "claimed",
+      "payload": {
+        "lock": "vmi3202129:201646",
+        "expires": 1792421766,
+        "run_id": 1
+      },
+      "created_at": 1792420866,
+      "run_id": 1
+    },
+    {
+      "kind": "spawned",
+      "payload": {
+        "pid": 373097,
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9372910"
+      },
+      "created_at": 1792420867,
+      "run_id": 1
+    },
+    {
+      "kind": "owner_admitted",
+      "payload": {
+        "db": "/root/.hermes/profiles/eos-quan-tri-du-lieu/state.db",
+        "session_id": "local-0e76222fc88a2932726bb1ee4bfcfe5443ef652ad1c99bc0397fde744ca16043",
+        "request_id": "kanban:[\"eos-smoke\",\"t_e7e3c534\",1]",
+        "pid": 201646,
+        "birth": 1792377751.28
+      },
+      "created_at": 1792420868,
+      "run_id": 1
+    },
+    {
+      "kind": "worker_bound",
+      "payload": {
+        "pid": 373122,
+        "claim_lock": "vmi3202129:201646",
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9373077"
+      },
+      "created_at": 1792420870,
+      "run_id": 1
+    },
+    {
+      "kind": "heartbeat",
+      "payload": null,
+      "created_at": 1792420875,
+      "run_id": 1
+    },
+    {
+      "kind": "worker_result",
+      "payload": {
+        "pid": 373122,
+        "claim_lock": "vmi3202129:201646",
+        "exit_code": 78,
+        "last_output": "custom rejected your API key, so the model can't be reached. Update it in Settings → Providers, or run `hermes setup` in a terminal.\n\nProvider said: HTTP 401: {\"error\":\"API key required for remote API access\"}"
+      },
+      "created_at": 1792420877,
+      "run_id": 1
+    },
+    {
+      "kind": "crashed",
+      "payload": {
+        "pid": 373097,
+        "claimer": "vmi3202129:201646",
+        "exit_kind": "terminal_provider",
+        "exit_code": 78,
+        "terminal_provider": true,
+        "worker_output": "Session: local-0e76222fc88a2932726bb1ee4bfcfe5443ef652ad1c99bc0397fde744ca16043 custom rejected your API key, so the model can't be reached. Update it in Settings → Providers, or run `hermes setup` in a terminal. Provider said: HTTP 401: {\"error\":\"API key required for remote API access\"}",
+        "retry_status": "ready"
+      },
+      "created_at": 1792420928,
+      "run_id": 1
+    },
+    {
+      "kind": "gave_up",
+      "payload": {
+        "failures": 1,
+        "effective_limit": 2,
+        "limit_source": "dispatcher",
+        "error": "pid 373097 exited on a terminal provider error (exit 78): the provider rejected this profile's credential or model — fix the configuration, then unblock. Worker's last output: 'Session: local-0e76222fc88a2932726bb1ee4bfcfe5443ef652ad1c99bc0397fde744ca16043 custom rejected your API key, so the model can\\'t be reached. Update it in Settings → Providers, or run `hermes setup` in a terminal. Provider said: HTTP 401: {\"error\":\"API key required for remote API access\"}'",
+        "trigger_outcome": "crashed",
+        "retry_status": "ready",
+        "sticky": true,
+        "pid": 373097,
+        "claimer": "vmi3202129:201646",
+        "terminal_provider": true
+      },
+      "created_at": 1792420928,
+      "run_id": null
+    },
+    {
+      "kind": "unblocked",
+      "payload": null,
+      "created_at": 1792421682,
+      "run_id": null
+    },
+    {
+      "kind": "claimed",
+      "payload": {
+        "lock": "vmi3202129:201646",
+        "expires": 1792422624,
+        "run_id": 2
+      },
+      "created_at": 1792421724,
+      "run_id": 2
+    },
+    {
+      "kind": "spawned",
+      "payload": {
+        "pid": 380569,
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9458698"
+      },
+      "created_at": 1792421724,
+      "run_id": 2
+    },
+    {
+      "kind": "owner_admitted",
+      "payload": {
+        "db": "/root/.hermes/profiles/eos-quan-tri-du-lieu/state.db",
+        "session_id": "local-154970ef9f410ea88c253b9a7fac010d8e653418074986d76fd469f9fb6dd989",
+        "request_id": "kanban:[\"eos-smoke\",\"t_e7e3c534\",2]",
+        "pid": 201646,
+        "birth": 1792377751.28
+      },
+      "created_at": 1792421725,
+      "run_id": 2
+    },
+    {
+      "kind": "worker_bound",
+      "payload": {
+        "pid": 380589,
+        "claim_lock": "vmi3202129:201646",
+        "started_at": "80048fe0-1c08-4c9d-95ee-302a4dded157:18|9458835"
+      },
+      "created_at": 1792421727,
+      "run_id": 2
+    },
+    {
+      "kind": "heartbeat",
+      "payload": null,
+      "created_at": 1792421731,
+      "run_id": 2
+    },
+    {
+      "kind": "completed",
+      "payload": {
+        "result_len": 0,
+        "summary": "Kiểm thử cầu nối: hoàn tất bước 1"
+      },
+      "created_at": 1792421740,
+      "run_id": 2
+    },
+    {
+      "kind": "worker_result",
+      "payload": {
+        "pid": 380589,
+        "claim_lock": "vmi3202129:201646",
+        "exit_code": 0,
+        "last_output": "Đã hoàn tất task `t_e7e3c534` với summary: \"Kiểm thử cầu nối: hoàn tất bước 1\"."
+      },
+      "created_at": 1792421743,
+      "run_id": 2
+    }
+  ],
+  "runs": [
+    {
+      "id": 1,
+      "profile": "eos-quan-tri-du-lieu",
+      "step_key": null,
+      "status": "crashed",
+      "outcome": "crashed",
+      "summary": null,
+      "error": "pid 373097 exited on a terminal provider error (exit 78): the provider rejected this profile's credential or model — fix the configuration, then unblock. Worker's last output: 'Session: local-0e76222fc88a2932726bb1ee4bfcfe5443ef652ad1c99bc0397fde744ca16043 custom rejected your API key, so the model can\\'t be reached. Update it in Settings → Providers, or run `hermes setup` in a terminal. Provider said: HTTP 401: {\"error\":\"API key required for remote API access\"}'",
+      "metadata": {
+        "pid": 373097,
+        "claimer": "vmi3202129:201646",
+        "exit_kind": "terminal_provider",
+        "exit_code": 78,
+        "terminal_provider": true,
+        "worker_output": "Session: local-0e76222fc88a2932726bb1ee4bfcfe5443ef652ad1c99bc0397fde744ca16043 custom rejected your API key, so the model can't be reached. Update it in Settings → Providers, or run `hermes setup` in a terminal. Provider said: HTTP 401: {\"error\":\"API key required for remote API access\"}",
+        "retry_status": "ready"
+      },
+      "worker_pid": null,
+      "started_at": 1792420866,
+      "ended_at": 1792420928
+    },
+    {
+      "id": 2,
+      "profile": "eos-quan-tri-du-lieu",
+      "step_key": null,
+      "status": "done",
+      "outcome": "completed",
+      "summary": "Kiểm thử cầu nối: hoàn tất bước 1",
+      "error": null,
+      "metadata": {
+        "reason": "Hoàn tất kiểm thử theo yêu cầu",
+        "worker_session_id": "local-154970ef9f410ea88c253b9a7fac010d8e653418074986d76fd469f9fb6dd989"
+      },
+      "worker_pid": 380569,
+      "started_at": 1792421724,
+      "ended_at": 1792421740
+    }
+  ]
+}

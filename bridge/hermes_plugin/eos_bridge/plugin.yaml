@@ -1,0 +1,8 @@
+name: eos_bridge
+version: 0.0.1
+description: "Ghi sự kiện Kanban (claimed, blocked, completed) vào spool để cầu nối Enterprise OS gửi về Postgres. Không gọi mạng."
+author: "Tổ Ong (eos-hive)"
+provides_hooks:
+  - kanban_task_claimed
+  - kanban_task_blocked
+  - kanban_task_completed
