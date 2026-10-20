@@ -11,6 +11,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ### Sửa
 - `setup_agents.sql`: agent `van-thu` nạp skill `nd30-van-thu`.
+- **Nhật ký ghi nhầm người thay vì agent** (phát hiện bởi A7): `agent._mcp_actor()` trả `agent:<mã>` khi lời gọi đến từ agent (migration `0004`); trước đó tệp do Văn thư AI soạn gắn vào việc với actor `user:<người phụ trách>`. Có kiểm thử.
+- Nhật ký gọi MCP của `eos_draft_document` ghi thêm `cap_ky`, `ngay_dien`, `du_thao` (không ghi nội dung).
+- Nghiệm thu: kịch bản **A7** (Văn thư soạn công văn đủ thông tin; thiếu thông tin thì hỏi, không bịa, không tạo tệp).
 
 ## [0.0.3] — 2026-10-20
 
