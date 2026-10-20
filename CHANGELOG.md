@@ -5,6 +5,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+## [0.0.5] — 2026-10-20
+
 ### Thêm
 - **Giao diện web `/app`** (`web/`, `docs/10`): hộp việc, tạo việc giao agent, duyệt kết quả agent (chấp nhận hoặc trả lại có lý do), trả lời câu hỏi của agent, kết nối AI (cấp/thu hồi mã MCP), quản trị (agent, cầu nối, mã MCP, nhật ký gọi MCP). Đăng nhập Google chỉ cho người đã có trong `core.users`; phiên cookie ký HMAC; CSRF; CSP chặt; giới hạn tốc độ. Web chỉ gọi hàm `SECURITY DEFINER` qua vai trò `web_svc`. `deploy/eos-web.service`, `deploy/eos-web.env.example`, `deploy/Caddyfile.web.snippet`; `make test-web` (24 bước, Google giả lập kèm kiểm PKCE) và kịch bản nghiệm thu A8.
 - Migration `0005`: vai trò `web_svc`, hàm `agent.web_*`.
