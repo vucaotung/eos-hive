@@ -5,6 +5,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+## [0.0.4] — 2026-10-20
+
 ### Thêm
 - **Văn thư AI soạn dự thảo công văn và quyết định theo NĐ 30** (`docs/09`): skill Hermes `nd30-van-thu` (`deploy/hermes-skills/`), công cụ MCP `eos_draft_document` (dựng `.docx` ở máy chủ, lưu Drive người phụ trách, gắn vào việc), phạm vi mã `draft` chỉ cho agent module `doc`, hàm SQL `mcp_agent_drive_target` và `mcp_agent_register_file`, migration `0003`. Phụ thuộc mới `docx@9.9.0` (ghim, không script cài đặt). `scripts/install_skill.sh`.
 - Kiểm thử: `mcp/test/vanban.test.mjs` kiểm thông số thể thức trên XML của tệp (12 bài) và 5 bước e2e mới; ví dụ của skill được kiểm hợp lệ.
