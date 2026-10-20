@@ -94,7 +94,7 @@ class Bridge:
             lines += ["", f"LÀM LẠI. Người giao trả lại với lý do: {p['rework_reason']}",
                       "Đọc kết quả lượt trước ở mục Parent task results."]
         lines += ["", "Kết thúc bằng một trong ba lệnh:",
-                  "- kanban_complete: summary (10–4000 ký tự) + metadata {outputs:[{drive_id,name,url}], sources, checks, confidence, residual_risk, next_actions}",
+                  "- kanban_complete: summary (10–4000 ký tự) + metadata {outputs:[{drive_id,name,url}], sources, checks, confidence (CHỈ: cao | trung_binh | thap), residual_risk, next_actions}",
                   "- kanban_block: khi thiếu thông tin; reason = câu hỏi cụ thể + đã làm gì, còn gì",
                   "- Việc L2 (giao cho người khác, gửi ra ngoài…): block và nêu đề xuất; người giao xác nhận trên app.",
                   "Không duyệt, không cấp số, không chốt lương, không xóa."]

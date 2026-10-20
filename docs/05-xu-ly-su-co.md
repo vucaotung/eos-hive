@@ -30,9 +30,12 @@ Tìm theo triệu chứng. Mỗi dòng: **nguyên nhân thường gặp → các
 | Thẻ chạy xong mà việc không đổi | Hook không bắn (plugin chưa bật cho profile) hoặc spool không ghi | `ls -l ~/.hermes/eos_bridge/spool.jsonl`; sau ≤ 10 phút đối soát sẽ bù — nếu không, plugin chưa chạy |
 | Mỗi lượt đều in `missing_summary` | Agent gọi `kanban_complete` với tóm tắt < 10 ký tự | Đúng thiết kế; sửa prompt/skill của agent (nhắc hợp đồng báo cáo, `eos_guide topic=agent`) |
 | Có hai thẻ cho một việc | Hiếm: khóa chống trùng khác nhau (`eos-<task>-<lượt>`) do làm lại | Bình thường nếu một thẻ là lượt làm lại; thẻ cũ phải ở `archived` |
+| Nhật ký cầu nối lặp `ingest_event: 400 … 23514` (check_violation), việc không sang Chờ xem | Báo cáo agent vi phạm ràng buộc (trước 0.0.2: `confidence` ngoài `cao/trung_binh/thap`, ví dụ `1` hoặc `high`) | Từ 0.0.2 trigger `reports_norm_confidence` tự chuẩn hóa. Nếu vẫn còn lỗi khác: đọc `details` đầy đủ (log bị cắt 200 ký tự), sửa dữ liệu nguồn hoặc hàm; cầu nối tự thử lại mỗi 15 s nên không cần chạy tay |
+| `journalctl --user -u eos-kanban-bridge` trống dù cầu nối đang xử lý | Python đệm stdout khi chạy dưới systemd | Unit phải có `Environment=PYTHONUNBUFFERED=1` (có từ 0.0.1) |
+| Hủy việc mà thẻ Kanban vẫn chạy | Trước 0.0.2 không có gì phát lệnh `cancel` | Từ 0.0.2 trigger `tasks_cancel` phát `agent.outbox` kind=`cancel`; cầu nối archive thẻ. Worker đang chạy có thể kết thúc nhưng sự kiện của nó bị bỏ qua (`task_closed`) |
 | Thẻ ở `running` mãi | Worker chết giữa chừng; dispatcher tick 60 s | `hermes kanban show <id>`; archive thẻ + tạo lại việc; xem log `hermes-gateway` |
 | Dispatcher không nhận thẻ | Gateway không chạy profile đó (`--multiplex` thiếu), hoặc profile sai tên | `hermes gateway status`; tên profile phải khớp `agent.agents.hermes_profile` |
-| Trả lời trên app mà agent không chạy tiếp | outbox `answer` lỗi, hoặc thẻ không ở `blocked` | Xem `agent.outbox`; `hermes kanban unblock <id> --board eos-<slug>` thủ công |
+| Trả lời trên app mà agent không chạy tiếp | outbox `answer` lỗi, hoặc thẻ không ở `blocked` | Xem `agent.outbox`; `hermes kanban --board eos-<slug> unblock <id>` thủ công |
 | Cầu nối chạy lại tạo thẻ trùng | **Không nên xảy ra** (khóa chống trùng) | Nếu xảy ra, báo lỗi nghiêm trọng; đừng xóa — archive |
 | `systemctl --user` không chạy sau đăng xuất | Chưa bật linger | `loginctl enable-linger $USER` |
 | Bảng điều khiển Kanban mở được từ Internet | Hermes Kanban **không xác thực** | Đóng ngay: chỉ bind `127.0.0.1`, truy cập qua SSH tunnel/Tailscale |

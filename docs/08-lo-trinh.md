@@ -14,6 +14,8 @@ Lược đồ 108 bảng · lớp agent · MCP (15+3 công cụ) · cầu nối 
 | Thêm CSDL `eos` vào sao lưu; khôi phục thử | `docs/03` §5 |
 
 ## 0.1.0 — giai đoạn 1: lõi dùng được
+- **Nối dây xác nhận L2 có cấu trúc** (phát hiện ở nghiệm thu): `agent.request_confirmation` / `decide_confirmation` đã có nhưng chưa có đường gọi — worker chỉ có `eos_guide`, `eos_get_task`, `eos_delegate` và cầu nối không gọi hàm này. Hiện L2 chạy qua chặn–trả lời (đã nghiệm thu, kịch bản A1). Cần quyết: thêm công cụ MCP cho worker, hay cầu nối nhận dạng `kanban_block` kiểu đề xuất.
+- Bảng `core.schema_migrations` ghi phiên bản (đã có `db/migrations/0001`, `0002` áp tay).
 - RPC cho app web (đăng nhập Google + mã mời), **RLS** cho mọi bảng, dữ liệu khởi tạo (công ty, phòng, vai trò, quyền, danh mục).
 - Màn hình tạo mã MCP (Tài khoản → Kết nối AI agent) thay cho SQL.
 - Chuyển `legacy/deo-work` sang lược đồ 108 bảng; hộp việc của agent (chờ xem, đang hỏi, xác nhận L2).

@@ -283,5 +283,23 @@ DO $$ DECLARE o agent.outbox; BEGIN
   RAISE NOTICE 'Hủy việc ok: thẻ đã chạy → outbox cancel; thẻ chưa tạo → hủy dispatch';
 END $$;
 
+-- Chuẩn hóa độ tin cậy do LLM điền (migration 0002)
+DO $$ DECLARE r record; got text; BEGIN
+  FOR r IN SELECT * FROM (VALUES ('cao','cao'),('High','cao'),('trung bình','trung_binh'),('MEDIUM','trung_binh'),('thấp','thap'),('low','thap'),
+                                 ('1','cao'),('0.9','cao'),('0.5','trung_binh'),('0.2','thap'),('85','cao'),('60%','trung_binh'),
+                                 ('5',NULL),('khá tốt',NULL),('',NULL)) v(inp, want) LOOP
+    got := agent._norm_confidence(r.inp);
+    ASSERT got IS NOT DISTINCT FROM r.want, format('_norm_confidence(%L) = %L, cần %L', r.inp, got, r.want);
+  END LOOP;
+  ASSERT agent._norm_confidence(NULL) IS NULL, 'NULL giữ NULL';
+  INSERT INTO agent.reports (company_id, task_id, card_ref, agent_id, summary, confidence)
+    SELECT company_id, task_id, id, agent_id, 'Tóm tắt đủ dài để qua ràng buộc độ dài', 'high' FROM agent.cards WHERE task_id = 9001 LIMIT 1;
+  ASSERT (SELECT confidence FROM agent.reports WHERE task_id = 9001 ORDER BY id DESC LIMIT 1) = 'cao', 'trigger chuẩn hóa khi chèn báo cáo';
+  INSERT INTO agent.reports (company_id, task_id, card_ref, agent_id, summary, confidence)
+    SELECT company_id, task_id, id, agent_id, 'Tóm tắt đủ dài để qua ràng buộc độ dài', 'khá tốt' FROM agent.cards WHERE task_id = 9001 LIMIT 1;
+  ASSERT (SELECT confidence FROM agent.reports WHERE task_id = 9001 ORDER BY id DESC LIMIT 1) IS NULL, 'giá trị lạ -> NULL, không lỗi';
+  RAISE NOTICE 'Chuẩn hóa độ tin cậy ok';
+END $$;
+
 SELECT 'test_agent: tất cả kiểm thử đều đạt' AS ket_qua;
 ROLLBACK;

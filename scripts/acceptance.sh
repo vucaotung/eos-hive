@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_HOST="${EOS_DB_HOST:-vps169}"; H_HOST="${EOS_HERMES_HOST:-vps173}"
 OWNER_EMAIL="${EOS_OWNER_EMAIL:-vucaotung@gmail.com}"; SLUG="${EOS_COMPANY_SLUG:-valnex}"
 RUN="$(date +%m%d%H%M%S)"; TAG="[ACCEPT $RUN]"
-ALL="A1 A2 A3 A4 A5"; ONLY="$ALL"
+ALL="A1 A2 A3 A4 A5 A6"; ONLY="$ALL"
 while [ $# -gt 0 ]; do case "$1" in
   --only) ONLY="$(echo "${2:?}" | tr ',' ' ')"; shift 2;;
   --list) echo "$ALL"; exit 0;;
@@ -74,6 +74,12 @@ answer_acked()     { [ "$(sqlv "select count(*) from agent.outbox where task_id=
 cancel_queued()    { [ "$(sqlv "select count(*) from agent.outbox where task_id=$1 and kind='cancel'")" -ge 1 ]; }
 cancel_acked()     { [ "$(sqlv "select count(*) from agent.outbox where task_id=$1 and kind='cancel' and done_at is not null")" -ge 1 ]; }
 sees_question()    { mcp_out eos_get_task "{\"task\":\"T-$1\"}" | grep -q question; }
+children_agents() { sqlv "select coalesce(string_agg(a.code, ',' order by a.code), '') from work.tasks k join agent.agents a on a.id = k.agent_id where k.parent_id = $1 and k.source = 'agent'"; }
+children_done()   { [ "$(sqlv "select count(*) from work.tasks where parent_id = $1 and source = 'agent' and status = 'done'")" = 2 ]; }
+two_children()    { [ "$(children_agents "$1")" = "nhan-su,van-thu" ]; }
+child_profiles_ok() { [ "$(sqlv "select coalesce(string_agg(o.payload->>'profile', ',' order by o.payload->>'profile'), '') from agent.outbox o join work.tasks k on k.id = o.task_id where k.parent_id = $1 and o.kind = 'dispatch'")" = "eos-nhan-su,eos-van-thu" ]; }
+synthesis_cards() { sqlv "select count(*) from agent.cards where task_id = $1 and kind = 'synthesis'"; }
+has_synthesis()   { [ "$(synthesis_cards "$1")" -ge 1 ]; }
 wrong_token_rejected() { ( EOS_ACCEPT_TOKEN="eos_$(printf '0%.0s' $(seq 48))"; mcp --list >/dev/null 2>&1; [ $? -eq 4 ] ); }
 hr_denied()        { mcp_out eos_my_hr '{"what":"leave"}' | grep -q hr_self; }
 missing_task_err() { mcp eos_get_task '{"task":"T-999999"}' >/dev/null 2>&1; [ $? -eq 3 ]; }
@@ -186,6 +192,21 @@ s_A5() {
   check "chỉ đúng 1 thẻ cho việc này"                        [ "$(sqlv "select count(*) from agent.cards where task_id=$id")" = 1 ]
   check "việc hoàn tất ≤ 6 phút → Chờ xem"                   wait_until 360 is_status "$id" in_review
   as_owner "SELECT agent.accept_result($id,'ACCEPT');" >/dev/null 2>&1
+}
+
+s_A6() {
+  say ""; say "A6 · Chia việc con: Điều phối → 2 việc con (Văn thư, Nhân sự) → thẻ tổng hợp → chờ xem"
+  local id; id="$(new_task 'chia việc con' "Chỉ để kiểm thử. Bước 1: gọi công cụ eos_delegate với đúng 2 việc con: (1) agent=van-thu, title='Con A kiểm thử', description='Chỉ để kiểm thử: gọi kanban_complete ngay với summary: Hoàn tất việc con A kiểm thử'; (2) agent=nhan-su, title='Con B kiểm thử', description='Chỉ để kiểm thử: gọi kanban_complete ngay với summary: Hoàn tất việc con B kiểm thử'. Bước 2: ngay sau khi chia xong, gọi kanban_complete với summary: Đã chia 2 việc con và chờ kết quả. Bước 3: khi nhận thẻ TỔNG HỢP, đọc T-<số> bằng eos_get_task rồi gọi kanban_complete với summary tổng hợp kết quả hai việc con và metadata.confidence='cao'." dieu-phoi)"
+  say "  việc T-$id"
+  check "thẻ của Điều phối được tạo ≤ 2 phút"                wait_until 120 has_card "$id"
+  check "Điều phối chia đúng 2 việc con (van-thu, nhan-su) ≤ 6 phút" wait_until 360 two_children "$id"
+  check "việc con không tính KPI, do agent chia"             [ "$(sqlv "select count(*) from work.tasks where parent_id=$id and source='agent' and kpi_counted=false")" = 2 ]
+  check "mỗi việc con có thẻ riêng đúng profile"             wait_until 120 child_profiles_ok "$id"
+  check "cả 2 việc con tự Xong ≤ 8 phút (auto_done)"         wait_until 480 children_done "$id"
+  check "việc cha sinh đúng một thẻ tổng hợp"                wait_until 120 has_synthesis "$id"
+  check "Điều phối nộp bản tổng hợp ≤ 8 phút → Chờ xem"      wait_until 480 is_status "$id" in_review
+  check "chỉ một thẻ tổng hợp"                               [ "$(synthesis_cards "$id")" = 1 ]
+  check "người chấp nhận bản tổng hợp → Xong"                [ "$(as_owner "SELECT agent.accept_result($id,'ACCEPT');" | tail -1)" = done ]
 }
 
 for s in $ONLY; do "s_$s" || true; done

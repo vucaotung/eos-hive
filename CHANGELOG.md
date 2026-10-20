@@ -5,6 +5,13 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Thêm
+- Kịch bản nghiệm thu **A6 Chia việc con** (`make acceptance`).
+
+### Sửa
+- **Báo cáo bị từ chối khi `confidence` do LLM điền sai dạng** (phát hiện bởi A6; worker nộp `1` và `high`): migration `0002` thêm `agent._norm_confidence` và trigger `reports_norm_confidence` chuẩn hóa về `cao|trung_binh|thap` (giá trị lạ → NULL). Trước đó `ingest_event` lỗi 23514, cầu nối thử lại vô hạn và việc không bao giờ Xong. Nội dung thẻ nêu rõ giá trị hợp lệ. Có kiểm thử trong `db/test_agent.sql`.
+- `docs/05`: lệnh `unblock` thủ công đặt `--board` đúng chỗ; thêm 3 dòng xử lý sự cố mới.
+
 ## [0.0.2] — 2026-10-20
 
 ### Thêm

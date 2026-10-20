@@ -143,7 +143,7 @@ Các truy vấn trên đã chạy thử trên CSDL thử v0.0.0. Nếu đổi l�
 
 ### 7.1 Nghiệm thu tự động trên máy thật
 
-    make acceptance                 # mọi kịch bản (~15 phút, tốn token LLM thật)
+    make acceptance                 # mọi kịch bản (~30 phút, tốn token LLM thật)
     make acceptance ONLY=A2         # chỉ A2 (30 giây, không tốn LLM)
 
 Chạy từ Z2 (cần `ssh vps169`, `ssh vps173`, `node ≥ 22`, `npm ci` trong `mcp/`). Mỗi kịch bản tạo việc gắn nhãn `[ACCEPT <mã-lượt>]` cho agent thật, kiểm từng cổng, rồi **dọn** (hủy việc, thu hồi mã thử, archive thẻ, bật lại cầu nối) kể cả khi lỗi. Nhật ký ở `ops-log/acceptance-<mã-lượt>.md`.
@@ -155,6 +155,7 @@ Chạy từ Z2 (cần `ssh vps169`, `ssh vps173`, `node ≥ 22`, `npm ci` trong 
 | A3 Làm lại | trả kết quả có lý do → thẻ `rework` lượt 2 kèm lý do → xong |
 | A4 Hủy việc | hủy việc → lệnh `cancel` → thẻ Kanban archive |
 | A5 Chịu lỗi | dừng cầu nối → lệnh nằm chờ → chạy lại → đúng một thẻ |
+| A6 Chia việc con | Điều phối chia 2 việc con (Văn thư, Nhân sự) → mỗi việc đúng profile → tự Xong → đúng một thẻ tổng hợp → chờ xem → chấp nhận |
 
 Chạy sau mỗi lần nâng cấp mã hoặc Hermes. Thêm kịch bản: hàm `s_An` trong `scripts/acceptance.sh`, dùng `check` (cổng bắt buộc) hoặc `xcheck` (lỗi đã biết, kèm lý do).
 
