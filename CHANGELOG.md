@@ -5,6 +5,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+## [0.0.3] — 2026-10-20
+
 ### Thêm
 - Kịch bản nghiệm thu **A6 Chia việc con** (`make acceptance`).
 
