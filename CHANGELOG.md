@@ -5,6 +5,13 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Thêm
+- **Nghiệm thu tự động trên máy thật** (`make acceptance`, `scripts/acceptance.sh`, `scripts/acceptance/mcp.mjs`): 5 kịch bản (vòng đời, quyền MCP, làm lại, hủy việc, chịu lỗi), tự dọn dữ liệu thử; hướng dẫn ở `docs/03` §7.1.
+- Thư mục `db/migrations/` với migration đầu tiên `0001_cancel_outbox.sql` (bảng ghi phiên bản `core.schema_migrations` đi cùng 0.1.0).
+
+### Sửa
+- **Hủy việc không dừng thẻ Kanban** (phát hiện bởi kịch bản A4): thêm trigger `agent.tasks_cancel` phát `agent.outbox` kind=`cancel` (thẻ đã chạy) hoặc hủy lệnh `dispatch` chờ (thẻ chưa tạo). Có kiểm thử trong `db/test_agent.sql`; đã áp lên CSDL thật bằng migration 0001.
+
 ## [0.0.1] — 2026-10-20
 
 Triển khai lần đầu lên máy thật (Z2, VPS 169, VPS 173) và nghiệm thu đầu–cuối.

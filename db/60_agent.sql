@@ -369,6 +369,25 @@ BEGIN
 END $$;
 CREATE TRIGGER tasks_done AFTER UPDATE OF status ON work.tasks FOR EACH ROW EXECUTE FUNCTION agent.tasks_done_trg();
 
+-- Việc bị hủy: dừng thẻ Kanban của nó (cầu nối archive thẻ). Thẻ chưa kịp tạo bên Kanban thì hủy lệnh dispatch đang chờ.
+CREATE FUNCTION agent.tasks_cancel_trg() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE c agent.cards;
+BEGIN
+  IF NEW.status <> 'cancelled' OR OLD.status = 'cancelled' OR NEW.agent_id IS NULL THEN RETURN NEW; END IF;
+  FOR c IN SELECT * FROM agent.cards WHERE task_id = NEW.id AND status NOT IN ('done','archived','gave_up','crashed','timed_out','cancelled') LOOP
+    IF c.card_id IS NULL THEN
+      UPDATE agent.outbox SET done_at = now(), error = 'Việc bị hủy trước khi tạo thẻ' WHERE card_ref = c.id AND kind = 'dispatch' AND done_at IS NULL;
+    ELSE
+      INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
+      VALUES (c.company_id, 'cancel', NEW.id, c.id, jsonb_build_object('board', c.board, 'card_id', c.card_id));
+    END IF;
+    UPDATE agent.cards SET status = 'cancelled', last_event_at = now() WHERE id = c.id;
+  END LOOP;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER tasks_cancel AFTER UPDATE OF status ON work.tasks FOR EACH ROW EXECUTE FUNCTION agent.tasks_cancel_trg();
+
 -- Người trả lời câu hỏi của agent, hoặc trả lại kết quả → chuyển tiếp sang Kanban
 CREATE FUNCTION agent.comments_relay_trg() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$

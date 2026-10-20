@@ -9,6 +9,8 @@ test-mcp: ## Kiểm thử đầu–cuối máy chủ MCP (sau test-db)
 test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgrest)
 	scripts/test_bridge.sh
 test: test-db test-mcp test-bridge ## Chạy cả ba
+acceptance: ## Nghiệm thu đầu–cuối trên MÁY THẬT (tốn LLM; ONLY=A1,A3 để chọn kịch bản)
+	scripts/acceptance.sh $(if $(ONLY),--only $(ONLY))
 secrets: ## Quét bí mật trước khi commit
 	scripts/check_secrets.sh
 schema: ## Ghép db/*.sql thành eos-schema.sql

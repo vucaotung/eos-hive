@@ -141,6 +141,23 @@ Các truy vấn trên đã chạy thử trên CSDL thử v0.0.0. Nếu đổi l�
 5. `kanban_complete` với tóm tắt hợp lệ → việc sang Chờ xem; người chấp nhận → Xong.
 6. Dọn việc thử (hủy việc, `hermes kanban archive`).
 
+### 7.1 Nghiệm thu tự động trên máy thật
+
+    make acceptance                 # mọi kịch bản (~15 phút, tốn token LLM thật)
+    make acceptance ONLY=A2         # chỉ A2 (30 giây, không tốn LLM)
+
+Chạy từ Z2 (cần `ssh vps169`, `ssh vps173`, `node ≥ 22`, `npm ci` trong `mcp/`). Mỗi kịch bản tạo việc gắn nhãn `[ACCEPT <mã-lượt>]` cho agent thật, kiểm từng cổng, rồi **dọn** (hủy việc, thu hồi mã thử, archive thẻ, bật lại cầu nối) kể cả khi lỗi. Nhật ký ở `ops-log/acceptance-<mã-lượt>.md`.
+
+| Kịch bản | Chứng minh |
+| --- | --- |
+| A1 Vòng đời | giao việc → thẻ → hỏi lại → trả lời → báo xong → chấp nhận; báo cáo không trùng |
+| A2 Quyền MCP | 15 công cụ; mã sai bị từ chối; thiếu phạm vi `hr_self` bị từ chối; việc không tồn tại báo lỗi |
+| A3 Làm lại | trả kết quả có lý do → thẻ `rework` lượt 2 kèm lý do → xong |
+| A4 Hủy việc | hủy việc → lệnh `cancel` → thẻ Kanban archive |
+| A5 Chịu lỗi | dừng cầu nối → lệnh nằm chờ → chạy lại → đúng một thẻ |
+
+Chạy sau mỗi lần nâng cấp mã hoặc Hermes. Thêm kịch bản: hàm `s_An` trong `scripts/acceptance.sh`, dùng `check` (cổng bắt buộc) hoặc `xcheck` (lỗi đã biết, kèm lý do).
+
 ## 8. Nâng cấp
 
 - **Mã (MCP/cầu nối)**: `git pull` (tag) → `npm ci` → `systemctl restart`. Cầu nối an toàn khi khởi động lại (idempotent).

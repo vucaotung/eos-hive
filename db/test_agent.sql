@@ -264,5 +264,24 @@ DO $$ DECLARE j jsonb; BEGIN
   RAISE NOTICE 'MCP đọc ok: hôm nay, công văn, che văn bản mật';
 END $$;
 
+-- Hủy việc → dừng thẻ Kanban (migration 0001)
+INSERT INTO work.tasks (id, company_id, department_id, title, assignee_id, agent_id, created_by)
+OVERRIDING SYSTEM VALUE VALUES
+ (9101,'22222222-2222-2222-2222-222222222222','dddddddd-0000-0000-0000-000000000001','Hủy khi thẻ đã chạy','bbbbbbbb-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002'),
+ (9102,'22222222-2222-2222-2222-222222222222','dddddddd-0000-0000-0000-000000000001','Hủy trước khi tạo thẻ','bbbbbbbb-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002');
+DO $$ DECLARE o agent.outbox; BEGIN
+  PERFORM agent.outbox_ack((SELECT id FROM agent.outbox WHERE task_id = 9101 AND kind = 'dispatch'), 't_cancel9101');
+  UPDATE agent.cards SET status = 'running' WHERE task_id = 9101;
+  UPDATE work.tasks SET status = 'cancelled' WHERE id IN (9101, 9102);
+  SELECT * INTO o FROM agent.outbox WHERE task_id = 9101 AND kind = 'cancel';
+  ASSERT o.id IS NOT NULL AND o.payload->>'card_id' = 't_cancel9101' AND o.payload->>'board' IS NOT NULL, format('cancel outbox %s', o.payload);
+  ASSERT (SELECT status FROM agent.cards WHERE task_id = 9101) = 'cancelled', 'thẻ đã chạy → cancelled';
+  ASSERT NOT EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = 9102 AND kind = 'cancel'), 'thẻ chưa tạo: không cần cancel';
+  ASSERT (SELECT done_at IS NOT NULL FROM agent.outbox WHERE task_id = 9102 AND kind = 'dispatch'), 'dispatch chờ bị hủy';
+  UPDATE work.tasks SET status = 'cancelled' WHERE id = 9101;   -- cập nhật lặp không phát thêm
+  ASSERT (SELECT count(*) FROM agent.outbox WHERE task_id = 9101 AND kind = 'cancel') = 1, 'cancel chỉ một lần';
+  RAISE NOTICE 'Hủy việc ok: thẻ đã chạy → outbox cancel; thẻ chưa tạo → hủy dispatch';
+END $$;
+
 SELECT 'test_agent: tất cả kiểm thử đều đạt' AS ket_qua;
 ROLLBACK;
