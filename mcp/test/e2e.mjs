@@ -85,7 +85,7 @@ try {
   });
   await step('việc của tôi, chi tiết, tìm không dấu', async () => {
     const list = json(await c.callTool({ name: 'eos_list_tasks', arguments: {} }));
-    assert.deepEqual(list.map((t) => t.id).sort(), ['T-501', 'T-503']);
+    assert.deepEqual(list.map((t) => t.id).sort(), ['T-501', 'T-503', 'T-504']);
     const day = json(await c.callTool({ name: 'eos_my_day', arguments: {} }));
     assert.equal(day.approvals_waiting, 0);
     assert.ok(Array.isArray(day.overdue));
@@ -155,9 +155,9 @@ try {
   });
 
   const ag = await connect(process.env.TOKEN_AGENT);
-  await step('worker agent: chỉ có công cụ đọc và chia việc', async () => {
+  await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_delegate', 'eos_get_task', 'eos_guide']);
+    assert.deepEqual(tools, ['eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -181,6 +181,44 @@ try {
     const r = await ag2.callTool({ name: 'eos_delegate', arguments: { task: 503, items: [{ agent: 'dieu-phoi', title: 'thử' }] } });
     assert.equal(r.isError, true);
     assert.match(text(r), /phạm vi "delegate"/);
+  });
+
+  // ---- Văn thư soạn dự thảo văn bản (eos_draft_document) ----
+  const cv = { loai: 'cong_van', co_quan_ban_hanh: 'Công ty TNHH Demo', ky_hieu: 'demo-hc', dia_danh: 'Hà Nội', trich_yeu: 'V/v đề nghị cung cấp hồ sơ năng lực',
+               kinh_gui: ['Công ty ABC'], noi_dung: 'Kính đề nghị Quý Công ty cung cấp hồ sơ năng lực.', cap_ky: 'KT', chuc_vu_cap_tren: 'Giám đốc',
+               chuc_vu_ky: 'Phó giám đốc' };
+  let drafted;
+  await step('văn thư soạn dự thảo .docx → lưu Drive của người phụ trách, gắn vào việc', async () => {
+    const r = json(await ag2.callTool({ name: 'eos_draft_document', arguments: { task: 504, ...cv } }));
+    assert.match(r.name, /^T-504 - Du thao - Cong van - de nghi cung cap ho so nang luc\.docx$/);
+    assert.ok(r.drive_id && /^https:\/\/drive\.google\.com\//.test(r.url));
+    assert.match(r.folder, /Kết quả\/\d{4}-\d{2}/);
+    drafted = r;
+  });
+  await step('người phụ trách thấy dự thảo trong việc của mình', async () => {
+    const full = await connect(process.env.TOKEN_FULL);
+    const t = json(await full.callTool({ name: 'eos_get_task', arguments: { task: 'T-504' } }));
+    assert.ok(t.files.some((f) => f.name === drafted.name), JSON.stringify(t.files));
+    await full.close();
+  });
+  await step('điều phối (mã không có phạm vi draft) không soạn được', async () => {
+    const agX = await connect(process.env.TOKEN_AGENT);
+    const r = await agX.callTool({ name: 'eos_draft_document', arguments: { task: 503, ...cv } });
+    assert.equal(r.isError, true); assert.match(text(r), /phạm vi "draft"/);
+    await agX.close();
+  });
+  await step('văn thư không soạn cho việc không có thẻ chạy của mình', async () => {
+    const r = await ag2.callTool({ name: 'eos_draft_document', arguments: { task: 503, ...cv } });
+    assert.equal(r.isError, true); assert.match(text(r), /không có thẻ đang chạy/);
+  });
+  await step('dữ liệu thiếu bị báo rõ, không tạo tệp', async () => {
+    const before = json(await (await connect(process.env.TOKEN_FULL)).callTool({ name: 'eos_get_task', arguments: { task: 'T-504' } })).files.length;
+    const r = await ag2.callTool({ name: 'eos_draft_document', arguments: { task: 504, ...cv, kinh_gui: undefined } });
+    assert.equal(r.isError, true); assert.match(text(r), /kinh_gui/);
+    const r2 = await ag2.callTool({ name: 'eos_draft_document', arguments: { task: 504, ...cv, cap_ky: 'TL', chuc_vu_cap_tren: undefined } });
+    assert.equal(r2.isError, true); assert.match(text(r2), /chuc_vu_cap_tren/);
+    const after = json(await (await connect(process.env.TOKEN_FULL)).callTool({ name: 'eos_get_task', arguments: { task: 'T-504' } })).files.length;
+    assert.equal(after, before, 'không tạo thêm tệp');
   });
   await ag2.close();
 

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { asUser, logCall, DbError } from './db.mjs';
 import { GUIDE, TOPICS } from './guide.mjs';
 import { uploadResult, fileInsideFolder, driveIdFromUrl, MAX_BYTES } from './drive.mjs';
+import { renderVanBan, vanBanShape, DOCX_MIME } from './vanban.mjs';
+import { createHash } from 'node:crypto';
 
 const taskRef = z.union([z.string().regex(/^(T-)?\d{1,12}$/i), z.number().int().positive()])
   .describe('Mã việc, ví dụ "T-123" hoặc 123');
@@ -263,4 +265,32 @@ function registerAgentTools(server, ident, tool, call) {
     result: await call('SELECT agent.delegate($1,$2) AS r', [toId(task), JSON.stringify(items)]),
     entity: { type: 'task', id: String(toId(task)) },
   }), (a) => ({ task: toId(a.task), items: a.items?.length }));
+
+  // Văn thư AI: dựng dự thảo công văn/quyết định đúng thể thức NĐ30 (docs/09). Worker không có terminal nên máy chủ dựng .docx.
+  tool('eos_draft_document', 'draft', {
+    title: 'Soạn dự thảo văn bản hành chính (.docx)',
+    description: 'Dựng dự thảo CÔNG VĂN hoặc QUYẾT ĐỊNH đúng thể thức Nghị định 30/2020/NĐ-CP, lưu .docx vào thư mục Drive của người phụ trách việc (Kết quả/<năm-tháng>/T-<số> - …) và gắn vào việc. '
+      + 'Đây là DỰ THẢO: để trống số văn bản và ngày ký, bạn KHÔNG cấp số, KHÔNG ký, KHÔNG ban hành (việc của người). Thiếu thông tin bắt buộc (cơ quan ban hành, địa danh, người ký/chức vụ ký, nội dung) thì dùng kanban_block hỏi, đừng tự bịa. '
+      + 'Kết quả trả về có drive_id, name, url: đưa vào metadata.outputs của kanban_complete.',
+    inputSchema: { task: taskRef, ...vanBanShape },
+  }, async ({ task, ...spec }) => {
+    const id = toId(task);
+    const target = await call('SELECT agent.mcp_agent_drive_target($1) AS r', [id]);   // kiểm thẻ đang chạy + lấy thư mục Drive của người phụ trách
+    if (!target?.drive_folder_id || target.drive_state !== 'ok') {
+      throw new DbError('Người phụ trách việc chưa thiết lập thư mục Drive (trang Tài khoản → Thư mục Drive). Dùng kanban_block để báo.', 'P0001');
+    }
+    let rendered;
+    try { rendered = await renderVanBan(spec); }
+    catch (e) { throw new DbError(`Dữ liệu văn bản chưa hợp lệ: ${(e.issues || []).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') || e.message}`, 'P0001'); }
+    const { buffer, filename } = rendered;
+    if (buffer.length > MAX_BYTES) throw new DbError(`Tệp quá ${MAX_BYTES / 1048576} MB`, 'P0001');
+    const f = await uploadResult({ userFolderId: target.drive_folder_id, taskId: id, filename, mime: DOCX_MIME, bytes: buffer });
+    const sha = createHash('sha256').update(buffer).digest('hex');
+    await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, sha]);
+    return {
+      result: { drafted: f.name, drive_id: f.driveId, name: f.name, url: f.url, folder: f.folder, bytes: f.size,
+                note: 'Dự thảo chưa cấp số, chưa ký. Đưa {drive_id, name, url} vào metadata.outputs khi kanban_complete.' },
+      entity: { type: 'task', id: String(id) },
+    };
+  }, (a) => ({ task: toId(a.task), loai: a.loai, trich_yeu: String(a.trich_yeu || '').slice(0, 80), cap_ky: a.cap_ky || '', ngay_dien: Boolean(a.ngay), du_thao: a.du_thao !== false }));
 }

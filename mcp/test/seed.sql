@@ -32,6 +32,12 @@ OVERRIDING SYSTEM VALUE VALUES (503,'33333333-3333-3333-3333-333333333333','dddd
   'cccccccc-0000-0000-0000-000000000001','a2222222-0000-0000-0000-000000000001','cccccccc-0000-0000-0000-000000000002','2026-10-28');
 SELECT agent.outbox_ack((SELECT id FROM agent.outbox WHERE task_id = 503), 't_demo1');
 SELECT agent.ingest_event('eos-demo','t_demo1','claimed','eos-demo:t_demo1:1');
+-- việc 504: văn thư đang có thẻ chạy (để thử eos_draft_document)
+INSERT INTO work.tasks (id, company_id, department_id, title, assignee_id, agent_id, created_by, due_date)
+OVERRIDING SYSTEM VALUE VALUES (504,'33333333-3333-3333-3333-333333333333','dddddddd-0000-0000-0000-0000000000d1','Soạn công văn đề nghị cung cấp hồ sơ năng lực',
+  'cccccccc-0000-0000-0000-000000000001','a2222222-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-000000000002','2026-10-30');
+SELECT agent.outbox_ack((SELECT id FROM agent.outbox WHERE task_id = 504), 't_demo2');
+SELECT agent.ingest_event('eos-demo','t_demo2','claimed','eos-demo:t_demo2:1');
 \pset tuples_only on
 SELECT set_config('request.jwt.claims','{"sub":"cccccccc-0000-0000-0000-000000000001"}', false) \g /dev/null
 SELECT 'TOKEN_FULL=' || agent.mcp_token_issue('Claude thử','claude','{read,write,drive,kb}',30);

@@ -1,0 +1,15 @@
+{
+  "loai": "cong_van",
+  "co_quan_ban_hanh": "CÔNG TY TNHH VALNEX",
+  "ky_hieu": "VALNEX-HC",
+  "dia_danh": "Hà Nội",
+  "trich_yeu": "V/v đề nghị phối hợp cung cấp hồ sơ năng lực dự án",
+  "kinh_gui": ["Công ty Cổ phần Đầu tư ABC", "Phòng Kế hoạch - Đầu tư"],
+  "noi_dung": "Căn cứ nhu cầu triển khai dự án, Công ty TNHH Valnex kính đề nghị Quý Công ty phối hợp cung cấp hồ sơ năng lực liên quan đến dự án.\nHồ sơ gồm: giấy chứng nhận đăng ký doanh nghiệp, báo cáo tài chính hai năm gần nhất và danh sách nhân sự chủ chốt.\nRất mong nhận được sự phối hợp của Quý Công ty. Trân trọng cảm ơn./.",
+  "cap_ky": "KT",
+  "chuc_vu_cap_tren": "GIÁM ĐỐC",
+  "chuc_vu_ky": "PHÓ GIÁM ĐỐC",
+  "nguoi_ky": "",
+  "noi_nhan": ["- Như trên;", "- Giám đốc (để b/c);", "- Lưu: VT, HC."],
+  "du_thao": true
+}

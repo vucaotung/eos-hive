@@ -1,0 +1,17 @@
+{
+  "loai": "quyet_dinh",
+  "co_quan_ban_hanh": "CÔNG TY TNHH VALNEX",
+  "ky_hieu": "QĐ-VALNEX",
+  "dia_danh": "Hà Nội",
+  "trich_yeu": "Về việc thành lập Tổ công tác chuẩn hóa quy trình văn thư",
+  "can_cu": ["Điều lệ Công ty TNHH Valnex", "Nhu cầu và năng lực của cán bộ, nhân viên"],
+  "noi_dung": [
+    { "tieu_de": "Thành lập Tổ công tác", "noi_dung": "Thành lập Tổ công tác chuẩn hóa quy trình văn thư gồm các thành viên có tên trong danh sách kèm theo." },
+    { "tieu_de": "Nhiệm vụ", "noi_dung": "Tổ công tác có nhiệm vụ rà soát, chuẩn hóa thể thức và quy trình quản lý văn bản đến, văn bản đi." },
+    { "tieu_de": "Hiệu lực thi hành", "noi_dung": "Quyết định này có hiệu lực kể từ ngày ký. Các thành viên Tổ công tác chịu trách nhiệm thi hành Quyết định này." }
+  ],
+  "cap_ky": "",
+  "chuc_vu_ky": "GIÁM ĐỐC",
+  "noi_nhan": ["- Như Điều 3;", "- Lưu: VT, HC."],
+  "du_thao": true
+}

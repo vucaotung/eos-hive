@@ -243,15 +243,16 @@ CREATE TABLE agent.mcp_tokens (
   prefix       text NOT NULL UNIQUE,                          -- 8 ký tự đầu, hiện trên màn hình để nhận ra
   token_hash   text NOT NULL UNIQUE,                          -- sha256 hex; không lưu mã gốc
   agent_id     uuid REFERENCES agent.agents(id) ON DELETE CASCADE,   -- NULL = mã của người; có giá trị = mã của worker agent hệ thống
-  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate']::text[] AND cardinality(scopes) > 0),
+  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft']::text[] AND cardinality(scopes) > 0),
   expires_at   timestamptz NOT NULL,
   last_used_at timestamptz,
   last_ip      inet,
   revoked_at   timestamptz,
   created_at   timestamptz NOT NULL DEFAULT now(),
   CHECK (expires_at <= created_at + interval '366 days'),
-  -- mã của agent hệ thống chỉ đọc (và chia việc nếu được phép); mã của người không có quyền chia việc
-  CHECK (CASE WHEN agent_id IS NULL THEN NOT 'delegate' = ANY (scopes) ELSE scopes <@ ARRAY['read','kb','delegate']::text[] END)
+  -- mã của agent hệ thống chỉ đọc (chia việc nếu được phép, soạn dự thảo nếu là văn thư); mã của người không có quyền chia việc hay soạn dự thảo
+  -- `draft` (soạn dự thảo văn bản) chỉ dành cho agent hệ thống
+  CHECK (CASE WHEN agent_id IS NULL THEN NOT ('delegate' = ANY (scopes) OR 'draft' = ANY (scopes)) ELSE scopes <@ ARRAY['read','kb','delegate','draft']::text[] END)
 );
 CREATE INDEX mcp_tokens_user_idx ON agent.mcp_tokens (user_id) WHERE revoked_at IS NULL;
 
@@ -887,22 +888,56 @@ GRANT EXECUTE ON FUNCTION agent.outbox_pull(int), agent.outbox_ack(bigint, text,
 
 -- Mã MCP cho agent hệ thống (worker đọc chi tiết việc với danh tính agent). Chỉ quản trị hệ thống cấp, chỉ phạm vi đọc.
 -- Agent cần membership + vai trò có work.task.view ở công ty để thấy việc. Agent ghi kết quả qua Kanban, không qua MCP.
+-- Văn thư AI soạn dự thảo văn bản: lưu .docx vào Drive của NGƯỜI PHỤ TRÁCH việc. Chỉ khi agent đang có thẻ chạy cho việc đó.
+CREATE FUNCTION agent._agent_owner(p_task bigint) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE a agent.agents := agent.current_agent(); t work.tasks;
+BEGIN
+  IF a.id IS NULL THEN RAISE EXCEPTION 'Chỉ dành cho agent hệ thống' USING ERRCODE = '42501'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM agent.cards WHERE task_id = p_task AND agent_id = a.id AND status IN ('todo','ready','running','blocked','review')) THEN
+    RAISE EXCEPTION 'Agent % không có thẻ đang chạy cho T-%', a.code, p_task USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO t FROM work.tasks WHERE id = p_task;
+  RETURN coalesce(t.assignee_id, t.created_by);
+END $$;
+
+CREATE FUNCTION agent.mcp_agent_drive_target(p_task bigint) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE owner uuid := agent._agent_owner(p_task); u record;
+BEGIN
+  SELECT drive_folder_id, drive_state INTO u FROM core.users WHERE id = owner;
+  RETURN jsonb_build_object('drive_folder_id', u.drive_folder_id, 'drive_state', u.drive_state);
+END $$;
+
+CREATE FUNCTION agent.mcp_agent_register_file(p_task bigint, p_drive_id text, p_name text, p_mime text, p_url text,
+                                                         p_bytes bigint, p_folder text, p_sha256 text DEFAULT NULL) RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE a agent.agents := agent.current_agent(); owner uuid := agent._agent_owner(p_task);
+BEGIN
+  -- mượn quyền người phụ trách (như mcp_agent_task) để ghi tệp vào việc của họ; nhật ký ghi rõ agent nào làm
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', owner, 'via', 'agent:' || a.code, 'agent', a.id)::text, true);
+  RETURN agent.mcp_register_file(p_task, p_drive_id, p_name, p_mime, p_url, p_bytes, p_folder, p_sha256);
+END $$;
+
+-- Phạm vi `draft`: agent phân hệ văn thư (module doc) được soạn dự thảo văn bản
 CREATE FUNCTION agent.mcp_token_issue_agent(p_agent text, p_days int DEFAULT 90) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
-DECLARE a agent.agents; raw text;
+DECLARE a agent.agents; raw text; sc text[];
 BEGIN
   IF NOT coalesce((SELECT is_system_admin FROM core.users WHERE id = core.current_user_id()), false) THEN
     RAISE EXCEPTION 'Chỉ quản trị hệ thống cấp mã cho agent' USING ERRCODE = '42501';
   END IF;
   SELECT * INTO a FROM agent.agents WHERE code = p_agent AND active;
   IF a.id IS NULL THEN RAISE EXCEPTION 'Không có agent %', p_agent; END IF;
+  sc := CASE WHEN a.can_delegate THEN '{read,kb,delegate}'::text[] ELSE '{read,kb}'::text[] END;
+  IF a.module = 'doc' THEN sc := sc || '{draft}'::text[]; END IF;
   raw := 'eos_' || encode(gen_random_bytes(24), 'hex');
   INSERT INTO agent.mcp_tokens (user_id, agent_id, name, client, prefix, token_hash, scopes, expires_at)
-  VALUES (a.user_id, a.id, 'Agent ' || a.code, 'hermes', substr(raw, 5, 8), encode(digest(raw, 'sha256'), 'hex'),
-          CASE WHEN a.can_delegate THEN '{read,kb,delegate}'::text[] ELSE '{read,kb}'::text[] END,
+  VALUES (a.user_id, a.id, 'Agent ' || a.code, 'hermes', substr(raw, 5, 8), encode(digest(raw, 'sha256'), 'hex'), sc,
           now() + make_interval(days => least(greatest(p_days, 1), 365)));
   RETURN raw;
 END $$;
+
 
 -- =====================================================================
 -- Worker agent hệ thống đọc qua MCP và chia việc
@@ -1077,5 +1112,6 @@ BEGIN
   RAISE EXCEPTION 'p_what phải là attendance, leave hoặc kpi';
 END $$;
 
+GRANT EXECUTE ON FUNCTION agent.mcp_agent_drive_target(bigint), agent.mcp_agent_register_file(bigint, text, text, text, text, bigint, text, text) TO mcp_svc;
 GRANT EXECUTE ON FUNCTION agent.mcp_agent_task(bigint), agent.delegate(bigint, jsonb), agent.mcp_my_day(), agent.mcp_approvals_pending(),
   agent.mcp_incoming(text, int), agent.mcp_my_hr(text, date) TO mcp_svc;

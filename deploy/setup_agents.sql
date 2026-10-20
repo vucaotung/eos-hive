@@ -1,6 +1,6 @@
 -- Khởi tạo agent hệ thống cho một công ty. Sửa :company và chạy bằng psql -v company=<uuid> -f setup_agents.sql
 -- Tài khoản agent (kind = agent) để nhật ký ghi đúng ai làm.
--- Cột skills để TRỐNG có chủ đích: kỹ năng Hermes (kb-tra-cuu, nd30-van-thu, hr-cham-cong, lap-ke-hoach) chưa được viết;
+-- Cột skills: van-thu nạp skill nd30-van-thu (docs/09; CÀI skill vào profile eos-van-thu trước khi giao việc). Các skill khác để TRỐNG có chủ đích: kỹ năng Hermes (kb-tra-cuu, nd30-van-thu, hr-cham-cong, lap-ke-hoach) chưa được viết;
 -- khi có, chạy UPDATE agent.agents SET skills = '{ten-skill}' WHERE code = '…' (docs/07 A10).
 -- Điều phối dùng profile riêng eos-dieu-phoi, KHÔNG dùng ops-admin (ops-admin có terminal root, docs/06).
 INSERT INTO core.users (email, name, kind) VALUES
@@ -15,7 +15,7 @@ SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg,
   FROM (VALUES
    ('dieu-phoi@agent.enterpriseos.bond','dieu-phoi','Điều phối AI','orchestrator','work','eos-dieu-phoi','{}'::text[],2,true,
     'Nhận yêu cầu, chia việc con cho agent phân hệ, tổng hợp kết quả, bản tin sáng'),
-   ('van-thu@agent.enterpriseos.bond','van-thu','Văn thư AI','module','doc','eos-van-thu','{}',1,false,
+   ('van-thu@agent.enterpriseos.bond','van-thu','Văn thư AI','module','doc','eos-van-thu','{nd30-van-thu}',1,false,
     'Đọc công văn đến, điền nháp sổ, đề xuất người xử lý, soạn công văn đi để trình ký'),
    ('nhan-su@agent.enterpriseos.bond','nhan-su','Nhân sự AI','module','hr','eos-nhan-su','{}',1,false,
     'Rà chấm công bất thường, kiểm đơn với số phép, nháp KPI và bảng lương'),

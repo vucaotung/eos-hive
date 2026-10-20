@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_HOST="${EOS_DB_HOST:-vps169}"; H_HOST="${EOS_HERMES_HOST:-vps173}"
 OWNER_EMAIL="${EOS_OWNER_EMAIL:-vucaotung@gmail.com}"; SLUG="${EOS_COMPANY_SLUG:-valnex}"
 RUN="$(date +%m%d%H%M%S)"; TAG="[ACCEPT $RUN]"
-ALL="A1 A2 A3 A4 A5 A6"; ONLY="$ALL"
+ALL="A1 A2 A3 A4 A5 A6 A7"; ONLY="$ALL"
 while [ $# -gt 0 ]; do case "$1" in
   --only) ONLY="$(echo "${2:?}" | tr ',' ' ')"; shift 2;;
   --list) echo "$ALL"; exit 0;;
@@ -87,6 +87,10 @@ two_children()    { [ "$(children_agents "$1")" = "nhan-su,van-thu" ]; }
 child_profiles_ok() { [ "$(sqlv "select coalesce(string_agg(o.payload->>'profile', ',' order by o.payload->>'profile'), '') from agent.outbox o join work.tasks k on k.id = o.task_id where k.parent_id = $1 and o.kind = 'dispatch'")" = "eos-nhan-su,eos-van-thu" ]; }
 synthesis_cards() { sqlv "select count(*) from agent.cards where task_id = $1 and kind = 'synthesis'"; }
 has_synthesis()   { [ "$(synthesis_cards "$1")" -ge 1 ]; }
+draft_attached()  { [ "$(sqlv "select count(*) from core.attachments a join core.files f on f.id = a.file_id where a.entity_type='task' and a.entity_id='$1' and a.role='result' and a.actor='agent:van-thu' and f.name like 'T-$1 - Du thao - Cong van%.docx' and f.mime_type like '%wordprocessingml%' and f.size_bytes > 5000")" = 1 ]; }
+draft_call_clean() { [ "$(sqlv "select count(*) from agent.mcp_calls c join agent.mcp_tokens t on t.id=c.token_id where c.tool='eos_draft_document' and c.entity_id='$1' and c.outcome='ok' and t.agent_id is not null and (c.args->>'ngay_dien')::boolean = false and (c.args->>'du_thao')::boolean = true")" -ge 1 ]; }
+report_has_draft() { [ "$(sqlv "select count(*) from agent.reports where task_id=$1 and jsonb_array_length(outputs) >= 1 and outputs->0->>'drive_id' is not null and outputs->0->>'url' like 'https://%'")" = 1 ]; }
+question_mentions() { sqlv "select body from work.comments where task_id=$1 and kind='question' order by id desc limit 1" | grep -qi -E "$2"; }
 wrong_token_rejected() { ( EOS_ACCEPT_TOKEN="eos_$(printf '0%.0s' $(seq 48))"; mcp --list >/dev/null 2>&1; [ $? -eq 4 ] ); }
 hr_denied()        { mcp_out eos_my_hr '{"what":"leave"}' | grep -q hr_self; }
 missing_task_err() { mcp eos_get_task '{"task":"T-999999"}' >/dev/null 2>&1; [ $? -eq 3 ]; }
@@ -215,6 +219,23 @@ s_A6() {
   check "Điều phối nộp bản tổng hợp ≤ 8 phút → Chờ xem"      wait_until 480 is_status "$id" in_review
   check "chỉ một thẻ tổng hợp"                               [ "$(synthesis_cards "$id")" = 1 ]
   check "người chấp nhận bản tổng hợp → Xong"                [ "$(as_owner "SELECT agent.accept_result($id,'ACCEPT');" | tail -1)" = done ]
+}
+
+s_A7() {
+  say ""; say "A7 · Văn thư soạn công văn theo NĐ 30: đủ thông tin → dự thảo .docx; thiếu thông tin → hỏi, không bịa"
+  local id; id="$(new_task 'soạn công văn' "Soạn công văn của Công ty TNHH Valnex gửi Công ty Cổ phần Đầu tư ABC về việc đề nghị cung cấp hồ sơ năng lực dự án (giấy chứng nhận đăng ký doanh nghiệp và báo cáo tài chính hai năm gần nhất). Địa danh: Hà Nội. Ký hiệu: VALNEX-HC. Người ký: Phó giám đốc ký thay Giám đốc (họ tên chưa có). Nơi nhận: Như trên; Giám đốc (để b/c); Lưu: VT, HC." van-thu)"
+  say "  việc T-$id (đủ thông tin)"
+  check "thẻ của Văn thư được tạo ≤ 2 phút"                  wait_until 120 has_card "$id"
+  check "Văn thư nộp dự thảo ≤ 8 phút → Chờ xem"            wait_until 480 is_status "$id" in_review
+  check "tệp .docx dự thảo gắn vào việc (do agent:van-thu, MIME docx, > 5 KB)" draft_attached "$id"
+  check "gọi công cụ: KHÔNG điền ngày, vẫn là dự thảo (nhật ký MCP)" draft_call_clean "$id"
+  check "báo cáo có outputs với drive_id và url"             report_has_draft "$id"
+  as_owner "SELECT agent.accept_result($id,'ACCEPT');" >/dev/null 2>&1
+  local id2; id2="$(new_task 'soạn công văn thiếu tin' "Soạn một công văn gửi một đối tác về việc đề nghị gia hạn hợp đồng. Chưa có thêm thông tin nào khác." van-thu)"
+  say "  việc T-$id2 (cố ý thiếu: địa danh, người nhận, người ký)"
+  check "thiếu thông tin → Văn thư chặn hỏi ≤ 6 phút"       wait_until 360 is_status "$id2" blocked
+  check "câu hỏi nêu thiếu địa danh/người ký/nơi nhận"       question_mentions "$id2" "địa danh|người ký|ai ký|kính gửi|nơi nhận|tên đối tác"
+  check "không tạo tệp khi thiếu thông tin"                  [ "$(sqlv "select count(*) from core.attachments where entity_type='task' and entity_id='$id2'")" = 0 ]
 }
 
 for s in $ONLY; do "s_$s" || true; done
