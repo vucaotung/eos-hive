@@ -21,14 +21,21 @@ command -v node >/dev/null || { echo "Cần node" >&2; exit 2; }
 [ -d "$ROOT/mcp/node_modules" ] || { echo "Chạy: (cd mcp && npm ci)" >&2; exit 2; }
 
 T="$(mktemp -d)"; chmod 700 "$T"
+SSHO=(-o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=auto -o "ControlPath=$T/cm-%C" -o ControlPersist=300)   # một kết nối dùng chung: tránh nghẽn sshd khi gọi dồn dập
 LOG="$ROOT/ops-log/acceptance-$RUN.md"; mkdir -p "$ROOT/ops-log"
 PASS=0; FAIL=0; XFAIL=0; XPASS=0
 T0=$(date +%s)
 
 # ---------- tiện ích ----------
 say()  { printf '%s\n' "$*" | tee -a "$LOG"; }
-dbq()  { ssh -o BatchMode=yes -o ConnectTimeout=15 "$DB_HOST" 'docker exec -i eos-postgres psql -U postgres -X -q -At -d eos -v ON_ERROR_STOP=1'; }
-hk()   { ssh -o BatchMode=yes -o ConnectTimeout=15 "$H_HOST" "timeout 40 hermes kanban --board $BOARD $*"; }
+dbq() {   # đọc SQL từ stdin; ssh lỗi kết nối (255) thì thử lại tối đa 3 lần
+  local in rc i; in="$(cat)"
+  for i in 1 2 3; do
+    ssh "${SSHO[@]}" "$DB_HOST" 'docker exec -i eos-postgres psql -U postgres -X -q -At -d eos -v ON_ERROR_STOP=1' <<<"$in"; rc=$?
+    [ "$rc" -ne 255 ] && return "$rc"; sleep 2
+  done; return 255
+}
+hk()   { ssh "${SSHO[@]}" "$H_HOST" "timeout 40 hermes kanban --board $BOARD $*"; }
 mcp()  { node "$ROOT/scripts/acceptance/mcp.mjs" "$@"; }
 sqlv() { dbq <<<"$1"; }                                   # câu SQL một giá trị
 as_owner() {                                              # as_owner "<SQL>" — chạy với danh tính chủ sở hữu
@@ -69,7 +76,7 @@ card_of()     { sqlv "select card_id from agent.cards where task_id=$1 order by 
 card_status() { sqlv "select status from agent.cards where task_id=$1 order by id desc limit 1"; }
 mcp_out()     { mcp "$@" 2>&1 || true; }                    # in đầu ra kể cả khi công cụ trả lỗi (mã 3)
 hermes_has_card()  { hk list --json 2>/dev/null | grep -q "\"$(card_of "$1")\""; }
-hermes_card_archived() { ssh -o BatchMode=yes "$H_HOST" "timeout 40 hermes kanban --board $BOARD show $(card_of "$1") --json" 2>/dev/null | grep -q '"status": "archived"'; }
+hermes_card_archived() { ssh "${SSHO[@]}" "$H_HOST" "timeout 40 hermes kanban --board $BOARD show $(card_of "$1") --json" 2>/dev/null | grep -q '"status": "archived"'; }
 answer_acked()     { [ "$(sqlv "select count(*) from agent.outbox where task_id=$1 and kind='answer' and done_at is not null")" -ge 1 ]; }
 cancel_queued()    { [ "$(sqlv "select count(*) from agent.outbox where task_id=$1 and kind='cancel'")" -ge 1 ]; }
 cancel_acked()     { [ "$(sqlv "select count(*) from agent.outbox where task_id=$1 and kind='cancel' and done_at is not null")" -ge 1 ]; }
@@ -88,7 +95,7 @@ whoami_ok()        { mcp_out eos_whoami '{}' | grep -q "$OWNER_EMAIL"; }
 cleanup() {
   local rc=$?
   say ""; say "— Dọn dẹp —"
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "$H_HOST" 'systemctl --user start eos-kanban-bridge' >/dev/null 2>&1 \
+  ssh "${SSHO[@]}" "$H_HOST" 'systemctl --user start eos-kanban-bridge' >/dev/null 2>&1 \
     && say "  cầu nối: bảo đảm đang chạy"
   if [ -n "${OWNER_ID:-}" ]; then
     local cards; cards="$(dbq <<SQL 2>/dev/null
@@ -105,9 +112,10 @@ UPDATE agent.mcp_tokens SET revoked_at = now() WHERE name = 'ACCEPT $RUN' AND re
 SQL
     local n=0 b c
     while read -r b c; do [ -n "$c" ] || continue
-      ssh -n -o BatchMode=yes "$H_HOST" "timeout 40 hermes kanban --board $b archive $c" >/dev/null 2>&1; n=$((n+1)); done <<<"$cards"
+      ssh -n "${SSHO[@]}" "$H_HOST" "timeout 40 hermes kanban --board $b archive $c" >/dev/null 2>&1; n=$((n+1)); done <<<"$cards"
     say "  việc [ACCEPT $RUN] đã hủy; mã thử đã thu hồi; $n thẻ Kanban đã archive"
   fi
+  ssh -O exit "${SSHO[@]}" "$DB_HOST" >/dev/null 2>&1; ssh -O exit "${SSHO[@]}" "$H_HOST" >/dev/null 2>&1
   rm -rf "$T"
   local secs=$(( $(date +%s) - T0 ))
   say ""; say "KẾT QUẢ: ✔ $PASS đạt · ✘ $FAIL hỏng · ◌ $XFAIL lỗi đã biết · ⚠ $XPASS bỗng đạt · ${secs}s · nhật ký $LOG"
@@ -181,13 +189,13 @@ s_A4() {
 }
 s_A5() {
   say ""; say "A5 · Chịu lỗi: cầu nối dừng rồi chạy lại — việc không mất, không tạo thẻ đôi"
-  ssh -o BatchMode=yes "$H_HOST" 'systemctl --user stop eos-kanban-bridge' >/dev/null 2>&1
+  ssh "${SSHO[@]}" "$H_HOST" 'systemctl --user stop eos-kanban-bridge' >/dev/null 2>&1
   local id; id="$(new_task 'chịu lỗi' "Chỉ để kiểm thử. Hãy gọi kanban_complete ngay với summary: Hoàn tất kiểm thử chịu lỗi, và metadata.confidence='cao'." quan-tri-du-lieu)"
   say "  việc T-$id (cầu nối đang dừng)"
   sleep 45
   check "khi cầu nối dừng, lệnh nằm chờ trong hộp thư đi"    [ "$(sqlv "select count(*) from agent.outbox where task_id=$id and kind='dispatch' and done_at is null")" = 1 ]
   check "khi cầu nối dừng, chưa có thẻ Kanban"               [ "$(sqlv "select count(*) from agent.cards where task_id=$id and card_id is not null")" = 0 ]
-  ssh -o BatchMode=yes "$H_HOST" 'systemctl --user start eos-kanban-bridge' >/dev/null 2>&1
+  ssh "${SSHO[@]}" "$H_HOST" 'systemctl --user start eos-kanban-bridge' >/dev/null 2>&1
   check "cầu nối chạy lại → thẻ được tạo ≤ 90 s"            wait_until 90 has_card "$id"
   check "chỉ đúng 1 thẻ cho việc này"                        [ "$(sqlv "select count(*) from agent.cards where task_id=$id")" = 1 ]
   check "việc hoàn tất ≤ 6 phút → Chờ xem"                   wait_until 360 is_status "$id" in_review
