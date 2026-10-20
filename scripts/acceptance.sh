@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_HOST="${EOS_DB_HOST:-vps169}"; H_HOST="${EOS_HERMES_HOST:-vps173}"
 OWNER_EMAIL="${EOS_OWNER_EMAIL:-vucaotung@gmail.com}"; SLUG="${EOS_COMPANY_SLUG:-valnex}"
 RUN="$(date +%m%d%H%M%S)"; TAG="[ACCEPT $RUN]"
-ALL="A1 A2 A3 A4 A5 A6 A7"; ONLY="$ALL"
+ALL="A1 A2 A3 A4 A5 A6 A7 A8"; ONLY="$ALL"
 while [ $# -gt 0 ]; do case "$1" in
   --only) ONLY="$(echo "${2:?}" | tr ',' ' ')"; shift 2;;
   --list) echo "$ALL"; exit 0;;
@@ -236,6 +236,29 @@ s_A7() {
   check "thiếu thông tin → Văn thư chặn hỏi ≤ 6 phút"       wait_until 360 is_status "$id2" blocked
   check "câu hỏi nêu thiếu địa danh/người ký/nơi nhận"       question_mentions "$id2" "địa danh|người ký|ai ký|kính gửi|nơi nhận|tên đối tác"
   check "không tạo tệp khi thiếu thông tin"                  [ "$(sqlv "select count(*) from core.attachments where entity_type='task' and entity_id='$id2'")" = 0 ]
+}
+
+web_code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@"; }
+web_headers() { curl -s -D - -o /dev/null -m 15 https://work.enterpriseos.bond/app/login | tr -d '\r' | tr 'A-Z' 'a-z'; }
+web_csp_strict()  { local h; h="$(web_headers)"; echo "$h" | grep -q "content-security-policy:.*default-src 'none'" && ! echo "$h" | grep -q unsafe-inline; }
+web_hdr_basic()   { local h; h="$(web_headers)"; echo "$h" | grep -q strict-transport-security && echo "$h" | grep -q 'x-content-type-options: nosniff' && echo "$h" | grep -q 'x-frame-options: deny' && echo "$h" | grep -q 'cache-control: no-store'; }
+web_no_powered()  { ! web_headers | grep -q x-powered-by; }
+s_A8() {
+  say ""; say "A8 · Giao diện web trên Internet: chưa đăng nhập thì không thấy gì, tiêu đề an toàn, các đường khác vẫn đóng"
+  local base="https://work.enterpriseos.bond"
+  check "/app/healthz trả 200"                                [ "$(web_code $base/app/healthz)" = 200 ]
+  check "/app/login trả 200"                                  [ "$(web_code $base/app/login)" = 200 ]
+  for p in /app/ /app/tasks /app/tasks/1 /app/tasks/new /app/tokens /app/admin /app/admin/tokens /app/admin/calls; do
+    check "chưa đăng nhập: $p chuyển về đăng nhập (303)"      [ "$(web_code $base$p)" = 303 ]
+  done
+  check "thao tác ghi không có phiên không đổi được gì (303 về đăng nhập)" [ "$(web_code -X POST -d 'title=x' $base/app/tasks)" = 303 ]
+  check "CSP chặt, không unsafe-inline"                       web_csp_strict
+  check "HSTS, nosniff, chống nhúng khung, no-store"          web_hdr_basic
+  check "không lộ X-Powered-By"                               web_no_powered
+  check "/app/auth/callback không có state bị từ chối (400)" [ "$(web_code "$base/app/auth/callback?code=x&state=y")" = 400 ]
+  check "không đọc được mã nguồn qua đường tĩnh"              [ "$(web_code --path-as-is "$base/app/static/../src/config.mjs")" != 200 ]
+  check "/mcp vẫn từ chối mã sai (401) sau khi thêm /app"     [ "$(web_code -X POST $base/mcp -H 'Authorization: Bearer eos_sai' -H 'Content-Type: application/json' -d '{}')" = 401 ]
+  check "/api vẫn khóa theo IP (403)"                          [ "$(web_code -X POST $base/api/rpc/outbox_pull)" = 403 ]
 }
 
 for s in $ONLY; do "s_$s" || true; done

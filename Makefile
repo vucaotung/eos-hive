@@ -13,6 +13,10 @@ test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgre
 test: test-db test-mcp test-web test-bridge ## Chạy cả bốn
 acceptance: ## Nghiệm thu đầu–cuối trên MÁY THẬT (tốn LLM; ONLY=A1,A3 để chọn kịch bản)
 	scripts/acceptance.sh $(if $(ONLY),--only $(ONLY))
+audit: ## Kiểm toán bảo mật trên MÁY THẬT (chỉ đọc; checklist docs/06)
+	scripts/security_audit.sh
+restore-drill: ## Diễn tập khôi phục sao lưu vào Postgres rỗng trên Z2 (FRESH=1 để sao lưu mới trước)
+	scripts/restore_drill.sh $(if $(FRESH),--fresh)
 secrets: ## Quét bí mật trước khi commit
 	scripts/check_secrets.sh
 schema: ## Ghép db/*.sql thành eos-schema.sql

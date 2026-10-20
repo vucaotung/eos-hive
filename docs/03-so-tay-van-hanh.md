@@ -160,6 +160,14 @@ Chạy từ Z2 (cần `ssh vps169`, `ssh vps173`, `node ≥ 22`, `npm ci` trong 
 
 Chạy sau mỗi lần nâng cấp mã hoặc Hermes. Thêm kịch bản: hàm `s_An` trong `scripts/acceptance.sh`, dùng `check` (cổng bắt buộc) hoặc `xcheck` (lỗi đã biết, kèm lý do).
 
+### 7.2 Kiểm toán bảo mật và diễn tập khôi phục
+
+    make audit                       # chỉ đọc, ~1 phút: quyền tệp, bề mặt mạng, hạn mã, agent, sao lưu
+    make restore-drill               # khôi phục eos.dump bản sao lưu mới nhất vào Postgres rỗng trên Z2 (~1 phút)
+    make restore-drill FRESH=1       # chạy backup.sh trước (~6 phút) để so khớp tuyệt đối
+
+Chạy `make audit` hằng tuần và sau mỗi thay đổi hạ tầng; `make restore-drill` hằng tháng (mục 4). Cảnh báo "còn N ngày" của mã agent/JWT cầu nối là nhắc đổi mã (ngưỡng 14 ngày).
+
 ## 8. Nâng cấp
 
 - **Mã (MCP/cầu nối)**: `git pull` (tag) → `npm ci` → `systemctl restart`. Cầu nối an toàn khi khởi động lại (idempotent).

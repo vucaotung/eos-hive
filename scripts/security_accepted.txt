@@ -1,0 +1,5 @@
+# Rủi ro bảo mật CHỦ SỞ HỮU ĐÃ CHỦ ĐỘNG CHẤP NHẬN (scripts/security_audit.sh coi là "đã chấp nhận", không phải "hỏng").
+# Định dạng: <mã>|<ngày chấp nhận>|<người>|<lý do / điều kiện xem xét lại>
+# Xóa dòng khi đã khắc phục. Xem lại ít nhất mỗi quý.
+ssh_password|2026-10-19|Tùng|Chưa chuyển sang đăng nhập bằng khóa và chưa đổi mật khẩu root (từng lộ vào chat). Xem lại trước khi có người dùng thật.
+ufw_vps169|2026-10-20|Tùng|UFW vps169 tắt; chỉ 22/80/443 nghe ra ngoài, dịch vụ khác bind 127.0.0.1/Tailscale. Bật UFW khi có thời gian bảo trì.

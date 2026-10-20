@@ -5,6 +5,17 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Thêm
+- **Giao diện web `/app`** (`web/`, `docs/10`): hộp việc, tạo việc giao agent, duyệt kết quả agent (chấp nhận hoặc trả lại có lý do), trả lời câu hỏi của agent, kết nối AI (cấp/thu hồi mã MCP), quản trị (agent, cầu nối, mã MCP, nhật ký gọi MCP). Đăng nhập Google chỉ cho người đã có trong `core.users`; phiên cookie ký HMAC; CSRF; CSP chặt; giới hạn tốc độ. Web chỉ gọi hàm `SECURITY DEFINER` qua vai trò `web_svc`. `deploy/eos-web.service`, `deploy/eos-web.env.example`, `deploy/Caddyfile.web.snippet`; `make test-web` (24 bước, Google giả lập kèm kiểm PKCE) và kịch bản nghiệm thu A8.
+- Migration `0005`: vai trò `web_svc`, hàm `agent.web_*`.
+- `make audit` (`scripts/security_audit.sh`): kiểm toán bảo mật chỉ đọc theo checklist `docs/06`, nay gồm cả giao diện web và quyền hàm CSDL; `scripts/security_accepted.txt` ghi rủi ro đã được chủ sở hữu chấp nhận (ngày, người, lý do).
+- `make restore-drill` (`scripts/restore_drill.sh`): diễn tập khôi phục tự động, giải mã trên vps169 (mật khẩu sao lưu không rời máy), đối chiếu số bảng, số dòng, hàm và trigger với CSDL thật.
+
+### Sửa
+- **Quyền hàm schema `agent`**: `REVOKE ALL … FROM PUBLIC` ở giữa `db/60_agent.sql` bỏ sót các hàm tạo sau đó (từ v0.0.0: `mcp_*`, `delegate`, `mcp_token_issue_agent`; thêm các hàm ở migration 0001-0004), nên `agent_bridge` gọi được cả những hàm đó. Migration `0005` thu hồi lại cho toàn schema; `test_agent.sql` khẳng định không hàm nào cho PUBLIC chạy và cầu nối chỉ gọi 4 hàm.
+- `docs/06`: checklist ghi trạng thái thật, liên kết tới kiểm tra tự động; thêm mục giao diện web, lưu ý cổng 8644 và Caddy thiếu `rate_limit`.
+- `web_task` trả đủ báo cáo của agent (độ tin cậy, rủi ro còn lại, việc tiếp theo, kiểm tra, nguồn) cho màn hình duyệt.
+
 ## [0.0.4] — 2026-10-20
 
 ### Thêm
