@@ -5,6 +5,13 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Thêm
+- `make audit` (`scripts/security_audit.sh`): kiểm toán bảo mật chỉ đọc theo checklist `docs/06`; `scripts/security_accepted.txt` ghi rủi ro đã được chủ sở hữu chấp nhận (ngày, người, lý do).
+- `make restore-drill` (`scripts/restore_drill.sh`): diễn tập khôi phục tự động, giải mã trên vps169 (mật khẩu sao lưu không rời máy), đối chiếu số bảng, số dòng, hàm và trigger với CSDL thật.
+
+### Sửa
+- `docs/06`: checklist ghi trạng thái thật và liên kết tới kiểm tra tự động; thêm lưu ý cổng 8644 và Caddy thiếu `rate_limit`.
+
 ## [0.0.3] — 2026-10-20
 
 ### Thêm

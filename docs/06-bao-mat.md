@@ -50,12 +50,18 @@
 7. **Profile Hermes `ops-admin` có terminal chạy quyền root** (đã cấu hình cho trợ lý cá nhân của chủ). Không dùng nó làm worker Kanban: một thẻ chứa nội dung độc hại sẽ chạy lệnh root. `setup_agents.sql` mặc định ánh xạ Điều phối → `ops-admin`; **đổi** sang profile riêng `eos-dieu-phoi` không có terminal (xem `prompts/30-vps173.md` bước 2).
 
 ## Danh sách kiểm tra trước khi cho người dùng thật vào
-- [ ] `scripts/check_secrets.sh` sạch; repo GitHub **private**.
-- [ ] Mọi `.env` quyền 600, chủ sở hữu đúng; không `.env` trong git.
-- [ ] Kanban dashboard chỉ nghe `127.0.0.1`; UFW chỉ mở 22/80/443.
-- [ ] Đăng nhập SSH bằng khóa; tắt mật khẩu; mật khẩu root từng lộ đã đổi.
-- [ ] Sao lưu hằng ngày chạy; đã khôi phục thử một lần thành công.
-- [ ] Mỗi người dùng MCP có mã riêng, phạm vi tối thiểu, hạn ≤ 90 ngày.
-- [ ] `auto_done` tắt cho mọi agent.
-- [ ] Đã chạy bộ kiểm thử khói `docs/03` §7 trên máy thật.
-- [ ] Cloudflare/Caddy: giới hạn tốc độ cho `/mcp` và `/api`.
+
+Phần lớn kiểm tra **tự động**: `make audit` (`scripts/security_audit.sh`, chỉ đọc, chạy trên máy thật) và `make restore-drill`. Rủi ro chủ sở hữu đã chủ động chấp nhận ghi ở `scripts/security_accepted.txt` (có ngày, người, lý do); kiểm toán hiện chúng là ◌ thay vì ✘. Trạng thái 2026-10-20 (v0.0.3): 24 đạt · 0 hỏng · 2 cảnh báo · 3 đã chấp nhận.
+
+- [x] `scripts/check_secrets.sh` sạch; repo GitHub **private**. *(audit §1)*
+- [x] Mọi `.env` quyền 600, chủ sở hữu đúng; không `.env` trong git. *(audit §2)*
+- [x] Kanban dashboard không ra Internet; vps173 UFW bật. **vps169 UFW tắt** — đã chấp nhận (chỉ 22/80/443 nghe ra ngoài). *(audit §3)*
+- [ ] Đăng nhập SSH bằng khóa; tắt mật khẩu; mật khẩu root từng lộ đã đổi. **Đã chấp nhận hoãn (2026-10-19)** — bắt buộc làm trước khi có người dùng thật. *(audit §4)*
+- [x] Sao lưu hằng ngày chạy; đã khôi phục thử thành công; diễn tập lặp lại được bằng `make restore-drill`. *(audit §5)*
+- [x] Mỗi người dùng MCP có mã riêng, phạm vi tối thiểu, hạn ≤ 90 ngày. *(audit §6)*
+- [x] `auto_done` tắt cho mọi agent. *(audit §6)*
+- [x] Bộ kiểm thử khói đã chạy trên máy thật: `make acceptance` (A1–A6). *(docs/03 §7.1)*
+- [~] Giới hạn tốc độ cho `/mcp` và `/api`: `/mcp` có giới hạn ở tầng ứng dụng (120/phút/mã); `/api` khóa theo IP vps173. Caddy vps169 **không có module `rate_limit`** — cần Caddy build kèm module hoặc đặt Cloudflare phía trước khi mở cho người dùng thật. *(audit §3, cảnh báo)*
+- [ ] Siết chia sẻ thư mục Drive của người dùng: chỉ chia sẻ riêng cho tài khoản agent (Editor), không dùng "anyone with the link". *(việc của chủ sở hữu, không tự kiểm được)*
+
+Lưu ý: cổng `8644` của Hermes (profile mặc định) nghe `0.0.0.0` và chỉ được UFW vps173 chặn; nếu UFW bị tắt, cổng này lộ ra ngoài. Nên cấu hình Hermes bind `127.0.0.1` (thuộc profile ngoài phạm vi Tổ Ong).
