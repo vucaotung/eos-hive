@@ -5,6 +5,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+## [0.0.2] — 2026-10-20
+
 ### Thêm
 - **Nghiệm thu tự động trên máy thật** (`make acceptance`, `scripts/acceptance.sh`, `scripts/acceptance/mcp.mjs`): 5 kịch bản (vòng đời, quyền MCP, làm lại, hủy việc, chịu lỗi), tự dọn dữ liệu thử; hướng dẫn ở `docs/03` §7.1.
 - Thư mục `db/migrations/` với migration đầu tiên `0001_cancel_outbox.sql` (bảng ghi phiên bản `core.schema_migrations` đi cùng 0.1.0).
