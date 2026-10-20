@@ -312,5 +312,99 @@ DO $$ BEGIN
   RAISE NOTICE 'Actor ok: agent ghi agent, người ghi người';
 END $$;
 
+-- ===== Web: đăng nhập, tạo/hủy việc, mã MCP, quản trị, phân quyền hàm (migration 0005) =====
+INSERT INTO core.users (id, email, name, kind, active, is_system_admin) VALUES
+ ('eeeeeeee-0000-0000-0000-000000000001', 'Web.Test@Demo.vn', 'Web Test', 'person', true, false),
+ ('eeeeeeee-0000-0000-0000-000000000002', 'web.admin@demo.vn', 'Web Admin', 'person', true, true),
+ ('eeeeeeee-0000-0000-0000-000000000003', 'web.khoa@demo.vn', 'Web Khóa', 'person', false, false),
+ ('eeeeeeee-0000-0000-0000-000000000004', 'web.agent@demo.vn', 'Web Agent', 'agent', true, false);
+INSERT INTO core.memberships (user_id, company_id, department_id) VALUES
+ ('eeeeeeee-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001'),
+ ('eeeeeeee-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001');
+
+DO $$ DECLARE r jsonb; BEGIN
+  r := agent.web_login('web.test@demo.vn', 'sub-1', 'Web Test', 'https://x/a.png');
+  ASSERT (r->>'ok')::boolean AND r->>'user_id' = 'eeeeeeee-0000-0000-0000-000000000001', format('login ok (không phân biệt hoa thường): %s', r);
+  ASSERT (SELECT google_sub FROM core.users WHERE id = 'eeeeeeee-0000-0000-0000-000000000001') = 'sub-1', 'sub gắn lần đầu';
+  ASSERT (agent.web_login('web.test@demo.vn', 'sub-1', 'x', NULL)->>'ok')::boolean, 'cùng sub: vào được';
+  ASSERT agent.web_login('web.test@demo.vn', 'sub-KHAC', 'x', NULL)->>'reason' = 'sub_mismatch', 'sub khác bị chặn';
+  ASSERT agent.web_login('nguoi.la@demo.vn', 'sub-9', 'x', NULL)->>'reason' = 'not_allowed', 'email lạ không vào được';
+  ASSERT agent.web_login('web.khoa@demo.vn', 'sub-3', 'x', NULL)->>'reason' = 'not_allowed', 'tài khoản bị khóa không vào được';
+  ASSERT agent.web_login('web.agent@demo.vn', 'sub-4', 'x', NULL)->>'reason' = 'not_allowed', 'tài khoản agent không đăng nhập web';
+  ASSERT agent.web_login('', 'sub', 'x', NULL)->>'reason' = 'invalid', 'thiếu email';
+  ASSERT (SELECT count(*) FROM core.audit_log WHERE module = 'web' AND action = 'login' AND user_id = 'eeeeeeee-0000-0000-0000-000000000001') = 2, 'đăng nhập thành công được ghi nhật ký';
+  RAISE NOTICE 'Web đăng nhập ok';
+END $$;
+
+DO $$ DECLARE r jsonb; tid bigint; t jsonb; BEGIN
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000001","via":"web"}', true);
+  r := agent.web_me();
+  ASSERT r->'user'->>'email' = 'Web.Test@Demo.vn' AND (r->>'is_admin')::boolean = false, format('web_me %s', r);
+  ASSERT jsonb_array_length(r->'agents') >= 1, 'danh sách agent bật cho công ty';
+  r := agent.web_create_task('Việc từ web thử', 'Mô tả', 'van-thu', current_date + 3, 'high');
+  tid := replace(r->>'id', 'T-', '')::bigint;
+  ASSERT r->>'agent' = 'van-thu' AND EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = tid AND kind = 'dispatch'), format('giao agent → dispatch: %s', r);
+  ASSERT (SELECT created_by = assignee_id AND priority = 'high' FROM work.tasks WHERE id = tid), 'người tạo = người phụ trách';
+  ASSERT agent.web_create_task('Việc không agent', NULL)->>'agent' IS NULL, 'tạo việc không giao agent';
+  BEGIN PERFORM agent.web_create_task('ab', 'x'); ASSERT false, 'tiêu đề ngắn phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.web_create_task('Việc ưu tiên sai', 'x', NULL, NULL, 'khan'); ASSERT false, 'ưu tiên sai phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.web_create_task('Việc agent lạ', 'x', 'khong-co'); ASSERT false, 'agent lạ phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  t := agent.web_task(tid);
+  ASSERT (t->'flags'->>'can_cancel')::boolean AND NOT (t->'flags'->>'can_review')::boolean, format('cờ thao tác: %s', t->'flags');
+  ASSERT jsonb_typeof(t->'reports') = 'array' AND jsonb_typeof(t->'cards') = 'array', 'web_task có reports và cards';
+  ASSERT agent.web_cancel_task(tid, 'không cần nữa') = 'cancelled', 'hủy việc';
+  ASSERT agent.web_cancel_task(tid, 'lần hai') = 'already_closed', 'hủy lần hai';
+  ASSERT (SELECT status = 'cancelled' AND NOT kpi_counted FROM work.tasks WHERE id = tid), 'đã hủy, không tính KPI';
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
+  BEGIN PERFORM agent.web_cancel_task((SELECT max(id) FROM work.tasks WHERE title = 'Việc không agent'), 'xâm phạm'); ASSERT false, 'người khác không được hủy'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000003","via":"web"}', true);
+  BEGIN PERFORM agent.web_me(); ASSERT false, 'tài khoản khóa không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', '{"via":"web"}', true);
+  BEGIN PERFORM agent.web_me(); ASSERT false, 'chưa đăng nhập không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RAISE NOTICE 'Web việc ok';
+END $$;
+
+DO $$ DECLARE r jsonb; pre text; BEGIN
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000001","via":"web"}', true);
+  r := agent.web_token_issue('Claude của tôi', 'claude', ARRAY['read', 'write'], 30);
+  pre := r->>'prefix';
+  ASSERT r->>'token' ~ '^eos_[0-9a-f]{48}$' AND substr(r->>'token', 5, 8) = pre, 'cấp mã';
+  ASSERT jsonb_array_length(agent.web_my_tokens()) = 1 AND (agent.web_my_tokens()->0->>'active')::boolean AND NOT agent.web_my_tokens()->0 ? 'token_hash', 'liệt kê mã, không lộ băm';
+  BEGIN PERFORM agent.web_token_issue('Quá hạn', 'claude', ARRAY['read'], 365); ASSERT false, '> 90 ngày phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.web_token_issue('Delegate', 'claude', ARRAY['read', 'delegate'], 30); ASSERT false, 'phạm vi delegate phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.web_token_issue('Draft', 'claude', ARRAY['draft'], 30); ASSERT false, 'phạm vi draft phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.web_admin_overview(); ASSERT false, 'người thường không xem quản trị'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.web_admin_tokens(); ASSERT false, 'người thường không xem mọi mã'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
+  ASSERT NOT agent.web_token_revoke((SELECT id FROM agent.mcp_tokens WHERE prefix = pre)) IS NOT TRUE, 'quản trị thu hồi được mã của người khác';
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000001","via":"web"}', true);
+  ASSERT NOT (agent.web_my_tokens()->0->>'active')::boolean, 'mã đã thu hồi';
+  RAISE NOTICE 'Web mã MCP ok';
+END $$;
+
+DO $$ DECLARE r jsonb; BEGIN
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
+  r := agent.web_admin_overview();
+  ASSERT r ? 'agents' AND r ? 'bridge' AND r ? 'tasks' AND r->'bridge' ? 'outbox_pending' AND r->'mcp' ? 'calls_24h', format('tổng quan quản trị: %s', left(r::text, 200));
+  ASSERT jsonb_typeof(agent.web_admin_tokens()) = 'array' AND jsonb_typeof(agent.web_admin_calls(10, true)) = 'array', 'danh sách mã, nhật ký gọi';
+  ASSERT NOT (agent.web_admin_tokens()::text LIKE '%token_hash%'), 'không lộ băm mã';
+  RAISE NOTICE 'Web quản trị ok';
+END $$;
+
+-- Phân quyền hàm: không hàm nào trong schema agent cho PUBLIC chạy; cầu nối chỉ gọi 4 hàm; web_svc không gọi hàm cấp mã agent
+DO $$ DECLARE bad text; bridge text; BEGIN
+  SELECT string_agg(p.oid::regprocedure::text, ', ') INTO bad FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'agent' AND p.prokind = 'f' AND has_function_privilege('public', p.oid, 'EXECUTE');
+  ASSERT bad IS NULL, format('PUBLIC còn chạy được: %s', bad);
+  SELECT string_agg(p.proname, ',' ORDER BY p.proname) INTO bridge FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'agent' AND p.prokind = 'f' AND has_function_privilege('agent_bridge', p.oid, 'EXECUTE');
+  ASSERT bridge = 'ingest_event,outbox_ack,outbox_pull,request_confirmation', format('cầu nối chỉ gọi 4 hàm, thực tế: %s', bridge);
+  ASSERT has_function_privilege('web_svc', 'agent.web_login(text,text,text,text)', 'EXECUTE'), 'web_svc gọi được web_login';
+  ASSERT NOT has_function_privilege('web_svc', 'agent.mcp_token_issue_agent(text,integer)', 'EXECUTE'), 'web_svc không cấp mã agent';
+  ASSERT NOT has_function_privilege('web_svc', 'agent.outbox_pull(integer)', 'EXECUTE'), 'web_svc không kéo hộp thư đi';
+  ASSERT NOT has_function_privilege('mcp_svc', 'agent.web_admin_overview()', 'EXECUTE'), 'MCP không gọi hàm quản trị web';
+  RAISE NOTICE 'Phân quyền hàm ok';
+END $$;
+
 SELECT 'test_agent: tất cả kiểm thử đều đạt' AS ket_qua;
 ROLLBACK;

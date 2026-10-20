@@ -1,0 +1,10 @@
+# Thêm vào khối work.enterpriseos.bond trong Caddyfile của VPS 169, TRƯỚC khối `handle { respond "Enterprise OS" 200 }` cuối cùng
+	handle /app {
+		redir /app/ 308
+	}
+	handle /app/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8791
+	}

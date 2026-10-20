@@ -49,6 +49,9 @@
 6. **Phân vùng nhật ký** hết năm 2027 (`docs/03` §4.1).
 7. **Profile Hermes `ops-admin` có terminal chạy quyền root** (đã cấu hình cho trợ lý cá nhân của chủ). Không dùng nó làm worker Kanban: một thẻ chứa nội dung độc hại sẽ chạy lệnh root. `setup_agents.sql` mặc định ánh xạ Điều phối → `ops-admin`; **đổi** sang profile riêng `eos-dieu-phoi` không có terminal (xem `prompts/30-vps173.md` bước 2).
 
+## Giao diện web (`/app`) — mở ra Internet
+Giao diện web là bề mặt tấn công mới, mở công khai ở `work.enterpriseos.bond/app`. Biện pháp (chi tiết `docs/10`): đăng nhập Google chỉ cho người đã có trong `core.users` (kèm `sub` khớp); phiên cookie ký HMAC kiểm lại CSDL mỗi yêu cầu; CSRF + kiểm Origin; CSP chặt; thoát ký tự mọi nội dung; liên kết chỉ tới Google Drive; giới hạn tốc độ; web chỉ gọi hàm `SECURITY DEFINER` qua vai trò `web_svc` (không đọc bảng); quản trị kiểm trong CSDL. Rủi ro còn lại: chưa có RLS nên mọi thứ dựa vào các hàm; tài khoản Google bị chiếm thì kẻ chiếm vào được; mật khẩu SSH vps169 vẫn bật (đã chấp nhận, `scripts/security_accepted.txt`) — **trước khi thêm người dùng thật phải xử lý**.
+
 ## Danh sách kiểm tra trước khi cho người dùng thật vào
 - [ ] `scripts/check_secrets.sh` sạch; repo GitHub **private**.
 - [ ] Mọi `.env` quyền 600, chủ sở hữu đúng; không `.env` trong git.

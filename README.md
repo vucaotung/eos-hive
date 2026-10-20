@@ -28,6 +28,7 @@ Chưa có Postgres: `docker run -d --name eos-pg -e POSTGRES_PASSWORD=pw -p 5432
 | --- | --- |
 | `db/` | 9 tệp lược đồ (00→60), 2 tệp kiểm thử SQL |
 | `mcp/` | Máy chủ MCP (Node 22) — chạy trên VPS 169 |
+| `web/` | Giao diện web `/app` (Node 22, Express): hộp việc, duyệt kết quả agent, quản trị — chạy trên VPS 169 |
 | `bridge/` | Cầu nối Kanban (Python) + plugin Hermes — chạy trên VPS 173 |
 | `deploy/` | systemd, Caddy, mẫu `.env`, `setup_agents.sql`, `mint_bridge_jwt.py` |
 | `scripts/` | test, quét bí mật, ghép lược đồ, xuất bản lên GitHub |
@@ -45,6 +46,7 @@ Chưa có Postgres: `docker run -d --name eos-pg -e POSTGRES_PASSWORD=pw -p 5432
 | Nhân viên, trưởng phòng, quản trị | [docs/04-huong-dan-su-dung.md](docs/04-huong-dan-su-dung.md) |
 | Người duyệt rủi ro | [docs/06-bao-mat.md](docs/06-bao-mat.md), [docs/07-gia-dinh-can-kiem-chung.md](docs/07-gia-dinh-can-kiem-chung.md) |
 | Soạn văn bản hành chính bằng Văn thư AI | [docs/09-van-thu-nd30.md](docs/09-van-thu-nd30.md) |
+| Dùng/vận hành giao diện web | [docs/10-web.md](docs/10-web.md) |
 | Claude Code đi triển khai | [prompts/README.md](prompts/README.md) |
 
 Lịch sử thay đổi: [CHANGELOG.md](CHANGELOG.md). Lộ trình: [docs/08-lo-trinh.md](docs/08-lo-trinh.md).

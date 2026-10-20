@@ -1,0 +1,31 @@
+# /etc/systemd/system/eos-web.service — giao diện web Tổ Ong (VPS 169), chỉ nghe 127.0.0.1:8791, Caddy chuyển tiếp /app vào đây
+[Unit]
+Description=Enterprise OS web (Tổ Ong)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=eos
+Group=eos
+WorkingDirectory=/opt/apps/enterprise-os/web
+EnvironmentFile=/opt/apps/enterprise-os/web/.env
+ExecStart=/usr/bin/node src/server.mjs
+Restart=always
+RestartSec=5
+# Cô lập: không cần ghi đĩa, không cần quyền nâng cao
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryMax=400M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

@@ -6,9 +6,11 @@ test-db: ## Dựng CSDL thử, chạy test lược đồ + agent (cần EOS_TEST
 	scripts/test_db.sh
 test-mcp: ## Kiểm thử đầu–cuối máy chủ MCP (sau test-db)
 	scripts/test_mcp.sh
+test-web: ## Kiểm thử đầu–cuối giao diện web (Google giả lập)
+	scripts/test_web.sh
 test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgrest)
 	scripts/test_bridge.sh
-test: test-db test-mcp test-bridge ## Chạy cả ba
+test: test-db test-mcp test-web test-bridge ## Chạy cả bốn
 acceptance: ## Nghiệm thu đầu–cuối trên MÁY THẬT (tốn LLM; ONLY=A1,A3 để chọn kịch bản)
 	scripts/acceptance.sh $(if $(ONLY),--only $(ONLY))
 secrets: ## Quét bí mật trước khi commit

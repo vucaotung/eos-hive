@@ -19,6 +19,7 @@ jobs:
       - run: scripts/check_secrets.sh
       - run: scripts/test_db.sh
       - run: scripts/test_mcp.sh
+      - run: scripts/test_web.sh
       # Cầu nối cần binary PostgREST; tải bản cố định để lần chạy lặp lại được
       - name: PostgREST
         run: |
