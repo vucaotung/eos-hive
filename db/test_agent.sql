@@ -301,5 +301,16 @@ DO $$ DECLARE r record; got text; BEGIN
   RAISE NOTICE 'Chuẩn hóa độ tin cậy ok';
 END $$;
 
+-- Nhật ký ghi đúng ai làm (migration 0004)
+DO $$ BEGIN
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000001","via":"agent:van-thu","agent":"a0000000-0000-0000-0000-000000000001"}', true);
+  ASSERT agent._mcp_actor() = 'agent:van-thu', format('actor của agent: %s', agent._mcp_actor());
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000001","via":"mcp:abc12345"}', true);
+  ASSERT agent._mcp_actor() = 'user:bbbbbbbb-0000-0000-0000-000000000001 via mcp:abc12345', format('actor của người qua MCP: %s', agent._mcp_actor());
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000001"}', true);
+  ASSERT agent._mcp_actor() = 'user:bbbbbbbb-0000-0000-0000-000000000001', 'actor của người trực tiếp';
+  RAISE NOTICE 'Actor ok: agent ghi agent, người ghi người';
+END $$;
+
 SELECT 'test_agent: tất cả kiểm thử đều đạt' AS ket_qua;
 ROLLBACK;
