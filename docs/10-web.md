@@ -31,7 +31,7 @@ Thu hồi quyền: `UPDATE core.users SET active=false WHERE email='…'`.
 3. `scripts/push_to_host.sh vps169 …`, rồi `cd /opt/apps/enterprise-os/web && npm ci --omit=dev --ignore-scripts` (chạy bằng user `eos`).
 4. `.env` theo `deploy/eos-web.env.example` (600, chủ `eos`), `SESSION_SECRET` sinh bằng `openssl rand -hex 32`.
 5. `deploy/eos-web.service` → `/etc/systemd/system/`, `systemctl enable --now eos-web`.
-6. Thêm `deploy/Caddyfile.web.snippet` vào khối `work.enterpriseos.bond` (trước khối `handle` cuối), `caddy validate`, `systemctl reload caddy`.
+6. Thêm `deploy/Caddyfile.web.snippet` vào khối `work.enterpriseos.bond` (trước khối `handle` cuối; thay khối cuối bằng chuyển hướng gốc sang `/app/`), `caddy validate`, `systemctl reload caddy`. Chú ý cú pháp `redir * /app/ 302` (có dấu `*`): thiếu `*` thì `/app/` bị hiểu là bộ khớp đường dẫn và không chuyển hướng gì.
 7. Bật đăng nhập: tạo OAuth client (loại **Web application**) trong Google Cloud, redirect URI `https://work.enterpriseos.bond/app/auth/callback`, điền `GOOGLE_LOGIN_CLIENT_ID/SECRET` vào `.env`, `systemctl restart eos-web`. Chưa điền thì trang đăng nhập báo chưa cấu hình (an toàn: không ai vào được).
 
 ## Vận hành

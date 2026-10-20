@@ -238,7 +238,7 @@ s_A7() {
   check "không tạo tệp khi thiếu thông tin"                  [ "$(sqlv "select count(*) from core.attachments where entity_type='task' and entity_id='$id2'")" = 0 ]
 }
 
-web_code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@"; }
+web_code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@"; }   # -w ở cuối lệnh gọi sẽ ghi đè định dạng
 web_headers() { curl -s -D - -o /dev/null -m 15 https://work.enterpriseos.bond/app/login | tr -d '\r' | tr 'A-Z' 'a-z'; }
 web_csp_strict()  { local h; h="$(web_headers)"; echo "$h" | grep -q "content-security-policy:.*default-src 'none'" && ! echo "$h" | grep -q unsafe-inline; }
 web_hdr_basic()   { local h; h="$(web_headers)"; echo "$h" | grep -q strict-transport-security && echo "$h" | grep -q 'x-content-type-options: nosniff' && echo "$h" | grep -q 'x-frame-options: deny' && echo "$h" | grep -q 'cache-control: no-store'; }
@@ -246,6 +246,9 @@ web_no_powered()  { ! web_headers | grep -q x-powered-by; }
 s_A8() {
   say ""; say "A8 · Giao diện web trên Internet: chưa đăng nhập thì không thấy gì, tiêu đề an toàn, các đường khác vẫn đóng"
   local base="https://work.enterpriseos.bond"
+  check "gốc / chuyển sang /app/ (302)"                       [ "$(web_code -w '%{http_code} %{redirect_url}' $base/)" = "302 $base/app/" ]
+  check "/app chuyển sang /app/ (308)"                        [ "$(web_code -w '%{http_code} %{redirect_url}' $base/app)" = "308 $base/app/" ]
+  check "đường lạ trả 404"                                    [ "$(web_code $base/khong-co-trang-nay)" = 404 ]
   check "/app/healthz trả 200"                                [ "$(web_code $base/app/healthz)" = 200 ]
   check "/app/login trả 200"                                  [ "$(web_code $base/app/login)" = 200 ]
   for p in /app/ /app/tasks /app/tasks/1 /app/tasks/new /app/tokens /app/admin /app/admin/tokens /app/admin/calls; do

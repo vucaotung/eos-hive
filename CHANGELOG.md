@@ -5,6 +5,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Sửa
+- Caddy: gốc `work.enterpriseos.bond/` chuyển sang `/app/` (trước đó chỉ trả chữ "Enterprise OS"); sửa cú pháp `redir` thiếu `*` làm `/app` và `/` không chuyển hướng; đường lạ trả 404. A8 kiểm các chuyển hướng này.
+
 ## [0.0.5] — 2026-10-20
 
 ### Thêm

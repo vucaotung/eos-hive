@@ -1,10 +1,18 @@
 # Thêm vào khối work.enterpriseos.bond trong Caddyfile của VPS 169, TRƯỚC khối `handle { respond "Enterprise OS" 200 }` cuối cùng
 	handle /app {
-		redir /app/ 308
+		redir * /app/ 308
 	}
 	handle /app/* {
 		request_body {
 			max_size 1MB
 		}
 		reverse_proxy 127.0.0.1:8791
+	}
+# Gốc của tên miền chuyển sang giao diện (thay khối `handle { respond "Enterprise OS" 200 }` cuối cùng bằng hai khối dưới).
+# Lưu ý: viết `redir * /app/ 302` (có dấu *); `redir /app/ 302` bị hiểu là bộ khớp đường dẫn "/app/" và không chuyển hướng gì.
+	handle / {
+		redir * /app/ 302
+	}
+	handle {
+		respond "Không tìm thấy" 404
 	}
