@@ -10,7 +10,7 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - Agent kiểu **runner** (`agent.agents.executor`): dịch vụ trên Z2 tự nhận việc qua MCP (không qua hộp thư đi/Kanban), chạy pipeline `deo-sync` (tải, Markdown + OCR, mục lục), đẩy Markdown lên Drive, đăng ký tệp, hỏi người nạp WeKnora. `runner/eos_z2_runner.py`, `deploy/eos-z2-runner.service`, `scripts/issue_runner_token.sh`.
 - Công cụ MCP: `eos_project_scope`, `eos_project_files`, `eos_project_read` (đọc Markdown trong đúng thư mục của lần chạy, kiểm theo CSDL), `eos_catalog_upsert` (danh mục hồ sơ `doc.records`), `eos_project_save_report`, `eos_runner_claim/report/setup`; `eos_delegate` nhận `scope`. Phạm vi mã `project` và `runner` (chỉ mã agent).
 - Skill Hermes: `dieu-phoi-du-an`, `ho-so-danh-muc` (Văn thư), `ra-soat-phap-che`, `kb-quan-tri-du-lieu`; `deploy/setup_project_workflow.sql`.
-- Migration `0008`; bảng `agent.workflows`, `workflow_runs`, `task_scopes` (111 bảng). `make test-runner`.
+- Migration `0008`; bảng `agent.workflows`, `workflow_runs`, `task_scopes` (111 bảng). `make test-runner`; nghiệm thu **A9** (runner Z2 nhận việc qua MCP, chặn và hỏi người khi gặp giai đoạn lạ); `make audit` kiểm mã runner chỉ có phạm vi `runner` và mã người không có phạm vi dành riêng cho agent.
 
 ### Đổi
 - `agent.delegate`: việc con trong một lần chạy bắt buộc có `scope`. Trả lời câu hỏi của thẻ runner đưa thẻ về sẵn sàng (không gửi lệnh sang cầu nối Hermes). Huỷ việc của runner không tạo lệnh hủy cho cầu nối.

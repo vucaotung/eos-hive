@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_HOST="${EOS_DB_HOST:-vps169}"; H_HOST="${EOS_HERMES_HOST:-vps173}"
 OWNER_EMAIL="${EOS_OWNER_EMAIL:-vucaotung@gmail.com}"; SLUG="${EOS_COMPANY_SLUG:-valnex}"
 RUN="$(date +%m%d%H%M%S)"; TAG="[ACCEPT $RUN]"
-ALL="A1 A2 A3 A4 A5 A6 A7 A8"; ONLY="$ALL"
+ALL="A1 A2 A3 A4 A5 A6 A7 A8 A9"; ONLY="$ALL"
 while [ $# -gt 0 ]; do case "$1" in
   --only) ONLY="$(echo "${2:?}" | tr ',' ' ')"; shift 2;;
   --list) echo "$ALL"; exit 0;;
@@ -267,6 +267,21 @@ s_A8() {
   check "không đọc được mã nguồn qua đường tĩnh"              bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --path-as-is $base/app/../src/config.mjs)\" != 200 ] && [ \"\$(curl -s -o /dev/null -w '%{http_code}' $base/app/src/config.mjs)\" != 200 ]"
   check "/mcp vẫn từ chối mã sai (401) sau khi thêm /app"     [ "$(web_code -X POST $base/mcp -H 'Authorization: Bearer eos_sai' -H 'Content-Type: application/json' -d '{}')" = 401 ]
   check "/api vẫn khóa theo IP (403)"                          [ "$(web_code -X POST $base/api/rpc/outbox_pull)" = 403 ]
+}
+
+runner_active()   { [ "$(systemctl --user is-active eos-z2-runner 2>/dev/null)" = active ]; }
+q_mentions()      { sqlv "select string_agg(body, ' ') from work.comments where task_id=$1 and kind='question'" | grep -qiE "$2"; }
+s_A9() {
+  say ""; say "A9 · Runner Z2: nhận việc qua MCP (không qua Kanban), báo cáo, hỏi người khi gặp giai đoạn lạ"
+  check "dịch vụ eos-z2-runner trên Z2 đang chạy"            runner_active
+  local id; id="$(new_task "Việc thử runner (giai đoạn lạ)" "Không có phạm vi: runner phải chặn và hỏi, không làm gì." ho-so-runner)"
+  check "tạo được việc giao cho runner"                      [ -n "$id" ]
+  check "thẻ của runner (mã runner-…), không phải thẻ Hermes"  [ "$(sqlv "select count(*) from agent.cards where task_id=$id and card_id like 'runner-%'")" = 1 ]
+  check "không có lệnh nào vào hộp thư đi (cầu nối Hermes)"  [ "$(sqlv "select count(*) from agent.outbox where task_id=$id")" = 0 ]
+  check "runner nhận và chặn việc ≤ 2 phút"                  wait_until 120 is_status "$id" blocked
+  check "câu hỏi nêu giai đoạn chưa hỗ trợ"                  q_mentions "$id" "chưa hỗ trợ"
+  check "việc chờ người trả lời (waiting_on_human)"          [ "$(sqlv "select waiting_on_human from work.tasks where id=$id")" = t ]
+  check "nhật ký ghi agent ho-so-runner nhận việc"           [ "$(sqlv "select count(*) from work.comments where task_id=$id and actor='agent:ho-so-runner'")" -ge 1 ]
 }
 
 for s in $ONLY; do "s_$s" || true; done

@@ -56,4 +56,4 @@ Agent kiểu `runner` (`agent.agents.executor='runner'`): việc giao cho nó **
 - Chưa có màn hình xem tiến độ riêng; xem ở thẻ dự án và việc gốc.
 
 ## Kiểm thử
-`db/test_workflow.sql` (bắt đầu, phạm vi, runner, danh mục, hủy, hỏi người), `mcp/test/e2e.mjs` (chuỗi đầy đủ qua MCP thật: chia việc có scope → runner → văn thư đọc/lập danh mục/lưu báo cáo; máy khách Python), `runner/test/test_runner.py` (9 ca: đường chính, lỗi và che bí mật, đầu vào xấu không tới shell, hỏi người nạp KB), `web/test/e2e.mjs` (bắt đầu từ giao diện). `make test`.
+`db/test_workflow.sql` (bắt đầu, phạm vi, runner, danh mục, hủy, hỏi người), `mcp/test/e2e.mjs` (chuỗi đầy đủ qua MCP thật: chia việc có scope → runner → văn thư đọc/lập danh mục/lưu báo cáo; máy khách Python), `runner/test/test_runner.py` (9 ca: đường chính, lỗi và che bí mật, đầu vào xấu không tới shell, hỏi người nạp KB), `web/test/e2e.mjs` (bắt đầu từ giao diện). `make test`. Trên máy thật: `make acceptance ONLY=A9` (runner Z2 thật qua MCP thật). Chưa có kịch bản chạy trọn quy trình với LLM thật vì cần dữ liệu thật của một dự án.
