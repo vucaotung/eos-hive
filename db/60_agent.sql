@@ -55,6 +55,7 @@ CREATE TABLE agent.agents (
   skills        text[] NOT NULL DEFAULT '{}',                 -- skill Hermes gắn vào thẻ Kanban
   max_level     smallint NOT NULL DEFAULT 1 CHECK (max_level BETWEEN 0 AND 2),   -- L3 không bao giờ cho agent
   can_delegate  boolean NOT NULL DEFAULT false,               -- được chia việc con cho agent khác (mặc định chỉ dieu-phoi)
+  executor      text NOT NULL DEFAULT 'hermes' CHECK (executor IN ('hermes','runner')),   -- runner: dịch vụ ngoài Hermes (Z2) tự nhận việc qua MCP, không qua hộp thư đi
   description   text,
   active        boolean NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now()
@@ -243,7 +244,7 @@ CREATE TABLE agent.mcp_tokens (
   prefix       text NOT NULL UNIQUE,                          -- 8 ký tự đầu, hiện trên màn hình để nhận ra
   token_hash   text NOT NULL UNIQUE,                          -- sha256 hex; không lưu mã gốc
   agent_id     uuid REFERENCES agent.agents(id) ON DELETE CASCADE,   -- NULL = mã của người; có giá trị = mã của worker agent hệ thống
-  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft']::text[] AND cardinality(scopes) > 0),
+  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft','project','runner']::text[] AND cardinality(scopes) > 0),
   expires_at   timestamptz NOT NULL,
   last_used_at timestamptz,
   last_ip      inet,
@@ -252,7 +253,7 @@ CREATE TABLE agent.mcp_tokens (
   CHECK (expires_at <= created_at + interval '366 days'),
   -- mã của agent hệ thống chỉ đọc (chia việc nếu được phép, soạn dự thảo nếu là văn thư); mã của người không có quyền chia việc hay soạn dự thảo
   -- `draft` (soạn dự thảo văn bản) chỉ dành cho agent hệ thống
-  CHECK (CASE WHEN agent_id IS NULL THEN NOT ('delegate' = ANY (scopes) OR 'draft' = ANY (scopes)) ELSE scopes <@ ARRAY['read','kb','delegate','draft']::text[] END)
+  CHECK (CASE WHEN agent_id IS NULL THEN NOT (scopes && ARRAY['delegate','draft','project','runner']::text[]) ELSE scopes <@ ARRAY['read','kb','delegate','draft','project','runner']::text[] END)
 );
 CREATE INDEX mcp_tokens_user_idx ON agent.mcp_tokens (user_id) WHERE revoked_at IS NULL;
 
@@ -346,6 +347,11 @@ BEGIN
   ON CONFLICT (idempotency_key) DO NOTHING
   RETURNING * INTO c;
   IF c.id IS NULL THEN RETURN; END IF;
+  IF (SELECT executor FROM agent.agents WHERE id = t.agent_id) = 'runner' THEN
+    -- agent kiểu runner: không có hộp thư đi, runner tự nhận thẻ 'ready' qua agent.mcp_runner_claim
+    UPDATE agent.cards SET card_id = 'runner-' || c.id, status = 'ready' WHERE id = c.id;
+    RETURN;
+  END IF;
   INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
   VALUES (t.company_id, 'dispatch', t.id, c.id,
           jsonb_strip_nulls(jsonb_build_object(
@@ -402,7 +408,9 @@ DECLARE c agent.cards;
 BEGIN
   IF NEW.status <> 'cancelled' OR OLD.status = 'cancelled' OR NEW.agent_id IS NULL THEN RETURN NEW; END IF;
   FOR c IN SELECT * FROM agent.cards WHERE task_id = NEW.id AND status NOT IN ('done','archived','gave_up','crashed','timed_out','cancelled') LOOP
-    IF c.card_id IS NULL THEN
+    IF c.card_id LIKE 'runner-%' THEN
+      NULL;   -- thẻ của runner: chỉ cần đánh dấu hủy bên dưới, runner thấy ở lần nhận việc kế tiếp
+    ELSIF c.card_id IS NULL THEN
       UPDATE agent.outbox SET done_at = now(), error = 'Việc bị hủy trước khi tạo thẻ' WHERE card_ref = c.id AND kind = 'dispatch' AND done_at IS NULL;
     ELSE
       INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
@@ -424,8 +432,12 @@ BEGIN
   IF t.agent_id IS NULL THEN RETURN NEW; END IF;
   SELECT * INTO c FROM agent.cards WHERE task_id = t.id ORDER BY attempt DESC, id DESC LIMIT 1;
   IF NEW.kind = 'answer' AND c.status = 'blocked' THEN
-    INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
-    VALUES (t.company_id, 'answer', t.id, c.id, jsonb_build_object('board', c.board, 'card_id', c.card_id, 'body', NEW.body, 'by', NEW.actor));
+    IF c.card_id LIKE 'runner-%' THEN
+      UPDATE agent.cards SET status = 'ready', last_event_at = now() WHERE id = c.id;   -- runner nhận lại thẻ, đọc câu trả lời ở phần phản hồi (mcp_runner_claim)
+    ELSE
+      INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
+      VALUES (t.company_id, 'answer', t.id, c.id, jsonb_build_object('board', c.board, 'card_id', c.card_id, 'body', NEW.body, 'by', NEW.actor));
+    END IF;
     UPDATE work.tasks SET status = 'in_progress', waiting_on_human = false, updated_at = now() WHERE id = t.id;
   ELSIF NEW.kind = 'reject' AND t.status = 'in_review' THEN
     SELECT * INTO s FROM agent.company_settings WHERE company_id = t.company_id;
@@ -973,7 +985,7 @@ END $$;
 CREATE FUNCTION agent.delegate(p_parent bigint, p_items jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
 DECLARE a agent.agents := agent.current_agent(); p work.tasks; it jsonb; i int := 0; ids bigint[] := '{}'; tgt agent.agents;
-        dep jsonb; new_id bigint; depth int := 0; anc bigint;
+        dep jsonb; new_id bigint; depth int := 0; anc bigint; v_run bigint;
 BEGIN
   IF a.id IS NULL OR NOT a.can_delegate THEN RAISE EXCEPTION 'Agent này không được chia việc' USING ERRCODE = '42501'; END IF;
   SELECT * INTO p FROM work.tasks WHERE id = p_parent FOR UPDATE;
@@ -983,6 +995,7 @@ BEGIN
   IF jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) NOT BETWEEN 1 AND 8 THEN
     RAISE EXCEPTION 'Chia từ 1 đến 8 việc con';
   END IF;
+  v_run := agent._run_of_task(p.id);   -- việc nằm trong quy trình dự án (db/62_workflow.sql): mỗi việc con phải ghi phạm vi
   anc := p.parent_id;
   WHILE anc IS NOT NULL LOOP depth := depth + 1; SELECT parent_id INTO anc FROM work.tasks WHERE id = anc; END LOOP;
   IF depth >= 2 THEN RAISE EXCEPTION 'Tối đa 2 tầng việc con'; END IF;
@@ -1002,6 +1015,13 @@ BEGIN
             p.assignee_id, p.due_date, false, p.created_by, a.code)
     RETURNING id INTO new_id;
     ids := ids || new_id;
+    IF v_run IS NOT NULL THEN
+      IF jsonb_typeof(it->'scope') IS DISTINCT FROM 'object' OR it->'scope' = '{}'::jsonb THEN
+        RAISE EXCEPTION 'Việc trong quy trình dự án phải ghi rõ phạm vi (scope) cho từng việc con';
+      END IF;
+      INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by)
+      VALUES (new_id, v_run, nullif(it->>'skill', ''), (it->'scope') || jsonb_build_object('agent', tgt.code), 'agent:' || a.code);
+    END IF;
   END LOOP;
   FOR it IN SELECT * FROM jsonb_array_elements(p_items) LOOP
     i := i + 1;

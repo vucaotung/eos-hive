@@ -20,6 +20,7 @@ jobs:
       - run: scripts/test_db.sh
       - run: scripts/test_mcp.sh
       - run: scripts/test_web.sh
+      - run: scripts/test_runner.sh
       # Bản dựng giao diện (web/public) được commit: phải khớp mã nguồn web/ui
       - name: Giao diện dựng khớp bản commit
         run: |

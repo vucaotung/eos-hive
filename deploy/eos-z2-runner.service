@@ -1,0 +1,16 @@
+# ~/.config/systemd/user/eos-z2-runner.service — runner hồ sơ dự án trên Z2 (docs/12). Chạy cùng user có rclone và ~/work/deo-sync.
+[Unit]
+Description=Enterprise OS runner ho-so (Z2)
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/eos-hive/runner.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 %h/work/eos-hive/runner/eos_z2_runner.py
+Restart=always
+RestartSec=15
+# Nice thấp: OCR và convert nặng, không làm đứng máy
+Nice=10
+
+[Install]
+WantedBy=default.target

@@ -304,6 +304,21 @@ try {
     assert.equal((await adm.ok('app_project_delete', { id: pr.id })).tasks_unlinked, 1);
     assert.equal((await adm.ok('app_task', { id: t.id })).task.project_id, null);
   });
+  await step('nạp hồ sơ dự án: chỉ chủ sở hữu/quản trị bắt đầu; việc gốc giao điều phối, người theo dõi phụ trách; phạm vi hiện trong chi tiết', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const body = { company_id: CO, project_name: 'Khu đô thị thử', drive_url: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOp', supervisor_id: ID.minh, note: 'Ưu tiên pháp lý' };
+    assert.equal((await minh.rpc('app_workflow_start', body)).status, 403);
+    assert.equal((await adm.rpc('app_workflow_start', { ...body, drive_url: 'https://evil.example/folders/1AbCdEfGhIjKlMnOp' })).status, 400);
+    assert.equal((await adm.rpc('app_workflow_start', { ...body, supervisor_id: ID.adm.replace(/2$/, 'a') })).status, 400, 'người theo dõi phải là thành viên');
+    const r = await adm.ok('app_workflow_start', body);
+    assert.ok(r.run_id && r.root_task && r.project_id);
+    const d = await minh.ok('app_task', { id: r.root_task });
+    assert.equal(d.task.agent_role, 'dieu-phoi'); assert.equal(d.workflow.skill, 'dieu-phoi-du-an'); assert.equal(d.task.assignee_id, ID.minh); assert.equal(d.workflow.scope.stage, 'orchestrate'); assert.equal(d.workflow.scope.note, 'Ưu tiên pháp lý');
+    assert.equal((await adm.rpc('app_workflow_start', { ...body, project_name: undefined, project_id: r.project_id })).status, 400, 'đang có lần chạy chưa xong');
+    const runs = await adm.ok('app_workflow_runs', { company_id: CO }); assert.equal(runs.length, 1); assert.equal(runs[0].root_task, r.root_task);
+    assert.equal((await minh.ok('app_workflow_runs', { company_id: CO })).length, 1, 'người theo dõi thấy lần chạy của mình');
+    assert.equal((await (await as('ketoan@demo.vn')).ok('app_workflow_runs', { company_id: CO })).length, 0);
+  });
   await step('kết nối AI: cấp mã MCP (hiện một lần, không lộ băm), liệt kê, thu hồi; quản trị hệ thống xem tổng quan', async () => {
     const minh = await as('minh@demo.vn'), adm = await as('admin@demo.vn');
     const t = await minh.ok('web_token_issue', { name: 'Claude laptop', client: 'claude', scopes: ['read', 'write'], days: 30 });

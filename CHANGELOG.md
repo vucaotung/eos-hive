@@ -3,6 +3,22 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## [0.2.0] — 2026-10-22
+
+### Thêm
+- **Quy trình nạp hồ sơ dự án** (`docs/12`): từ một thư mục Drive, hệ thống lập dự án, giao việc gốc cho Điều phối, **điều phối chia việc cho các agent theo kỹ năng và ghi phạm vi (`scope`) từng việc vào CSDL** (`agent.task_scopes`), người theo dõi (người thật) phụ trách và duyệt. Màn hình Dự án có **Nạp hồ sơ dự án**, thẻ dự án hiện tiến độ lần chạy, ngăn chi tiết việc hiện phạm vi.
+- Agent kiểu **runner** (`agent.agents.executor`): dịch vụ trên Z2 tự nhận việc qua MCP (không qua hộp thư đi/Kanban), chạy pipeline `deo-sync` (tải, Markdown + OCR, mục lục), đẩy Markdown lên Drive, đăng ký tệp, hỏi người nạp WeKnora. `runner/eos_z2_runner.py`, `deploy/eos-z2-runner.service`, `scripts/issue_runner_token.sh`.
+- Công cụ MCP: `eos_project_scope`, `eos_project_files`, `eos_project_read` (đọc Markdown trong đúng thư mục của lần chạy, kiểm theo CSDL), `eos_catalog_upsert` (danh mục hồ sơ `doc.records`), `eos_project_save_report`, `eos_runner_claim/report/setup`; `eos_delegate` nhận `scope`. Phạm vi mã `project` và `runner` (chỉ mã agent).
+- Skill Hermes: `dieu-phoi-du-an`, `ho-so-danh-muc` (Văn thư), `ra-soat-phap-che`, `kb-quan-tri-du-lieu`; `deploy/setup_project_workflow.sql`.
+- Migration `0008`; bảng `agent.workflows`, `workflow_runs`, `task_scopes` (111 bảng). `make test-runner`.
+
+### Đổi
+- `agent.delegate`: việc con trong một lần chạy bắt buộc có `scope`. Trả lời câu hỏi của thẻ runner đưa thẻ về sẵn sàng (không gửi lệnh sang cầu nối Hermes). Huỷ việc của runner không tạo lệnh hủy cho cầu nối.
+- Mã agent hiện có được cấp thêm phạm vi `project` (migration 0008, không cần đổi mã trong profile).
+
+### Hạn chế
+- Nạp WeKnora vẫn do người (DEO-INGEST-RULE); `phap-che` chưa có profile Hermes; trợ lý Mai chưa được nối; xem `docs/12`.
+
 ## [0.1.0] — 2026-10-22
 
 ### Thêm

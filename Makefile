@@ -12,7 +12,9 @@ test-web: ## Kiểm thử đầu–cuối máy chủ web + API (Google giả l�
 	scripts/test_web.sh
 test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgrest)
 	scripts/test_bridge.sh
-test: test-db test-mcp test-web test-bridge ## Chạy cả bốn
+test-runner: ## Kiểm thử runner Z2 (MCP giả, lệnh ngoài giả)
+	scripts/test_runner.sh
+test: test-db test-mcp test-web test-bridge test-runner ## Chạy cả năm
 acceptance: ## Nghiệm thu đầu–cuối trên MÁY THẬT (tốn LLM; ONLY=A1,A3 để chọn kịch bản)
 	scripts/acceptance.sh $(if $(ONLY),--only $(ONLY))
 audit: ## Kiểm toán bảo mật trên MÁY THẬT (chỉ đọc; checklist docs/06)

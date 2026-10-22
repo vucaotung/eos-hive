@@ -5,9 +5,9 @@ rebuild_db
 cd "$ROOT/mcp"; [ -d node_modules ] || npm ci --silent
 # seed.sql tạo vai trò eos_mcp (mật khẩu thử), dữ liệu mẫu và in các dòng TOKEN_*; chỉ chạy MỘT lần (mỗi người tối đa 5 mã)
 SEED_OUT=$(psql "$EOS_TEST_DSN" -X -q -At -f test/seed.sql)
-set -a; eval "$(echo "$SEED_OUT" | grep '^TOKEN_')"; set +a
+set -a; eval "$(echo "$SEED_OUT" | grep -E '^(TOKEN_|ROOT_TASK)')"; set +a
 HOSTPORT="${EOS_TEST_DSN#*@}"; HOSTPORT="${HOSTPORT%%/*}"; DBN="${EOS_TEST_DSN##*/}"
-DATABASE_URL="postgres://eos_mcp:test-only@${HOSTPORT}/${DBN}" node test/e2e.mjs | tail -3
+ADMIN_DSN="$EOS_TEST_DSN" DATABASE_URL="postgres://eos_mcp:test-only@${HOSTPORT}/${DBN}" node test/e2e.mjs | tail -3
 # Thể thức văn bản NĐ30 do eos_draft_document sinh ra (không cần Postgres)
 node --test test/vanban.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)" | tr '\n' ' '; echo
 node --test test/vanban.test.mjs >/dev/null 2>&1 || { echo "vanban: THẤT BẠI" >&2; exit 1; }

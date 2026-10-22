@@ -321,6 +321,7 @@ BEGIN
     'can_review', t.status = 'in_review' AND t.agent_id IS NOT NULL AND r.state IS DISTINCT FROM 'pending'
                   AND me.id IS NOT DISTINCT FROM coalesce(t.created_by, (SELECT default_reviewer FROM agent.company_settings WHERE company_id = t.company_id)),
     'flow_steps', (SELECT count(*) FROM core.approval_steps s WHERE s.flow_id = t.approval_flow_id),
+    'workflow', (SELECT jsonb_build_object('run_id', x.run_id, 'skill', x.skill, 'scope', x.scope, 'created_by', x.created_by) FROM agent.task_scopes x WHERE x.task_id = t.id),   -- phạm vi ghi bởi quy trình dự án (db/62)
     'reports', coalesce((SELECT jsonb_agg(jsonb_build_object('at', x.created_at, 'agent', (SELECT code FROM agent.agents WHERE id = x.agent_id), 'summary', x.summary, 'outputs', x.outputs,
                           'sources', x.sources, 'checks', x.checks, 'confidence', x.confidence, 'residual_risk', x.residual_risk, 'next_actions', x.next_actions, 'verdict', x.verdict)
                           ORDER BY x.created_at DESC) FROM agent.reports x WHERE x.task_id = t.id), '[]'));

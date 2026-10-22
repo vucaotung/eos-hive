@@ -80,11 +80,11 @@ export async function uploadResult({ userFolderId, taskId, filename, mime, bytes
 }
 
 // Kiểm tra một tệp có nằm trong thư mục của người dùng không (đi ngược tối đa 6 cấp thư mục cha)
-export async function fileInsideFolder(fileId, userFolderId) {
+export async function fileInsideFolder(fileId, userFolderId, maxDepth = 6) {
   let meta = await gapi(`/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size,webViewLink,parents&supportsAllDrives=true`);
   const file = meta;
   const path = [];
-  for (let depth = 0; depth < 6; depth++) {
+  for (let depth = 0; depth < maxDepth; depth++) {
     const parent = meta.parents?.[0];
     if (!parent) return { inside: false, file };
     if (parent === userFolderId) return { inside: true, file, folder: path.reverse().join('/') || '.' };
@@ -97,4 +97,35 @@ export async function fileInsideFolder(fileId, userFolderId) {
 export function driveIdFromUrl(url) {
   const m = String(url).match(/\/d\/([A-Za-z0-9_-]{10,})/) || String(url).match(/[?&]id=([A-Za-z0-9_-]{10,})/);
   return m ? m[1] : null;
+}
+
+// ---------- Đọc hồ sơ dự án (thư mục Markdown do runner dựng) ----------
+// Liệt kê một cấp thư mục. Mỗi trang tối đa 200 mục; nextPageToken để lấy tiếp.
+export async function listFolder(folderId, pageToken) {
+  const params = new URLSearchParams({
+    q: `'${q(folderId)}' in parents and trashed = false`, pageSize: '200', orderBy: 'folder,name',
+    fields: 'nextPageToken,files(id,name,mimeType,size,modifiedTime)', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true',
+  });
+  if (pageToken) params.set('pageToken', pageToken);
+  const j = await gapi(`/drive/v3/files?${params}`);
+  return { files: j.files || [], next: j.nextPageToken || null };
+}
+
+export const isFolder = (mime) => mime === FOLDER;
+export const READ_MAX_BYTES = 5 * 1024 * 1024;
+
+// Đọc nội dung văn bản của một tệp (Markdown, txt, csv, json; Google Docs xuất text/plain). Từ chối tệp quá lớn hoặc nhị phân.
+export async function readText(fileId) {
+  const meta = await gapi(`/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size&supportsAllDrives=true`);
+  const gdoc = meta.mimeType === 'application/vnd.google-apps.document';
+  if (!gdoc && !/^text\/|json$|csv$|markdown$/.test(meta.mimeType || '') && !/\.(md|txt|csv|json)$/i.test(meta.name || '')) {
+    const err = new Error('Chỉ đọc được tệp văn bản (Markdown, txt, csv, json, Google Docs)'); err.status = 415; throw err;
+  }
+  if (Number(meta.size || 0) > READ_MAX_BYTES) { const err = new Error('Tệp quá lớn để đọc qua MCP'); err.status = 413; throw err; }
+  const path = gdoc ? `/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text%2Fplain&supportsAllDrives=true` : `/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
+  const r = await fetch(API + path, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  if (!r.ok) { const err = new Error(`Drive ${r.status}`); err.status = r.status; throw err; }
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length > READ_MAX_BYTES) { const err = new Error('Tệp quá lớn để đọc qua MCP'); err.status = 413; throw err; }
+  return { name: meta.name, text: buf.toString('utf8') };
 }

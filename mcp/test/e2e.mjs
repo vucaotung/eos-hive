@@ -8,7 +8,13 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 // ---------- Drive giả lập ----------
 const files = new Map([['FOLDER_MINH', { id: 'FOLDER_MINH', name: 'DEO - Demo - KT - Trần Minh', mimeType: 'application/vnd.google-apps.folder', parents: [] }],
                        ['OUTSIDE1234567', { id: 'OUTSIDE1234567', name: 'la.docx', mimeType: 'x', parents: ['SOMEONE_ELSE'] }],
-                       ['SOMEONE_ELSE', { id: 'SOMEONE_ELSE', name: 'Thư mục khác', parents: [] }]]);
+                       ['SOMEONE_ELSE', { id: 'SOMEONE_ELSE', name: 'Thư mục khác', parents: [] }],
+                       // thư mục Markdown của lần chạy dự án: gốc → HD-01.md, thư mục con → QD-02.md; một tệp md nằm ngoài
+                       ['MDROOT0000001', { id: 'MDROOT0000001', name: 'md', mimeType: 'application/vnd.google-apps.folder', parents: ['SRCFOLDER0000001'] }],
+                       ['MDFILE0000001', { id: 'MDFILE0000001', name: 'HD-01.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Hợp đồng 01\n' + 'Điều khoản. '.repeat(4000) }],
+                       ['MDSUB00000001', { id: 'MDSUB00000001', name: 'phap-ly', mimeType: 'application/vnd.google-apps.folder', parents: ['MDROOT0000001'] }],
+                       ['MDFILE0000002', { id: 'MDFILE0000002', name: 'QD-02.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '# Quyết định 02\nPhê duyệt dự án.' }],
+                       ['OUTMD00000001', { id: 'OUTMD00000001', name: 'ngoai.md', mimeType: 'text/markdown', parents: ['SOMEONE_ELSE'], content: 'bí mật ngoài phạm vi' }]]);
 let seq = 0;
 const drive = express();
 drive.post('/token', express.urlencoded({ extended: false }), (req, res) => {
@@ -17,13 +23,16 @@ drive.post('/token', express.urlencoded({ extended: false }), (req, res) => {
 });
 drive.use((req, res, next) => (req.get('authorization') === 'Bearer fake-access' ? next() : res.status(401).end()));
 drive.get('/drive/v3/files', (req, res) => {
+  const lst = req.query.q.match(/^'([^']+)' in parents and trashed = false$/);
+  if (lst) return res.json({ files: [...files.values()].filter((f) => f.parents.includes(lst[1])).map((f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, size: String((f.content || '').length), modifiedTime: '2026-10-20T00:00:00Z' })) });
   const m = req.query.q.match(/'([^']+)' in parents and name = '([^']+)'/);
   res.json({ files: [...files.values()].filter((f) => f.parents.includes(m[1]) && f.name === m[2]).map((f) => ({ id: f.id })) });
 });
 drive.get('/drive/v3/files/:id', (req, res) => {
   const f = files.get(req.params.id);
   if (!f) return res.status(404).json({ error: 'notFound' });
-  res.json({ ...f, webViewLink: `https://drive.google.com/file/d/${f.id}/view` });
+  if (req.query.alt === 'media') return res.type('text/markdown').send(f.content || '');
+  res.json({ ...f, size: f.content ? String(f.content.length) : f.size, webViewLink: `https://drive.google.com/file/d/${f.id}/view` });
 });
 drive.post('/drive/v3/files', express.json(), (req, res) => {
   const id = `F${++seq}`.padEnd(12, '0');
@@ -85,7 +94,7 @@ try {
   });
   await step('việc của tôi, chi tiết, tìm không dấu', async () => {
     const list = json(await c.callTool({ name: 'eos_list_tasks', arguments: {} }));
-    assert.deepEqual(list.map((t) => t.id).sort(), ['T-501', 'T-503', 'T-504']);
+    assert.deepEqual(list.map((t) => t.id).sort(), ['T-1', 'T-501', 'T-503', 'T-504']);
     const day = json(await c.callTool({ name: 'eos_my_day', arguments: {} }));
     assert.equal(day.approvals_waiting, 0);
     assert.ok(Array.isArray(day.overdue));
@@ -157,7 +166,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -221,6 +230,100 @@ try {
     assert.equal(after, before, 'không tạo thêm tệp');
   });
   await ag2.close();
+
+
+  // ---------- Quy trình dự án: điều phối chia việc có phạm vi → runner → văn thư đọc hồ sơ, lập danh mục ----------
+  const pg = (await import('pg')).default; const adm = new pg.Client({ connectionString: process.env.ADMIN_DSN }); await adm.connect();
+  const sql = async (q, p) => (await adm.query(q, p)).rows;
+  const ROOT = Number(process.env.ROOT_TASK);
+  const dp = await connect(process.env.TOKEN_AGENT), vt = await connect(process.env.TOKEN_AGENT2), rn = await connect(process.env.TOKEN_RUNNER);
+  let kz2, kvt;
+  await step('phạm vi `project`/`runner` chỉ có ở mã agent: mã người bị từ chối', async () => {
+    const full = await connect(process.env.TOKEN_FULL);
+    const names = (await full.listTools()).tools.map((t) => t.name);
+    assert.ok(!names.some((n) => /^eos_(project|runner|catalog)/.test(n)), 'người không thấy công cụ dự án/runner');
+    await full.close();
+    const tools = (await rn.listTools()).tools.map((t) => t.name);
+    for (const n of ['eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']) assert.ok(tools.includes(n), n);
+    const r = await rn.callTool({ name: 'eos_project_scope', arguments: { task: ROOT } });
+    assert.equal(r.isError, true); assert.match(text(r), /phạm vi "project"/, 'runner không có phạm vi project');
+  });
+  await step('điều phối đọc phạm vi việc gốc rồi chia việc: thiếu scope bị từ chối, đủ scope ghi vào CSDL', async () => {
+    const sc = json(await dp.callTool({ name: 'eos_project_scope', arguments: { task: ROOT } }));
+    assert.equal(sc.task.scope.stage, 'orchestrate'); assert.equal(sc.source_drive_folder_id, 'SRCFOLDER0000001'); assert.equal(sc.md_folder_id, null); assert.match(sc.playbook, /project-intake/);
+    const bad = await dp.callTool({ name: 'eos_delegate', arguments: { task: ROOT, items: [{ agent: 'ho-so-runner', title: 'Xử lý hồ sơ' }] } });
+    assert.equal(bad.isError, true); assert.match(text(bad), /phạm vi/);
+    const ok = json(await dp.callTool({ name: 'eos_delegate', arguments: { task: ROOT, items: [
+      { agent: 'ho-so-runner', title: 'Tải, chuyển Markdown, đăng ký hồ sơ', skill: 'xu-ly-ho-so', scope: { stage: 'fetch_convert' } },
+      { agent: 'van-thu', title: 'Lập danh mục hồ sơ', skill: 'ho-so-danh-muc', scope: { stage: 'catalog', doc_types: ['hop-dong'] }, after: [0] }] } }));
+    kz2 = Number(ok.children[0].slice(2)); kvt = Number(ok.children[1].slice(2));
+    const rows = await sql('SELECT task_id, skill, scope FROM agent.task_scopes WHERE run_id = (SELECT run_id FROM agent.task_scopes WHERE task_id = $1) ORDER BY task_id', [ROOT]);
+    assert.equal(rows.length, 3); assert.equal(rows[1].scope.agent, 'ho-so-runner'); assert.equal(rows[2].scope.stage, 'catalog');
+  });
+  await step('runner nhận việc qua MCP, đăng ký thư mục md và tệp, báo xong; chống gửi trùng', async () => {
+    const c = json(await rn.callTool({ name: 'eos_runner_claim', arguments: {} }));
+    assert.equal(c.task.id, kz2); assert.equal(c.scope.stage, 'fetch_convert'); assert.equal(c.run.drive_folder_id, 'SRCFOLDER0000001'); assert.match(c.card, /^runner-\d+$/);
+    assert.equal(json(await rn.callTool({ name: 'eos_runner_claim', arguments: {} })).idle, true);
+    const st = json(await rn.callTool({ name: 'eos_runner_setup', arguments: { task: kz2, md_folder_id: 'MDROOT0000001', weknora_kb_id: 'kb-test-0001',
+      files: [{ drive_id: 'MDFILE0000001', name: 'HD-01.md', url: 'https://drive.google.com/file/d/MDFILE0000001/view', mime: 'text/markdown' },
+              { drive_id: 'MDFILE0000002', name: 'QD-02.md', url: 'https://drive.google.com/file/d/MDFILE0000002/view' }] } }));
+    assert.equal(st.files, 2);
+    const hb = await rn.callTool({ name: 'eos_runner_report', arguments: { card: c.card, event: 'heartbeat', key: 'hb-mcp-0001', payload: { progress: 50 } } });
+    assert.equal(json(hb).result, 'ok');
+    const done = json(await rn.callTool({ name: 'eos_runner_report', arguments: { card: c.card, event: 'completed', key: 'done-mcp-0001', payload: { summary: 'Đã chuyển 2 tệp Markdown và đăng ký vào kho dữ liệu.' } } }));
+    assert.equal(done.result, 'ok');
+    const dup = json(await rn.callTool({ name: 'eos_runner_report', arguments: { card: c.card, event: 'completed', key: 'done-mcp-0001', payload: { summary: 'Đã chuyển 2 tệp Markdown và đăng ký vào kho dữ liệu.' } } }));
+    assert.equal(dup.result, 'duplicate');
+    const bad = await rn.callTool({ name: 'eos_runner_report', arguments: { card: 'runner-999999', event: 'heartbeat', key: 'hb-xx-0001' } });
+    assert.equal(bad.isError, true);
+    assert.equal((await sql('SELECT status FROM work.tasks WHERE id = $1', [kz2]))[0].status, 'done');
+  });
+  await step('văn thư (sau khi runner xong) đọc hồ sơ trong phạm vi: liệt kê, đọc từng đoạn; tệp ngoài phạm vi bị từ chối', async () => {
+    const ob = (await sql("SELECT id FROM agent.outbox WHERE task_id = $1 AND kind = 'dispatch'", [kvt]))[0];
+    assert.ok(ob, 'văn thư được giao sau khi runner xong');
+    await sql("SELECT agent.outbox_ack($1, 't_vt_mcp')", [ob.id]); await sql("SELECT agent.ingest_event('eos-demo','t_vt_mcp','claimed','k-vt-mcp')");
+    const sc = json(await vt.callTool({ name: 'eos_project_scope', arguments: { task: kvt } }));
+    assert.equal(sc.md_folder_id, 'MDROOT0000001'); assert.equal(sc.kb.name, 'Dự án Dự án thử nạp hồ sơ'); assert.equal(sc.tasks.length, 3);
+    const ls = json(await vt.callTool({ name: 'eos_project_files', arguments: { task: kvt } }));
+    assert.deepEqual(ls.items.map((i) => [i.name, i.folder]), [['phap-ly', true], ['HD-01.md', false]].sort((a, b) => 0) && ls.items.map((i) => [i.name, i.folder]));
+    assert.ok(ls.items.some((i) => i.name === 'HD-01.md') && ls.items.some((i) => i.name === 'phap-ly' && i.folder));
+    const sub = json(await vt.callTool({ name: 'eos_project_files', arguments: { task: kvt, folder_id: 'MDSUB00000001' } }));
+    assert.equal(sub.items[0].name, 'QD-02.md');
+    const r1 = json(await vt.callTool({ name: 'eos_project_read', arguments: { task: kvt, file_id: 'MDFILE0000001' } }));
+    assert.equal(r1.name, 'HD-01.md'); assert.equal(r1.text.length, 30000); assert.ok(r1.next_offset === 30000 && r1.total_chars > 30000);
+    const r2 = json(await vt.callTool({ name: 'eos_project_read', arguments: { task: kvt, file_id: 'MDFILE0000001', offset: r1.next_offset } }));
+    assert.equal(r2.next_offset, null); assert.match(json(await vt.callTool({ name: 'eos_project_read', arguments: { task: kvt, file_id: 'MDFILE0000002' } })).text, /Phê duyệt dự án/);
+    for (const [args, re] of [[{ file_id: 'OUTMD00000001' }, /ngoài phạm vi/], [{ file_id: 'OUTSIDE1234567' }, /ngoài phạm vi/], [{ file_id: 'KHONGCO000000' }, /Không thấy/], [{ folder_id: 'SOMEONE_ELSE' }, /ngoài phạm vi/]]) {
+      const r = await vt.callTool({ name: args.folder_id ? 'eos_project_files' : 'eos_project_read', arguments: { task: kvt, ...args } });
+      assert.equal(r.isError, true, JSON.stringify(args)); assert.match(text(r), re);
+    }
+    const none = await vt.callTool({ name: 'eos_project_files', arguments: { task: kz2 } });
+    assert.equal(none.isError, true); assert.match(text(none), /không có thẻ đang chạy/, 'không đọc bằng việc của agent khác');
+    const dpR = await dp.callTool({ name: 'eos_project_files', arguments: { task: ROOT } });
+    assert.ok(!dpR.isError, 'điều phối (có thẻ gốc) liệt kê được');
+  });
+  await step('văn thư lập danh mục hồ sơ và lưu bản tổng hợp vào Drive người theo dõi', async () => {
+    const r = json(await vt.callTool({ name: 'eos_catalog_upsert', arguments: { task: kvt, items: [
+      { category: 'Hợp đồng', record_no: 'HD-01/2026', title: 'Hợp đồng thi công gói 1', issued_on: '2026-03-01', contract_value: 1500000000, drive_id: 'MDFILE0000001' },
+      { category: 'Pháp lý', title: 'Quyết định phê duyệt dự án', issued_on: '2026-01-10', drive_id: 'MDFILE0000002' }] } }));
+    assert.equal(r.created, 2);
+    assert.equal((await sql("SELECT count(*)::int n FROM doc.records WHERE project_id = (SELECT project_id FROM agent.workflow_runs LIMIT 1)"))[0].n, 2);
+    const bad = await vt.callTool({ name: 'eos_catalog_upsert', arguments: { task: kvt, items: [{ category: 'X', title: 'ab' }] } });
+    assert.equal(bad.isError, true);
+    const rep = json(await vt.callTool({ name: 'eos_project_save_report', arguments: { task: kvt, filename: 'Tong hop van ban', content: '# Tổng hợp\n- HD-01.md: hợp đồng thi công 1,5 tỷ.\n- QD-02.md: quyết định phê duyệt.' } }));
+    assert.match(rep.name, /^T-\d+ - Tong hop van ban\.md$/); assert.match(rep.url, /^https:\/\/drive\.google\.com/);
+    const t = json(await (await connect(process.env.TOKEN_FULL)).callTool({ name: 'eos_get_task', arguments: { task: kvt } }));
+    assert.ok(t.files.some((f) => f.name === rep.name), 'báo cáo gắn vào việc');
+  });
+  await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
+    const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
+    const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
+      { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' });
+    const ok = JSON.parse((await py("print(json.dumps(R.Mcp(sys.argv[1], sys.argv[2]).call('eos_runner_claim')))", url.href, process.env.TOKEN_RUNNER)).stdout);
+    assert.equal(ok.idle, true);
+    await assert.rejects(py("R.Mcp(sys.argv[1], sys.argv[2]).call('eos_runner_claim')", url.href, 'eos_' + '0'.repeat(48)), (e) => /McpError.*401/.test(e.stderr), 'mã sai bị từ chối');
+  });
+  await dp.close(); await vt.close(); await rn.close(); await adm.end();
 
   console.log(`MCP e2e: ${passed} bước đạt`);
 } finally {

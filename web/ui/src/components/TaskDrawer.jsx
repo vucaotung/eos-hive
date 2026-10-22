@@ -100,6 +100,20 @@ export default function TaskDrawer() {
                   ["Cập nhật", ago(t.updated_at)],
                 ]} />
 
+                {d.workflow && (
+                  <section className="flex flex-col gap-2">
+                    <h3 className="font-extrabold">Phạm vi trong quy trình dự án</h3>
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-xl bg-surface px-4 py-3 text-sm">
+                      {d.workflow.skill && <><dt className="text-muted">Kỹ năng</dt><dd className="font-medium">{d.workflow.skill}</dd></>}
+                      {Object.entries(d.workflow.scope || {}).filter(([k]) => k !== "agent").map(([k, v]) => (
+                        <div key={k} className="contents"><dt className="text-muted">{({ stage: "Giai đoạn", paths: "Thư mục", doc_types: "Loại tài liệu", note: "Chỉ đạo", drive_folder_id: "Thư mục nguồn", project: "Dự án" })[k] || k}</dt>
+                          <dd className="min-w-0 font-medium [overflow-wrap:anywhere]">{Array.isArray(v) ? v.join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v)}</dd></div>
+                      ))}
+                      <dt className="text-muted">Ghi bởi</dt><dd className="font-medium">{d.workflow.created_by?.startsWith("agent:") ? `Agent ${agentName(d.workflow.created_by.slice(6))}` : "Người"}</dd>
+                    </dl>
+                  </section>
+                )}
+
                 {t.description && <p className="whitespace-pre-wrap rounded-xl bg-surface px-4 py-3 [overflow-wrap:anywhere]">{t.description}</p>}
 
                 <div className="flex flex-wrap gap-2">

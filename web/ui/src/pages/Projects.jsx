@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Modal, Tabs, toast } from "@heroui/react";
-import { Plus, Pencil, TrashBin } from "@gravity-ui/icons";
+import { Plus, Pencil, TrashBin, FaceRobot } from "@gravity-ui/icons";
 import { useApp, useLoad, go } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { ddmmyyyy, isOpen, isOverdue, parseDate } from "../lib/format.js";
@@ -119,11 +119,58 @@ function ProjectDialog({ project, isOpen, onClose }) {
   );
 }
 
+// Bắt đầu quy trình nạp hồ sơ: dự án (mới hoặc có sẵn) + thư mục Drive + người theo dõi. Điều phối (Mai) sẽ chia việc cho các agent.
+function IntakeDialog({ isOpen, onClose, project }) {
+  const { companyId, org, refresh, loadOrg } = useApp();
+  const [f, setF] = useState({ name: "", drive_url: "", supervisor_id: null, note: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [seeded, setSeeded] = useState(false);
+  if (isOpen && !seeded) { setSeeded(true); setError(null); setF({ name: "", drive_url: "", supervisor_id: project?.manager_id || null, note: "" }); }
+  if (!isOpen && seeded) setSeeded(false);
+  const people = org.members.filter((m) => m.active && m.user).map((m) => ({ value: m.user.id, label: m.user.name }));
+  const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
+  async function start() {
+    setBusy(true); setError(null);
+    try {
+      await rpc("app_workflow_start", { company_id: companyId, project_id: project?.id || "", project_name: f.name, drive_url: f.drive_url.trim(), supervisor_id: f.supervisor_id || "", note: f.note });
+      await loadOrg(); refresh(); onClose(); toast.success("Đã giao Điều phối. Điều phối sẽ chia việc cho các agent trong ít phút");
+    } catch (e) { setError(e); } finally { setBusy(false); }
+  }
+  return (
+    <Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <Modal.Container placement="auto" scroll="inside">
+        <Modal.Dialog className="sm:max-w-xl">
+          <Modal.CloseTrigger />
+          <Modal.Header><Modal.Heading>{project ? `Nạp hồ sơ cho ${project.name}` : "Nạp hồ sơ dự án mới"}</Modal.Heading></Modal.Header>
+          <Modal.Body>
+            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); start(); }}>
+              <p className="text-muted">Điều phối đọc thư mục Drive, chia việc cho Runner Z2, Quản trị dữ liệu, Văn thư và Pháp chế theo kỹ năng, ghi phạm vi từng việc vào hệ thống. Người theo dõi là người phụ trách và duyệt mọi việc.</p>
+              {!project && <TextInput label="Tên dự án" value={f.name} onChange={set("name")} isRequired placeholder="Ví dụ: Khu dân cư Thành Lập" />}
+              <TextInput label="Link thư mục Drive chứa hồ sơ" type="url" value={f.drive_url} onChange={set("drive_url")} isRequired placeholder="https://drive.google.com/drive/folders/..."
+                description="Thư mục phải chia sẻ quyền Người chỉnh sửa cho tài khoản Google của Runner (Markdown được đẩy vào thư mục con _md_deo)." />
+              <SelectField label="Người theo dõi (người thật)" value={f.supervisor_id} onChange={set("supervisor_id")} options={people} isRequired />
+              <TextAreaInput label="Chỉ đạo ban đầu (không bắt buộc)" value={f.note} onChange={set("note")} rows={3} placeholder="Ví dụ: ưu tiên hồ sơ pháp lý và hợp đồng; bỏ qua thư mục ARCHIVE" />
+              <button type="submit" hidden />
+            </form>
+            {error && <div className="mt-4"><ErrorBox error={error} /></div>}
+          </Modal.Body>
+          <Modal.Footer><Button variant="secondary" onPress={onClose}>Hủy</Button>
+            <Button isPending={busy} isDisabled={(!project && f.name.trim().length < 2) || !f.drive_url.trim() || !f.supervisor_id} onPress={start}>Bắt đầu nạp hồ sơ</Button></Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+  );
+}
+
 // Danh sách dự án kèm tiến độ; bấm thẻ để xem việc, "Cài đặt" để quản lý
 export default function Projects() {
-  const { companyId, org, lookups, isAdmin, isManager } = useApp();
+  const { companyId, org, lookups, isAdmin, isManager, openTask } = useApp();
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);
   const [editing, setEditing] = useState(undefined);              // undefined: đóng · null: tạo mới · object: sửa
+  const [intake, setIntake] = useState(undefined);                // undefined: đóng · null: dự án mới · object: dự án có sẵn
+  const runs = useLoad(() => companyId ? rpc("app_workflow_runs", { company_id: companyId }) : Promise.resolve([]), [companyId]);
+  const runOf = (pid) => (runs.data || []).find((r) => r.project_id === pid);
   const rows = org.projects.map((p) => {
     const ts = (data || []).filter((t) => t.project_id === p.id);
     const done = ts.filter((t) => t.status === "done").length;
@@ -133,7 +180,7 @@ export default function Projects() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Dự án" sub={`${org.projects.filter((p) => p.active).length} dự án đang thực hiện`}
-        actions={canCreate && <Button onPress={() => setEditing(null)}><Plus className="size-4" />Thêm dự án</Button>} />
+        actions={<>{isAdmin && <Button variant="secondary" onPress={() => setIntake(null)}><FaceRobot className="size-4" />Nạp hồ sơ dự án</Button>}{canCreate && <Button onPress={() => setEditing(null)}><Plus className="size-4" />Thêm dự án</Button>}</>} />
       <ErrorBox error={error} />
       {loading && !data ? <LoadingList rows={3} /> : rows.length ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -152,7 +199,14 @@ export default function Projects() {
                   <span>{nm} thành viên</span>{p.end_date && <span>Hạn {ddmmyyyy(parseDate(p.end_date))}</span>}
                 </span>
               </button>
+              {runOf(p.id) && (
+                <button type="button" onClick={() => openTask(runOf(p.id).root_task)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-left text-sm">
+                  <FaceRobot className="size-4 shrink-0" /><b>{runOf(p.id).state === "running" ? "Đang nạp hồ sơ" : runOf(p.id).state === "done" ? "Đã nạp hồ sơ" : "Đã dừng nạp hồ sơ"}</b>
+                  {Object.entries(runOf(p.id).tasks || {}).map(([k, n]) => <span key={k}>{n} {({ todo: "chờ", in_progress: "đang làm", blocked: "vướng", in_review: "chờ duyệt", done: "xong", cancelled: "hủy" })[k] || k}</span>)}
+                </button>
+              )}
               <span className="flex flex-wrap gap-2">
+                {isAdmin && p.active && !(runOf(p.id)?.state === "running") && <Button size="sm" variant="ghost" onPress={() => setIntake(p)}><FaceRobot className="size-4" />Nạp hồ sơ</Button>}
                 {p.drive_url && <a className="inline-flex h-8 items-center rounded-full bg-surface-secondary px-3 text-sm font-semibold text-accent hover:underline" href={p.drive_url} target="_blank" rel="noopener noreferrer">Thư mục Drive</a>}
                 {p.can_manage && <Button size="sm" variant="ghost" onPress={() => setEditing(p)}><Pencil className="size-4" />Cài đặt</Button>}
               </span>
@@ -161,6 +215,7 @@ export default function Projects() {
         </div>
       ) : <Empty>Chưa có dự án. {canCreate ? "Bấm Thêm dự án để tạo dự án đầu tiên." : "Nhờ quản trị hoặc trưởng phòng tạo dự án."}</Empty>}
       <ProjectDialog project={editing || null} isOpen={editing !== undefined} onClose={() => setEditing(undefined)} />
+      <IntakeDialog project={intake || null} isOpen={intake !== undefined} onClose={() => setIntake(undefined)} />
     </div>
   );
 }
