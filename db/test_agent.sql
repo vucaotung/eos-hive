@@ -576,6 +576,37 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   BEGIN PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'du-an-a', 'name', 'Trùng')); ASSERT false, 'trùng slug'; EXCEPTION WHEN raise_exception THEN NULL; END;
   PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'id', r->>'id', 'slug', 'du-an-a', 'name', 'Dự án A', 'active', false));
   ASSERT (SELECT status = 'done' FROM core.projects WHERE id = (r->>'id')::uuid), 'đóng dự án';
+  -- cài đặt, thành viên, xóa dự án
+  PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'description', 'Mô tả', 'status', 'paused', 'manager_id', 'eeeeeeee-0000-0000-0000-000000000011', 'start_date', '2026-01-01', 'end_date', '2026-12-31'));
+  ASSERT (SELECT status = 'paused' AND manager_id = 'eeeeeeee-0000-0000-0000-000000000011' AND description = 'Mô tả' FROM core.projects WHERE id = (r->>'id')::uuid), 'cài đặt dự án';
+  ASSERT EXISTS (SELECT 1 FROM core.project_members WHERE project_id = (r->>'id')::uuid AND user_id = 'eeeeeeee-0000-0000-0000-000000000011' AND role = 'manager'), 'người quản lý thành thành viên';
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'status', 'xong-roi')); ASSERT false, 'trạng thái sai'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'start_date', '2026-05-01', 'end_date', '2026-01-01')); ASSERT false, 'ngày ngược'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM agent.app_project_member_set(jsonb_build_object('project_id', r->>'id', 'user_id', me, 'role', 'member'));
+  PERFORM agent.app_project_member_set(jsonb_build_object('project_id', r->>'id', 'user_id', me, 'role', 'viewer'));
+  ASSERT (SELECT role FROM core.project_members WHERE project_id = (r->>'id')::uuid AND user_id = me) = 'viewer', 'đổi vai trò thành viên dự án';
+  BEGIN PERFORM agent.app_project_member_set(jsonb_build_object('project_id', r->>'id', 'user_id', 'bbbbbbbb-0000-0000-0000-000000000003', 'role', 'member')); ASSERT NOT EXISTS (SELECT 1 FROM core.memberships WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000003' AND company_id = c AND NOT active), 'x'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_project_member_remove(jsonb_build_object('project_id', r->>'id', 'user_id', mgr)); ASSERT false, 'không gỡ người quản lý'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM agent.app_project_member_remove(jsonb_build_object('project_id', r->>'id', 'user_id', me));
+  ASSERT NOT EXISTS (SELECT 1 FROM core.project_members WHERE project_id = (r->>'id')::uuid AND user_id = me), 'gỡ thành viên dự án';
+  -- người quản lý dự án (thành viên thường) sửa được dự án mình nhưng không đổi phòng, không xóa; người khác không sửa được
+  PERFORM pg_temp.as_user(mgr);
+  PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'name', 'Dự án A (đổi tên)'));
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'department_id', 'dddddddd-0000-0000-0000-000000000002')); ASSERT false, 'trưởng phòng đặt dự án sang phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  ASSERT (SELECT name = 'Dự án A (đổi tên)' FROM core.projects WHERE id = (r->>'id')::uuid), 'quản lý dự án sửa tên';
+  PERFORM agent.app_project_member_set(jsonb_build_object('project_id', r->>'id', 'user_id', me, 'role', 'member'));
+  PERFORM pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000001');
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'name', 'Chiếm quyền')); ASSERT false, 'thành viên thường sửa dự án'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_project_member_remove(jsonb_build_object('project_id', r->>'id', 'user_id', me)); ASSERT false, 'thành viên thường gỡ người'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_project_delete(jsonb_build_object('id', r->>'id')); ASSERT false, 'thành viên thường xóa dự án'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'moi', 'name', 'Tạo thử')); ASSERT false, 'thành viên thường tạo dự án'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(own);
+  -- xóa dự án: việc giữ nguyên, chỉ mất liên kết
+  INSERT INTO work.tasks (id, company_id, title, project_id, created_by) OVERRIDING SYSTEM VALUE VALUES (9500, c, 'Việc trong dự án', (r->>'id')::uuid, own);
+  ASSERT (agent.app_project_delete(jsonb_build_object('id', r->>'id'))->>'tasks_unlinked')::int = 1, 'xóa dự án';
+  ASSERT (SELECT project_id IS NULL FROM work.tasks WHERE id = 9500) AND NOT EXISTS (SELECT 1 FROM core.projects WHERE id = (r->>'id')::uuid), 'việc còn, mất liên kết';
+  r := agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'du-an-b', 'name', 'Dự án B'));
+  PERFORM agent.app_project_save(jsonb_build_object('id', r->>'id', 'active', false));
   -- thông tin tổ chức
   r := agent.app_org(jsonb_build_object('company_id', c));
   ASSERT jsonb_array_length(r->'departments') >= 3 AND jsonb_array_length(r->'members') >= 4 AND jsonb_array_length(r->'projects') = 1 AND jsonb_array_length(r->'flows') >= 1, format('app_org: %s', left(r::text, 200));

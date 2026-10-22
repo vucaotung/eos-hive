@@ -23,6 +23,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [Chưa phát hành]
 
+### Thêm
+- **Tab Dự án** trong thanh điều hướng: danh sách dự án kèm tiến độ; thêm, cài đặt (mô tả, trạng thái, người quản lý, ngày, Drive), thành viên dự án và xóa dự án. Bỏ tab Dự án trong Quản trị. Migration `0007` (`app_project_save` mở rộng, `app_project_member_set/remove`, `app_project_delete`, `_can_manage_project`).
+
 ### Sửa
 - Caddy: gốc `work.enterpriseos.bond/` chuyển sang `/app/` (trước đó chỉ trả chữ "Enterprise OS"); sửa cú pháp `redir` thiếu `*` làm `/app` và `/` không chuyển hướng; đường lạ trả 404. A8 kiểm các chuyển hướng này.
 

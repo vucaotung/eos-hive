@@ -289,6 +289,21 @@ try {
     const me = await minh.me(); assert.equal(me.json.user.drive_status, 'pending'); assert.equal(me.json.user.drive_folder_url, 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlM');
     assert.match((await minh.ok('app_drive_names'))[0], /^DEO - demo - HC - /);
   });
+  await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
+    const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
+    const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });
+    const org = await adm.ok('app_org', { company_id: CO }); const p = org.projects.find((x) => x.id === pr.id);
+    assert.equal(p.status, 'planned'); assert.equal(p.can_manage, true); assert.ok(org.project_members.some((m) => m.project_id === pr.id && m.role === 'manager'));
+    assert.equal((await adm.rpc('app_project_save', { id: pr.id, status: 'sai' })).status, 400);
+    await adm.ok('app_project_member_set', { project_id: pr.id, user_id: ID.kt, role: 'member' });
+    assert.equal((await kt.rpc('app_project_save', { id: pr.id, name: 'Chiếm' })).status, 403);
+    assert.equal((await kt.rpc('app_project_delete', { id: pr.id })).status, 403);
+    assert.equal((await kt.rpc('app_project_member_set', { project_id: pr.id, user_id: ID.kt, role: 'viewer' })).status, 403);
+    assert.equal((await (await as('khach@khac.vn')).rpc('app_project_member_set', { project_id: pr.id, user_id: ID.kt, role: 'member' })).status, 403);
+    const t = await adm.ok('app_task_save', { company_id: CO, title: 'Việc của công trình X', project_id: pr.id });
+    assert.equal((await adm.ok('app_project_delete', { id: pr.id })).tasks_unlinked, 1);
+    assert.equal((await adm.ok('app_task', { id: t.id })).task.project_id, null);
+  });
   await step('kết nối AI: cấp mã MCP (hiện một lần, không lộ băm), liệt kê, thu hồi; quản trị hệ thống xem tổng quan', async () => {
     const minh = await as('minh@demo.vn'), adm = await as('admin@demo.vn');
     const t = await minh.ok('web_token_issue', { name: 'Claude laptop', client: 'claude', scopes: ['read', 'write'], days: 30 });

@@ -8,7 +8,8 @@
 | **Việc** | danh sách hoặc bảng Kanban; lọc (đang mở, của tôi, tôi giao, agent hỏi, chờ duyệt, quá hạn, xong 60 ngày), tìm, lọc phòng/người/dự án; mở một việc để sửa, đổi trạng thái, nộp, trao đổi, gắn link Drive, chia việc con |
 | **Duyệt** | mỗi phiếu là một bước duyệt (đóng dấu hoặc trả lại có lý do) hoặc kết quả agent nộp cho người giao xem (chấp nhận hoặc trả lại để làm lại) |
 | **Báo cáo** | theo phòng ban và theo người: đang mở, quá hạn, vướng, chờ duyệt, xong 30 ngày, tỷ lệ đúng hạn |
-| **Quản trị** | thành viên và vai trò, **mã mời**, phòng ban, quy trình duyệt 1–6 bước, dự án; người có `is_system_admin` thêm tab **Agent và MCP** (cầu nối Hermes, agent, mã MCP của mọi người, nhật ký gọi MCP) |
+| **Dự án** | thẻ từng dự án (tiến độ, việc mở/quá hạn, người quản lý, số thành viên); bấm thẻ để xem việc của dự án; **Thêm dự án**, **Cài đặt** (tên, mã, trạng thái, phòng ban, người quản lý, ngày, Drive, mô tả), **Thành viên dự án** (quản lý/thành viên/người xem), **Xóa dự án** |
+| **Quản trị** | thành viên và vai trò, **mã mời**, phòng ban, quy trình duyệt 1–6 bước; người có `is_system_admin` thêm tab **Agent và MCP** (cầu nối Hermes, agent, mã MCP của mọi người, nhật ký gọi MCP) |
 | **Tài khoản** | thư mục Drive làm việc, **Kết nối AI agent** (cấp/thu hồi mã MCP), giao diện sáng/tối, đăng xuất |
 
 ## Kiến trúc
@@ -30,6 +31,7 @@
 | Sửa việc | owner/admin: tất cả · manager: việc phòng mình · member: việc mình giao hoặc làm |
 | Nộp việc | người phụ trách hoặc người có quyền sửa |
 | Duyệt bước | bước "người cụ thể": người đó · bước "trưởng phòng": trưởng phòng của phòng có việc (phòng chưa có trưởng phòng thì owner/admin) · bước "quản trị": admin/owner · bước "chủ sở hữu": owner |
+| Dự án | tạo: owner/admin/manager (manager chỉ vào phòng mình) · cài đặt và thành viên: owner/admin, trưởng phòng của phòng sở hữu, hoặc người quản lý dự án (không đổi được phòng) · xóa: owner/admin hoặc trưởng phòng sở hữu; việc của dự án còn nguyên, chỉ mất liên kết |
 | Tạo mã mời | owner/admin (admin không mời owner) · manager chỉ mời thành viên vào phòng mình |
 | Đổi vai trò/khóa thành viên | owner/admin; không tự hạ hoặc tự khóa mình; công ty luôn còn ít nhất một owner; admin không đụng owner |
 
@@ -71,6 +73,7 @@ Mã giao diện giữ nguyên bố cục Dẹo Work cũ (`legacy/deo-work/web`),
 - **Thư mục Drive của từng người** được ghi nhận (link, trạng thái "đã lưu") nhưng **chưa có tiến trình kiểm tra thư mục** đổi trạng thái sang "đã kết nối"/"cần sửa"; người dùng bỏ qua được bước này.
 - Chưa có: thông báo đẩy, tải tệp lên (chỉ gắn link Drive), việc lặp lại, theo dõi người xem (`task_watchers` có trong CSDL nhưng chưa có nút), Service Worker/cài như ứng dụng (có manifest).
 - Giới hạn tốc độ nằm trong bộ nhớ một tiến trình (chưa có ở lớp Caddy/Cloudflare). Phiên không thu hồi riêng lẻ. Chưa có MFA riêng: dựa vào xác thực hai bước của Google.
+- Thành viên dự án chưa quyết định quyền xem việc (quyền xem vẫn theo phòng/người làm/giao/duyệt); mới dùng để tổ chức và hiển thị.
 - Vai trò tùy biến (ngoài owner/admin/manager/member) chưa có màn hình; bảng `core.roles` đã sẵn.
 
 ## Kiểm thử

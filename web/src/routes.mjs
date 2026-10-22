@@ -10,7 +10,7 @@ const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 // Hàm nhận một tham số jsonb (app_*): danh sách tên
 const JSON_FNS = ['app_org', 'app_tasks', 'app_task', 'app_task_save', 'app_submit', 'app_decide', 'app_answer', 'app_comment', 'app_link_add', 'app_link_remove',
   'app_accept', 'app_reject', 'app_my_approvals', 'app_report', 'app_dept_save', 'app_member_set', 'app_invite_create', 'app_invites', 'app_invite_revoke',
-  'app_flow_save', 'app_flow_archive', 'app_project_save', 'app_drive_names', 'app_drive_set'];
+  'app_flow_save', 'app_flow_archive', 'app_project_save', 'app_project_member_set', 'app_project_member_remove', 'app_project_delete', 'app_drive_names', 'app_drive_set'];
 // Hàm có tham số định kiểu (mã MCP, quản trị agent): [SQL, hàm dựng tham số từ body]
 const bad = (m) => Object.assign(new Error(m), { client: true });
 const TYPED = {

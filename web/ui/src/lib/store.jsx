@@ -25,7 +25,7 @@ export function AppProvider({ children }) {
   const [meError, setMeError] = useState(null);
   const [companyId, setCompanyId] = useState(store.get("deo.company"));
   const [route, setRoute] = useState(readRoute());
-  const [org, setOrg] = useState({ departments: [], members: [], projects: [], flows: [] });
+  const [org, setOrg] = useState({ departments: [], members: [], projects: [], project_members: [], flows: [] });
   const [version, setVersion] = useState(0);            // tăng để các trang tải lại dữ liệu
   const [openTaskId, setOpenTaskId] = useState(null);
   const [theme, setThemeState] = useState(store.get("deo.theme") || "");
@@ -46,7 +46,7 @@ export function AppProvider({ children }) {
 
   const signOut = useCallback(async () => {
     try { await logout(); } catch { /* đã hết phiên */ }
-    store.set("deo.company", null); setMe(null); setOrg({ departments: [], members: [], projects: [], flows: [] }); location.hash = "#/login";
+    store.set("deo.company", null); setMe(null); setOrg({ departments: [], members: [], projects: [], project_members: [], flows: [] }); location.hash = "#/login";
   }, []);
 
   // Chọn công ty hiện hành

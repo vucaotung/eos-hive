@@ -6,31 +6,7 @@ import { rpc } from "../lib/api.js";
 import { ROLE, DRIVE, ddmmyyyy, ago } from "../lib/format.js";
 import { CopyButton, Empty, ErrorBox, PageHeader, Person, SelectField, TextInput } from "../components/ui.jsx";
 import AgentAdmin from "../components/AgentAdmin.jsx";
-
-function Dialog({ title, isOpen, onClose, onSave, busy, error, children, saveLabel = "Lưu" }) {
-  return (
-    <Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <Modal.Container placement="auto" scroll="inside">
-        <Modal.Dialog className="sm:max-w-lg">
-          <Modal.CloseTrigger />
-          <Modal.Header><Modal.Heading>{title}</Modal.Heading></Modal.Header>
-          <Modal.Body><form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); onSave(); }}>{children}<button type="submit" hidden /></form>
-            {error && <div className="mt-4"><ErrorBox error={error} /></div>}</Modal.Body>
-          <Modal.Footer><Button variant="secondary" onPress={onClose}>Hủy</Button><Button isPending={busy} onPress={onSave}>{saveLabel}</Button></Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
-  );
-}
-
-function useEditor(initial) {
-  const [open, setOpen] = useState(false), [f, setF] = useState(initial), [busy, setBusy] = useState(false), [error, setError] = useState(null);
-  return {
-    open, f, busy, error, set: (k) => (v) => setF((s) => ({ ...s, [k]: v })),
-    start: (v = initial) => { setF(v); setError(null); setOpen(true); }, close: () => setOpen(false),
-    run: async (fn, ok) => { setBusy(true); setError(null); try { await fn(); toast.success(ok); setOpen(false); } catch (e) { setError(e); } finally { setBusy(false); } },
-  };
-}
+import { Dialog, useEditor } from "../components/Dialog.jsx";
 
 const rowCls = "flex flex-wrap items-center gap-x-4 gap-y-1 bg-surface px-4 py-3";
 
@@ -208,38 +184,6 @@ function Flows() {
   );
 }
 
-function Projects() {
-  const { companyId, org, lookups, loadOrg } = useApp();
-  const ed = useEditor({ id: null, slug: "", name: "", department_id: null, drive_url: "", active: true });
-  const slugify = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return (
-    <div className="flex flex-col gap-4">
-      <div><Button onPress={() => ed.start()}><Plus className="size-4" />Thêm dự án</Button></div>
-      {org.projects.length ? (
-        <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
-          {org.projects.map((p) => (
-            <div key={p.id} className={rowCls}>
-              <span className="min-w-0 flex-1"><b>{p.name}</b><span className="ml-2 text-sm text-muted">{p.slug}</span></span>
-              <span className="text-sm text-muted">{lookups.dept[p.department_id]?.code || "Chung"}</span>
-              {p.drive_url && <a className="text-sm font-semibold text-accent hover:underline" href={p.drive_url} target="_blank" rel="noopener noreferrer">Thư mục Drive</a>}
-              {!p.active && <span className="text-sm font-semibold text-warning">Đã đóng</span>}
-              <Button size="sm" variant="ghost" onPress={() => ed.start({ id: p.id, slug: p.slug, name: p.name, department_id: p.department_id, drive_url: p.drive_url || "", active: p.active })}><Pencil className="size-4" />Sửa</Button>
-            </div>
-          ))}
-        </div>
-      ) : <Empty>Chưa có dự án.</Empty>}
-      <Dialog title={ed.f.id ? "Sửa dự án" : "Thêm dự án"} isOpen={ed.open} onClose={ed.close} busy={ed.busy} error={ed.error}
-        onSave={() => ed.run(async () => { await rpc("app_project_save", { company_id: companyId, slug: ed.f.slug || slugify(ed.f.name), name: ed.f.name, department_id: ed.f.department_id, drive_url: ed.f.drive_url, id: ed.f.id, active: ed.f.active }); await loadOrg(); }, "Đã lưu dự án")}>
-        <TextInput label="Tên dự án" value={ed.f.name} onChange={(v) => { ed.set("name")(v); if (!ed.f.id) ed.set("slug")(slugify(v)); }} isRequired />
-        <TextInput label="Mã dự án" value={ed.f.slug} onChange={ed.set("slug")} description="Chữ thường, số và gạch nối. Dùng chung với Drive và kho tri thức." />
-        <SelectField label="Phòng ban" value={ed.f.department_id} onChange={ed.set("department_id")} allowEmpty emptyLabel="Chung công ty" options={org.departments.map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
-        <TextInput label="Thư mục Drive của dự án" type="url" value={ed.f.drive_url} onChange={ed.set("drive_url")} placeholder="https://drive.google.com/drive/folders/..." />
-        {ed.f.id && <Switch isSelected={ed.f.active} onChange={ed.set("active")}><Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control>Đang thực hiện</Switch.Content></Switch>}
-      </Dialog>
-    </div>
-  );
-}
-
 export default function Admin() {
   const { isAdmin, isManager, isSystemAdmin, membership } = useApp();
   const tabs = [
@@ -247,7 +191,6 @@ export default function Admin() {
     (isAdmin || isManager) && ["invites", "Mã mời", Invites],
     isAdmin && ["departments", "Phòng ban", Departments],
     isAdmin && ["flows", "Quy trình duyệt", Flows],
-    (isAdmin || isManager) && ["projects", "Dự án", Projects],
     isSystemAdmin && ["agents", "Agent và MCP", AgentAdmin],
   ].filter(Boolean);
   const [tab, setTab] = useState(tabs[0]?.[0]);
