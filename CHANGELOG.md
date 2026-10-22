@@ -13,6 +13,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - Skill Hermes: `dieu-phoi-du-an`, `ho-so-danh-muc` (Văn thư), `ra-soat-phap-che`, `kb-quan-tri-du-lieu`; `deploy/setup_project_workflow.sql`.
 - Migration `0008`; bảng `agent.workflows`, `workflow_runs`, `task_scopes` (111 bảng). `make test-runner`; nghiệm thu **A9** (runner Z2 nhận việc qua MCP, chặn và hỏi người khi gặp giai đoạn lạ); `make audit` kiểm mã runner chỉ có phạm vi `runner` và mã người không có phạm vi dành riêng cho agent.
 
+### Sửa
+- `scripts/install_skill.sh`: bản skill cũ được sao lưu **ngoài** cây skills (`<profile>/skill-backups/`). Trước đó để `.bak.<giờ>` cạnh skill nên Hermes thấy hai skill trùng tên và mọi thẻ Kanban của profile hỏng (`kanban_skills_unavailable`), phát hiện ở lần chạy thật đầu tiên.
+
 ### Đổi
 - `agent.delegate`: việc con trong một lần chạy bắt buộc có `scope`. Trả lời câu hỏi của thẻ runner đưa thẻ về sẵn sàng (không gửi lệnh sang cầu nối Hermes). Huỷ việc của runner không tạo lệnh hủy cho cầu nối.
 - Mã agent hiện có được cấp thêm phạm vi `project` (migration 0008, không cần đổi mã trong profile).
