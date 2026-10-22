@@ -71,7 +71,7 @@ Vai trò: owner/admin cả công ty · trưởng phòng và thành viên theo ph
 | CI đỏ ở "Giao diện dựng khớp" | quên `make ui` trước khi commit |
 
 ## Nạp hồ sơ dự án (docs/12)
-- Bắt đầu: Dự án → **Nạp hồ sơ dự án** (link Drive + người theo dõi). Điều phối chia việc; runner Z2 xử lý; Văn thư lập danh mục; Pháp chế rà soát; người nạp WeKnora trả lời `kb:<mã>`.
+- Bắt đầu: Dự án → **Nạp hồ sơ dự án** (link Drive + người theo dõi). Điều phối chia việc; runner Z2 xử lý; Văn thư lập danh mục; Pháp chế rà soát; `quan-tri-du-lieu` nạp WeKnora bằng `eos_kb_ingest` (khóa ở `mcp/.env` trên vps169, biến `WEKNORA_BASE_URL`, `WEKNORA_API_KEY`).
 - Runner Z2: `systemctl --user status eos-z2-runner`; `journalctl --user -u eos-z2-runner -f`; thử một lần `python3 runner/eos_z2_runner.py --once`; cấp lại mã `scripts/issue_runner_token.sh vps169`.
 - Phạm vi của việc: ngăn chi tiết việc, hoặc `SELECT task_id, skill, scope FROM agent.task_scopes WHERE run_id = …`.
 - Cài skill: `scripts/install_skill.sh vps173 eos-van-thu ho-so-danh-muc`.
