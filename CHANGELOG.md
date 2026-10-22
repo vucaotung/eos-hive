@@ -9,7 +9,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - **Dẹo Work trên lược đồ 108 bảng** (`docs/10`): đưa giao diện quản lý dự án và công việc cũ (`legacy/deo-work`, React + HeroUI + Tailwind, chế độ tối, di động) lên Tổ Ong, chạy ở `/app`. Màn hình Hôm nay, Việc (danh sách và Kanban, lọc, tìm, ngăn chi tiết, việc con, link Drive), Duyệt (con dấu, nhiều bước), Báo cáo, Quản trị (thành viên, mã mời, phòng ban, quy trình duyệt, dự án), Tài khoản (thư mục Drive, Kết nối AI, giao diện sáng/tối). Trang agent cũ được gộp: **Kết nối AI** nằm ở Tài khoản; **Agent và MCP** (cầu nối, agent, mã MCP, nhật ký gọi) là tab trong Quản trị cho người quản trị hệ thống; kết quả agent nộp hiện trong Duyệt và ngăn chi tiết (chấp nhận hoặc trả lại).
 - **Mã mời** như thiết kế cũ: link mời hoặc nhập mã sau khi đăng nhập Google; mã gắn vai trò, phòng ban, email, số lượt, hạn; trưởng phòng chỉ mời thành viên vào phòng mình.
 - **Vai trò mẫu và quyền** (`owner`, `admin`, `member`; trưởng phòng = `is_dept_head`) và **động cơ duyệt nhiều bước** (1–6 bước: trưởng phòng, quản trị, chủ sở hữu, người cụ thể) trên `core.approval_*`; `agent.accept_result` nay mở yêu cầu duyệt khi việc của agent có quy trình (trước đó trả `to_approval` mà không làm gì).
-- Migration `0006`, `db/61_app.sql`: hàm `agent.app_*` (jsonb vào, jsonb ra, kiểm quyền trong hàm), `core.invites.dept_head`, gán vai trò cho thành viên hiện có.
+- Migration `0006` và `0007` (dự án), `db/61_app.sql`: hàm `agent.app_*` (jsonb vào, jsonb ra, kiểm quyền trong hàm), `core.invites.dept_head`, gán vai trò cho thành viên hiện có.
+- **Tab Dự án** trong thanh điều hướng: danh sách dự án kèm tiến độ; thêm, cài đặt (mô tả, trạng thái, người quản lý, ngày, Drive), thành viên dự án và xóa dự án. Bỏ tab Dự án trong Quản trị. Migration `0007` (`app_project_save` mở rộng, `app_project_member_set/remove`, `app_project_delete`, `_can_manage_project`).
 - `make ui` dựng giao diện; CI kiểm bản dựng `web/public` khớp mã nguồn `web/ui`.
 
 ### Đổi
@@ -18,16 +19,13 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - Thu hồi quyền `web_svc` với `web_login`, `web_me`, `web_create_task`, `web_task`, `web_cancel_task`, `mcp_my_tasks`, `mcp_my_day`, `mcp_comment`, `accept_result`, `reject_result` (thay bằng `app_*`; hàm cũ còn trong CSDL).
 - Cấu hình web: `API_RATE_PER_MIN` (mặc định 600/phút/người) thay `WRITE_RATE_PER_MIN`; thêm `AGENT_DRIVE_EMAIL`, `MCP_URL`.
 
+### Sửa
+- Caddy: gốc `work.enterpriseos.bond/` chuyển sang `/app/` (trước đó chỉ trả chữ "Enterprise OS"); sửa cú pháp `redir` thiếu `*` làm `/app` và `/` không chuyển hướng; đường lạ trả 404. A8 kiểm các chuyển hướng này.
+
 ### Hạn chế
 - Chưa có tiến trình kiểm tra thư mục Drive của người dùng (trạng thái chỉ dừng ở "đã lưu"); xem `docs/10`.
 
 ## [Chưa phát hành]
-
-### Thêm
-- **Tab Dự án** trong thanh điều hướng: danh sách dự án kèm tiến độ; thêm, cài đặt (mô tả, trạng thái, người quản lý, ngày, Drive), thành viên dự án và xóa dự án. Bỏ tab Dự án trong Quản trị. Migration `0007` (`app_project_save` mở rộng, `app_project_member_set/remove`, `app_project_delete`, `_can_manage_project`).
-
-### Sửa
-- Caddy: gốc `work.enterpriseos.bond/` chuyển sang `/app/` (trước đó chỉ trả chữ "Enterprise OS"); sửa cú pháp `redir` thiếu `*` làm `/app` và `/` không chuyển hướng; đường lạ trả 404. A8 kiểm các chuyển hướng này.
 
 ## [0.0.5] — 2026-10-20
 

@@ -47,6 +47,7 @@ Chưa có Postgres: `docker run -d --name eos-pg -e POSTGRES_PASSWORD=pw -p 5432
 | Người duyệt rủi ro | [docs/06-bao-mat.md](docs/06-bao-mat.md), [docs/07-gia-dinh-can-kiem-chung.md](docs/07-gia-dinh-can-kiem-chung.md) |
 | Soạn văn bản hành chính bằng Văn thư AI | [docs/09-van-thu-nd30.md](docs/09-van-thu-nd30.md) |
 | Dùng/vận hành giao diện web | [docs/10-web.md](docs/10-web.md) |
+| Tra nhanh lệnh, quy trình phát hành, sự cố | [docs/11-cheatsheet.md](docs/11-cheatsheet.md) |
 | Claude Code đi triển khai | [prompts/README.md](prompts/README.md) |
 
 Lịch sử thay đổi: [CHANGELOG.md](CHANGELOG.md). Lộ trình: [docs/08-lo-trinh.md](docs/08-lo-trinh.md).
