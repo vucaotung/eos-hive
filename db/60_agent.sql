@@ -828,9 +828,9 @@ BEGIN
   END IF;
   UPDATE agent.reports SET verdict = 'accepted' WHERE task_id = p_task AND verdict = 'pending';
   IF t.approval_flow_id IS NOT NULL THEN
-    -- còn quy trình duyệt: giữ Chờ duyệt, bước duyệt do core.approval_* xử lý
+    -- còn quy trình duyệt: giữ Chờ duyệt và mở yêu cầu duyệt (core.approval_requests), các bước do agent.app_decide xử lý
     INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, 'user:' || me, 'note', coalesce(p_note, 'Đã xem kết quả của agent, chuyển duyệt'));
-    RETURN 'to_approval';
+    RETURN CASE agent._approval_start(p_task, me) WHEN 'in_review' THEN 'to_approval' ELSE 'done' END;   -- agent._approval_start: db/61_app.sql
   END IF;
   UPDATE work.tasks SET status = 'done', completed_at = now(), updated_at = now() WHERE id = p_task;
   INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, 'user:' || me, 'approve', coalesce(p_note, 'Chấp nhận kết quả'));

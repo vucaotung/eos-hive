@@ -20,6 +20,11 @@ jobs:
       - run: scripts/test_db.sh
       - run: scripts/test_mcp.sh
       - run: scripts/test_web.sh
+      # Bản dựng giao diện (web/public) được commit: phải khớp mã nguồn web/ui
+      - name: Giao diện dựng khớp bản commit
+        run: |
+          cd web/ui && npm ci --ignore-scripts --no-audit --no-fund && npm run build
+          cd ../.. && test -z "$(git status --porcelain web/public)" || { git status --short web/public; echo 'web/public lệch mã nguồn: chạy make ui rồi commit' >&2; exit 1; }
       # Cầu nối cần binary PostgREST; tải bản cố định để lần chạy lặp lại được
       - name: PostgREST
         run: |

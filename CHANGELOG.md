@@ -3,6 +3,24 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## [0.1.0] — 2026-10-22
+
+### Thêm
+- **Dẹo Work trên lược đồ 108 bảng** (`docs/10`): đưa giao diện quản lý dự án và công việc cũ (`legacy/deo-work`, React + HeroUI + Tailwind, chế độ tối, di động) lên Tổ Ong, chạy ở `/app`. Màn hình Hôm nay, Việc (danh sách và Kanban, lọc, tìm, ngăn chi tiết, việc con, link Drive), Duyệt (con dấu, nhiều bước), Báo cáo, Quản trị (thành viên, mã mời, phòng ban, quy trình duyệt, dự án), Tài khoản (thư mục Drive, Kết nối AI, giao diện sáng/tối). Trang agent cũ được gộp: **Kết nối AI** nằm ở Tài khoản; **Agent và MCP** (cầu nối, agent, mã MCP, nhật ký gọi) là tab trong Quản trị cho người quản trị hệ thống; kết quả agent nộp hiện trong Duyệt và ngăn chi tiết (chấp nhận hoặc trả lại).
+- **Mã mời** như thiết kế cũ: link mời hoặc nhập mã sau khi đăng nhập Google; mã gắn vai trò, phòng ban, email, số lượt, hạn; trưởng phòng chỉ mời thành viên vào phòng mình.
+- **Vai trò mẫu và quyền** (`owner`, `admin`, `member`; trưởng phòng = `is_dept_head`) và **động cơ duyệt nhiều bước** (1–6 bước: trưởng phòng, quản trị, chủ sở hữu, người cụ thể) trên `core.approval_*`; `agent.accept_result` nay mở yêu cầu duyệt khi việc của agent có quy trình (trước đó trả `to_approval` mà không làm gì).
+- Migration `0006`, `db/61_app.sql`: hàm `agent.app_*` (jsonb vào, jsonb ra, kiểm quyền trong hàm), `core.invites.dept_head`, gán vai trò cho thành viên hiện có.
+- `make ui` dựng giao diện; CI kiểm bản dựng `web/public` khớp mã nguồn `web/ui`.
+
+### Đổi
+- Máy chủ web (`web/src`) viết lại thành API JSON bảng trắng + phục vụ giao diện React dựng sẵn; bỏ trang HTML dựng ở máy chủ. Đăng nhập Google nay chuyển về màn đăng nhập của ứng dụng (`#/login?e=…`) thay vì trang HTML riêng. Phông chữ tự lưu.
+- CSP: `style-src` thêm `'unsafe-inline'` (thư viện giao diện đặt `style` theo phần tử); `script-src` vẫn chỉ `'self'`. `make audit` báo cảnh báo; A8 kiểm script-src chặt.
+- Thu hồi quyền `web_svc` với `web_login`, `web_me`, `web_create_task`, `web_task`, `web_cancel_task`, `mcp_my_tasks`, `mcp_my_day`, `mcp_comment`, `accept_result`, `reject_result` (thay bằng `app_*`; hàm cũ còn trong CSDL).
+- Cấu hình web: `API_RATE_PER_MIN` (mặc định 600/phút/người) thay `WRITE_RATE_PER_MIN`; thêm `AGENT_DRIVE_EMAIL`, `MCP_URL`.
+
+### Hạn chế
+- Chưa có tiến trình kiểm tra thư mục Drive của người dùng (trạng thái chỉ dừng ở "đã lưu"); xem `docs/10`.
+
 ## [Chưa phát hành]
 
 ### Sửa

@@ -322,46 +322,274 @@ INSERT INTO core.memberships (user_id, company_id, department_id) VALUES
  ('eeeeeeee-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001'),
  ('eeeeeeee-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001');
 
-DO $$ DECLARE r jsonb; BEGIN
-  r := agent.web_login('web.test@demo.vn', 'sub-1', 'Web Test', 'https://x/a.png');
-  ASSERT (r->>'ok')::boolean AND r->>'user_id' = 'eeeeeeee-0000-0000-0000-000000000001', format('login ok (không phân biệt hoa thường): %s', r);
-  ASSERT (SELECT google_sub FROM core.users WHERE id = 'eeeeeeee-0000-0000-0000-000000000001') = 'sub-1', 'sub gắn lần đầu';
-  ASSERT (agent.web_login('web.test@demo.vn', 'sub-1', 'x', NULL)->>'ok')::boolean, 'cùng sub: vào được';
-  ASSERT agent.web_login('web.test@demo.vn', 'sub-KHAC', 'x', NULL)->>'reason' = 'sub_mismatch', 'sub khác bị chặn';
-  ASSERT agent.web_login('nguoi.la@demo.vn', 'sub-9', 'x', NULL)->>'reason' = 'not_allowed', 'email lạ không vào được';
-  ASSERT agent.web_login('web.khoa@demo.vn', 'sub-3', 'x', NULL)->>'reason' = 'not_allowed', 'tài khoản bị khóa không vào được';
-  ASSERT agent.web_login('web.agent@demo.vn', 'sub-4', 'x', NULL)->>'reason' = 'not_allowed', 'tài khoản agent không đăng nhập web';
-  ASSERT agent.web_login('', 'sub', 'x', NULL)->>'reason' = 'invalid', 'thiếu email';
-  ASSERT (SELECT count(*) FROM core.audit_log WHERE module = 'web' AND action = 'login' AND user_id = 'eeeeeeee-0000-0000-0000-000000000001') = 2, 'đăng nhập thành công được ghi nhật ký';
-  RAISE NOTICE 'Web đăng nhập ok';
+-- ----- Lớp ứng dụng web (db/61_app.sql): đăng nhập + mã mời, vai trò, việc, duyệt nhiều bước, quản trị -----
+CREATE FUNCTION pg_temp.as_user(u uuid) RETURNS void LANGUAGE sql AS $f$
+  SELECT set_config('request.jwt.claims', CASE WHEN u IS NULL THEN '{"via":"web"}' ELSE json_build_object('sub', u, 'via', 'web')::text END, true) $f$;
+
+INSERT INTO core.departments (id, company_id, code, name) VALUES ('dddddddd-0000-0000-0000-000000000002','22222222-2222-2222-2222-222222222222','KT','Kế toán');
+INSERT INTO core.users (id, google_sub, email, name, kind) VALUES
+ ('eeeeeeee-0000-0000-0000-000000000011', 'g-mgr', 'truongphong@demo.vn', 'Trưởng phòng HC', 'person'),
+ ('eeeeeeee-0000-0000-0000-000000000012', 'g-kt',  'ketoan@demo.vn',      'Kế toán viên', 'person');
+INSERT INTO core.memberships (user_id, company_id, department_id, is_dept_head) VALUES
+ ('eeeeeeee-0000-0000-0000-000000000011', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001', true),
+ ('eeeeeeee-0000-0000-0000-000000000012', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000002', false);
+INSERT INTO core.user_roles (company_id, user_id, role_id) VALUES
+ ('22222222-2222-2222-2222-222222222222', 'eeeeeeee-0000-0000-0000-000000000001', agent._sys_role('member')),
+ ('22222222-2222-2222-2222-222222222222', 'eeeeeeee-0000-0000-0000-000000000002', agent._sys_role('owner')),
+ ('22222222-2222-2222-2222-222222222222', 'eeeeeeee-0000-0000-0000-000000000011', agent._sys_role('member')),
+ ('22222222-2222-2222-2222-222222222222', 'eeeeeeee-0000-0000-0000-000000000012', agent._sys_role('member'));
+
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; BEGIN
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000002', c) = 'owner', 'owner';
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000011', c) = 'manager', 'trưởng phòng';
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000001', c) = 'member', 'thành viên';
+  ASSERT agent._role_of('bbbbbbbb-0000-0000-0000-000000000003', c) = 'member', 'thành viên không có dòng user_roles vẫn là member';
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000003', c) IS NULL, 'người ngoài/khóa không có vai trò';
+  ASSERT (SELECT count(*) FROM core.roles WHERE company_id IS NULL AND builtin) = 3, '3 vai trò mẫu';
+  ASSERT core.perm_scope_of('eeeeeeee-0000-0000-0000-000000000002', c, 'work.task.view') = 'company'
+     AND core.perm_scope_of('eeeeeeee-0000-0000-0000-000000000001', c, 'work.task.view') = 'department', 'phạm vi quyền xem việc theo vai trò';
+  RAISE NOTICE 'Vai trò và quyền mẫu ok';
 END $$;
 
-DO $$ DECLARE r jsonb; tid bigint; t jsonb; BEGIN
-  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000001","via":"web"}', true);
-  r := agent.web_me();
-  ASSERT r->'user'->>'email' = 'Web.Test@Demo.vn' AND (r->>'is_admin')::boolean = false, format('web_me %s', r);
+-- Đăng nhập và mã mời
+DO $$ DECLARE r jsonb; inv jsonb; c constant uuid := '22222222-2222-2222-2222-222222222222'; u uuid; BEGIN
+  r := agent.app_login(jsonb_build_object('email', 'web.test@demo.vn', 'sub', 'sub-1', 'name', 'Web Test', 'avatar', 'https://x/a.png'));
+  ASSERT (r->>'ok')::boolean AND r->>'user_id' = 'eeeeeeee-0000-0000-0000-000000000001', format('login ok (không phân biệt hoa thường): %s', r);
+  ASSERT (SELECT google_sub FROM core.users WHERE id = 'eeeeeeee-0000-0000-0000-000000000001') = 'sub-1', 'sub gắn lần đầu';
+  ASSERT (agent.app_login(jsonb_build_object('email', 'web.test@demo.vn', 'sub', 'sub-1'))->>'ok')::boolean, 'cùng sub: vào được';
+  ASSERT agent.app_login(jsonb_build_object('email', 'web.test@demo.vn', 'sub', 'sub-KHAC'))->>'reason' = 'sub_mismatch', 'sub khác bị chặn';
+  ASSERT agent.app_login(jsonb_build_object('email', 'nguoi.la@demo.vn', 'sub', 'sub-9'))->>'reason' = 'invite_required', 'email lạ cần mã mời';
+  ASSERT agent.app_login(jsonb_build_object('email', 'web.khoa@demo.vn', 'sub', 'sub-3'))->>'reason' = 'not_allowed', 'tài khoản bị khóa không vào được';
+  ASSERT agent.app_login(jsonb_build_object('email', 'web.agent@demo.vn', 'sub', 'sub-4'))->>'reason' = 'not_allowed', 'tài khoản agent không đăng nhập web';
+  ASSERT agent.app_login(jsonb_build_object('email', '', 'sub', 'sub'))->>'reason' = 'invalid', 'thiếu email';
+  ASSERT agent.app_login(jsonb_build_object('email', 'nguoi.la@demo.vn', 'sub', 'sub-9', 'invite', 'KHONGCO1'))->>'reason' = 'invite_invalid', 'mã mời sai';
+  ASSERT NOT EXISTS (SELECT 1 FROM core.users WHERE email = 'nguoi.la@demo.vn'), 'mã sai không để lại tài khoản';
+
+  -- chủ sở hữu tạo mã; người mới vào bằng mã
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000002');
+  inv := agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member', 'department_id', 'dddddddd-0000-0000-0000-000000000002', 'max_uses', 1, 'days', 7, 'note', 'Nhân viên mới'));
+  ASSERT inv->>'code' ~ '^[A-Z0-9]{8}$', format('mã mời: %s', inv);
+  r := agent.app_login(jsonb_build_object('email', 'moi@demo.vn', 'sub', 'sub-new', 'name', 'Người Mới', 'invite', lower(inv->>'code')));
+  ASSERT (r->>'ok')::boolean, format('vào bằng mã: %s', r);
+  u := (r->>'user_id')::uuid;
+  ASSERT agent._role_of(u, c) = 'member' AND (SELECT department_id FROM core.memberships WHERE user_id = u AND company_id = c) = 'dddddddd-0000-0000-0000-000000000002', 'vai trò và phòng theo mã';
+  ASSERT (SELECT uses FROM core.invites WHERE code = inv->>'code') = 1, 'mã đã dùng 1 lượt';
+  ASSERT agent.app_login(jsonb_build_object('email', 'khac@demo.vn', 'sub', 'sub-new2', 'invite', inv->>'code'))->>'reason' = 'invite_invalid', 'mã hết lượt';
+  -- mã gắn email
+  inv := agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member', 'email', 'Rieng@Demo.vn'));
+  ASSERT agent.app_login(jsonb_build_object('email', 'sai@demo.vn', 'sub', 'sub-x', 'invite', inv->>'code'))->>'reason' = 'invite_invalid', 'mã gắn email, người khác không dùng được';
+  ASSERT (agent.app_login(jsonb_build_object('email', 'rieng@demo.vn', 'sub', 'sub-r', 'invite', inv->>'code'))->>'ok')::boolean, 'đúng email dùng được';
+  -- thu hồi, hết hạn
+  inv := agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member', 'max_uses', 5));
+  PERFORM agent.app_invite_revoke(jsonb_build_object('code', inv->>'code'));
+  ASSERT agent.app_login(jsonb_build_object('email', 'thuhoi@demo.vn', 'sub', 's1', 'invite', inv->>'code'))->>'reason' = 'invite_invalid', 'mã đã thu hồi';
+  inv := agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member'));
+  UPDATE core.invites SET expires_at = now() - interval '1 minute' WHERE code = inv->>'code';
+  ASSERT agent.app_login(jsonb_build_object('email', 'hethan@demo.vn', 'sub', 's2', 'invite', inv->>'code'))->>'reason' = 'invite_invalid', 'mã hết hạn';
+  -- quyền tạo mã: trưởng phòng chỉ mời thành viên vào phòng mình; admin không tạo mã owner
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000011');
+  inv := agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member', 'department_id', 'dddddddd-0000-0000-0000-000000000001'));
+  ASSERT inv ? 'code', 'trưởng phòng mời vào phòng mình';
+  BEGIN PERFORM agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member', 'department_id', 'dddddddd-0000-0000-0000-000000000002')); ASSERT false, 'phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'admin', 'department_id', 'dddddddd-0000-0000-0000-000000000001')); ASSERT false, 'manager mời admin'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000001');
+  BEGIN PERFORM agent.app_invite_create(jsonb_build_object('company_id', c, 'role', 'member')); ASSERT false, 'thành viên không tạo mã'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- chỉ vào thêm công ty: người đã có tài khoản dùng mã công ty khác
+  RAISE NOTICE 'Đăng nhập + mã mời ok';
+END $$;
+
+-- Việc, quyền xem, nộp việc không quy trình
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb; tid bigint; t jsonb; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001'; BEGIN
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_me('{}');
+  ASSERT r->'user'->>'email' = 'Web.Test@Demo.vn' AND r->'memberships'->0->>'role' = 'member' AND r->'memberships'->0->>'department_code' = 'HC', format('app_me %s', r);
   ASSERT jsonb_array_length(r->'agents') >= 1, 'danh sách agent bật cho công ty';
-  r := agent.web_create_task('Việc từ web thử', 'Mô tả', 'van-thu', current_date + 3, 'high');
-  tid := replace(r->>'id', 'T-', '')::bigint;
-  ASSERT r->>'agent' = 'van-thu' AND EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = tid AND kind = 'dispatch'), format('giao agent → dispatch: %s', r);
-  ASSERT (SELECT created_by = assignee_id AND priority = 'high' FROM work.tasks WHERE id = tid), 'người tạo = người phụ trách';
-  ASSERT agent.web_create_task('Việc không agent', NULL)->>'agent' IS NULL, 'tạo việc không giao agent';
-  BEGIN PERFORM agent.web_create_task('ab', 'x'); ASSERT false, 'tiêu đề ngắn phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
-  BEGIN PERFORM agent.web_create_task('Việc ưu tiên sai', 'x', NULL, NULL, 'khan'); ASSERT false, 'ưu tiên sai phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
-  BEGIN PERFORM agent.web_create_task('Việc agent lạ', 'x', 'khong-co'); ASSERT false, 'agent lạ phải lỗi'; EXCEPTION WHEN raise_exception THEN NULL; END;
-  t := agent.web_task(tid);
-  ASSERT (t->'flags'->>'can_cancel')::boolean AND NOT (t->'flags'->>'can_review')::boolean, format('cờ thao tác: %s', t->'flags');
-  ASSERT jsonb_typeof(t->'reports') = 'array' AND jsonb_typeof(t->'cards') = 'array', 'web_task có reports và cards';
-  ASSERT agent.web_cancel_task(tid, 'không cần nữa') = 'cancelled', 'hủy việc';
-  ASSERT agent.web_cancel_task(tid, 'lần hai') = 'already_closed', 'hủy lần hai';
-  ASSERT (SELECT status = 'cancelled' AND NOT kpi_counted FROM work.tasks WHERE id = tid), 'đã hủy, không tính KPI';
-  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
-  BEGIN PERFORM agent.web_cancel_task((SELECT max(id) FROM work.tasks WHERE title = 'Việc không agent'), 'xâm phạm'); ASSERT false, 'người khác không được hủy'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000003","via":"web"}', true);
-  BEGIN PERFORM agent.web_me(); ASSERT false, 'tài khoản khóa không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  PERFORM set_config('request.jwt.claims', '{"via":"web"}', true);
-  BEGIN PERFORM agent.web_me(); ASSERT false, 'chưa đăng nhập không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  RAISE NOTICE 'Web việc ok';
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc từ web thử', 'description', 'Mô tả', 'agent_role', 'van-thu', 'due_date', current_date + 3, 'priority', 'high'));
+  tid := (r->>'id')::bigint;
+  ASSERT EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = tid AND kind = 'dispatch'), 'giao agent → dispatch';
+  ASSERT (SELECT created_by = assignee_id AND priority = 'high' AND agent_role = 'van-thu' AND department_id = 'dddddddd-0000-0000-0000-000000000001' FROM work.tasks WHERE id = tid), 'người tạo = người phụ trách, mặc định phòng của mình';
+  t := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT (t->>'can_edit')::boolean AND NOT (t->>'can_review')::boolean AND t->'task'->>'agent_role' = 'van-thu', format('cờ thao tác: %s', left(t::text, 300));
+  ASSERT jsonb_typeof(t->'reports') = 'array' AND jsonb_typeof(t->'files') = 'array', 'chi tiết có reports, files';
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'a')); ASSERT false, 'tiêu đề ngắn'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Ưu tiên sai', 'priority', 'khan')); ASSERT false, 'ưu tiên sai'; EXCEPTION WHEN invalid_text_representation THEN NULL; END;
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Agent lạ', 'agent_role', 'khong-co')); ASSERT false, 'agent lạ'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Phòng lạ', 'department_id', gen_random_uuid())); ASSERT false, 'phòng không thuộc công ty'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- đổi trạng thái và hủy
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'status', 'in_progress'));
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'status', 'cancelled'));
+  ASSERT (SELECT status = 'cancelled' FROM work.tasks WHERE id = tid), 'hủy việc';
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'status', 'todo')); ASSERT false, 'đã hủy không mở lại'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- nộp việc không có quy trình → Xong
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc không quy trình'));
+  tid := (r->>'id')::bigint;
+  ASSERT agent.app_submit(jsonb_build_object('task', tid, 'note', 'Đã xong'))->>'status' = 'done', 'không quy trình → Xong';
+  ASSERT (SELECT status = 'done' AND completed_at IS NOT NULL AND result = 'Đã xong' FROM work.tasks WHERE id = tid), 'completed_at, result';
+  BEGIN PERFORM agent.app_submit(jsonb_build_object('task', tid)); ASSERT false, 'nộp lại việc đã xong'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- bình luận, link
+  PERFORM agent.app_comment(jsonb_build_object('task', tid, 'body', 'Ghi chú thử'));
+  r := agent.app_link_add(jsonb_build_object('task', tid, 'url', 'https://drive.google.com/file/d/abc', 'title', 'Bản nháp'));
+  BEGIN PERFORM agent.app_link_add(jsonb_build_object('task', tid, 'url', 'http://khong-an-toan.vn/x')); ASSERT false, 'link http bị từ chối'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  t := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT jsonb_array_length(t->'links') = 1 AND jsonb_array_length(t->'comments') >= 2, 'link và trao đổi hiện trong chi tiết';
+  PERFORM agent.app_link_remove(jsonb_build_object('link', (r->>'id')::bigint));
+  -- quyền xem: người phòng khác (Kế toán) không thấy việc phòng Hành chính; người ngoài công ty bị chặn
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000012');
+  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(agent.app_tasks(jsonb_build_object('company_id', c))) x WHERE (x->>'id')::bigint = tid), 'phòng khác không thấy';
+  BEGIN PERFORM agent.app_task(jsonb_build_object('id', tid)); ASSERT false, 'chi tiết việc phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_comment(jsonb_build_object('task', tid, 'body', 'xâm nhập')); ASSERT false, 'bình luận việc phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'title', 'Bị sửa')); ASSERT false, 'sửa việc phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000011');
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(agent.app_tasks(jsonb_build_object('company_id', c))) x WHERE (x->>'id')::bigint = tid), 'trưởng phòng thấy việc phòng mình';
+  PERFORM pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000003');
+  BEGIN PERFORM agent.app_tasks(jsonb_build_object('company_id', '99999999-0000-0000-0000-000000000009')); ASSERT false, 'công ty lạ'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000003');
+  BEGIN PERFORM agent.app_me('{}'); ASSERT false, 'tài khoản khóa không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(NULL);
+  BEGIN PERFORM agent.app_me('{}'); ASSERT false, 'chưa đăng nhập không dùng được'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RAISE NOTICE 'Việc, link, quyền xem ok';
+END $$;
+
+-- Quy trình duyệt 2 bước: trưởng phòng rồi chủ sở hữu; nộp, trả lại, nộp lại
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; mgr constant uuid := 'eeeeeeee-0000-0000-0000-000000000011';
+              me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001'; kt constant uuid := 'eeeeeeee-0000-0000-0000-000000000012'; fid uuid; tid bigint; r jsonb; ap jsonb; BEGIN
+  PERFORM pg_temp.as_user(own);
+  fid := (agent.app_flow_save(jsonb_build_object('company_id', c, 'name', 'Công văn đi', 'steps', jsonb_build_array(
+            jsonb_build_object('name', 'Trưởng phòng duyệt', 'approver_role', 'manager'), jsonb_build_object('name', 'Giám đốc duyệt', 'approver_role', 'owner'))))->>'id')::uuid;
+  ASSERT (SELECT count(*) FROM core.approval_steps WHERE flow_id = fid) = 2, '2 bước';
+  ASSERT (SELECT approver_kind FROM core.approval_steps WHERE flow_id = fid AND step_no = 1) = 'dept_head', 'manager → dept_head';
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Soạn công văn gia hạn', 'approval_flow_id', fid));
+  tid := (r->>'id')::bigint;
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'chưa nộp mà duyệt'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  r := agent.app_submit(jsonb_build_object('task', tid, 'note', 'Bản nháp v1'));
+  ASSERT r->>'status' = 'in_review', 'nộp → Chờ duyệt';
+  ASSERT (SELECT state = 'pending' AND round = 1 AND current_step = 1 AND entity_id = tid FROM core.approval_requests WHERE entity_type = 'task' AND entity_id = tid), 'yêu cầu duyệt vòng 1';
+  ASSERT (SELECT count(*) FROM core.approval_decisions WHERE request_id = (SELECT id FROM core.approval_requests WHERE entity_id = tid)) = 2, 'có 2 dòng quyết định';
+  BEGIN PERFORM agent.app_submit(jsonb_build_object('task', tid)); ASSERT false, 'nộp hai lần'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- người làm không tự duyệt; người phòng khác không duyệt; chủ sở hữu chưa tới lượt (bước 1 là trưởng phòng, phòng có trưởng phòng)
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'tự duyệt'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(kt);
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'người phòng khác duyệt'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(own);
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'chủ sở hữu duyệt thay bước trưởng phòng'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- hộp duyệt của trưởng phòng
+  PERFORM pg_temp.as_user(mgr);
+  ap := agent.app_my_approvals('{}');
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(ap->'items') x WHERE (x->>'task_id')::bigint = tid AND x->>'kind' = 'approval' AND (x->>'step_no')::int = 1 AND (x->>'steps')::int = 2
+                  AND x->'result'->>'body' = 'Bản nháp v1'), format('hộp duyệt: %s', left(ap::text, 300));
+  -- trả lại bắt buộc có lý do; sau đó việc về Đang làm, attempts + 1, nộp lại là vòng 2
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', false)); ASSERT false, 'trả lại không lý do'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  r := agent.app_decide(jsonb_build_object('task', tid, 'approve', false, 'note', 'Thiếu căn cứ pháp lý'));
+  ASSERT (SELECT status = 'in_progress' AND attempts = 1 FROM work.tasks WHERE id = tid), 'trả lại → Đang làm, attempts 1';
+  ASSERT (SELECT state = 'rejected' FROM core.approval_requests WHERE entity_id = tid AND round = 1), 'vòng 1 bị từ chối';
+  ASSERT EXISTS (SELECT 1 FROM work.comments WHERE task_id = tid AND kind = 'reject' AND body LIKE '%Thiếu căn cứ%'), 'lý do trả lại ghi vào trao đổi';
+  PERFORM pg_temp.as_user(me);
+  PERFORM agent.app_submit(jsonb_build_object('task', tid, 'note', 'Bản v2'));
+  ASSERT (SELECT round = 2 AND current_step = 1 AND state = 'pending' FROM core.approval_requests WHERE entity_id = tid ORDER BY id DESC LIMIT 1), 'vòng 2';
+  PERFORM pg_temp.as_user(mgr);
+  r := agent.app_decide(jsonb_build_object('task', tid, 'approve', true));
+  ASSERT r->>'status' = 'in_review' AND (r->>'step')::int = 2, format('qua bước 2: %s', r);
+  ASSERT (SELECT status = 'in_review' FROM work.tasks WHERE id = tid), 'vẫn Chờ duyệt';
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'trưởng phòng duyệt bước chủ sở hữu'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(own);
+  r := agent.app_decide(jsonb_build_object('task', tid, 'approve', true));
+  ASSERT r->>'status' = 'done', 'bước cuối → Xong';
+  ASSERT (SELECT status = 'done' AND completed_at IS NOT NULL FROM work.tasks WHERE id = tid), 'completed_at';
+  ASSERT (SELECT state = 'approved' AND closed_at IS NOT NULL FROM core.approval_requests WHERE entity_id = tid ORDER BY id DESC LIMIT 1), 'yêu cầu đã duyệt';
+  ap := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT jsonb_array_length(ap->'approvals') = 2 AND ap->'approvals'->0->>'decision' = 'approved' AND ap->'approvals'->1->>'decision' = 'approved', 'chi tiết hiện đủ 2 bước đã duyệt';
+  PERFORM pg_temp.as_user(mgr);
+  ASSERT jsonb_array_length(agent.app_my_approvals('{}')->'recent') >= 1, 'mục "đã xử lý" có việc vừa duyệt';
+  -- không sửa bước khi đang có việc chờ duyệt
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc chờ duyệt khác', 'approval_flow_id', fid));
+  PERFORM agent.app_submit(jsonb_build_object('task', (r->>'id')::bigint));
+  PERFORM pg_temp.as_user(own);
+  BEGIN PERFORM agent.app_flow_save(jsonb_build_object('company_id', c, 'id', fid, 'name', 'Sửa', 'steps', jsonb_build_array(jsonb_build_object('approver_role', 'admin')))); ASSERT false, 'sửa quy trình đang dùng'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_flow_save(jsonb_build_object('company_id', c, 'name', 'Quá dài', 'steps', jsonb_build_array(1,2,3,4,5,6,7))); ASSERT false, '7 bước'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_flow_save(jsonb_build_object('company_id', c, 'name', 'Thiếu người', 'steps', jsonb_build_array(jsonb_build_object('name', 'x')))); ASSERT false, 'bước thiếu người duyệt'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- phòng chưa có trưởng phòng: quản trị duyệt thay bước "trưởng phòng"
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc phòng Kế toán', 'department_id', 'dddddddd-0000-0000-0000-000000000002', 'assignee_id', kt, 'approval_flow_id', fid));
+  PERFORM pg_temp.as_user(kt);
+  PERFORM agent.app_submit(jsonb_build_object('task', (r->>'id')::bigint));
+  PERFORM pg_temp.as_user(own);
+  ASSERT agent.app_decide(jsonb_build_object('task', (r->>'id')::bigint, 'approve', true))->>'status' = 'in_review', 'phòng không có trưởng phòng: chủ sở hữu duyệt bước 1';
+  RAISE NOTICE 'Duyệt nhiều bước ok';
+END $$;
+
+-- Việc của agent có quy trình: người giao chấp nhận → mở yêu cầu duyệt (accept_result trả to_approval); người duyệt trả lại → agent làm lại
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+              fid uuid := (SELECT id FROM core.approval_flows WHERE name = 'Công văn đi'); tid bigint; r jsonb; ap jsonb; BEGIN
+  PERFORM pg_temp.as_user(me);
+  tid := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Agent soạn công văn', 'agent_role', 'van-thu', 'approval_flow_id', fid))->>'id')::bigint;
+  UPDATE work.tasks SET status = 'in_review', progress = 100, result = 'Đã soạn' WHERE id = tid;   -- như thể agent vừa nộp (agent.ingest_event completed)
+  INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (tid, NULL, 'agent:van-thu', 'submit', 'Đã soạn xong công văn');
+  ap := agent.app_my_approvals('{}');
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(ap->'items') x WHERE (x->>'task_id')::bigint = tid AND x->>'kind' = 'review'), 'kết quả agent chờ người giao xem';
+  ASSERT (agent.app_task(jsonb_build_object('id', tid))->>'can_review')::boolean, 'can_review';
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000012');
+  BEGIN PERFORM agent.app_accept(jsonb_build_object('task', tid)); ASSERT false, 'người khác chấp nhận'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_accept(jsonb_build_object('task', tid, 'note', 'Ổn'));
+  ASSERT r->>'status' = 'to_approval', format('accept → to_approval: %s', r);
+  ASSERT (SELECT state = 'pending' AND current_step = 1 FROM core.approval_requests WHERE entity_id = tid ORDER BY id DESC LIMIT 1), 'đã mở yêu cầu duyệt';
+  ASSERT NOT (agent.app_task(jsonb_build_object('id', tid))->>'can_review')::boolean, 'đang trong quy trình thì không còn "xem kết quả agent"';
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000011');
+  r := agent.app_decide(jsonb_build_object('task', tid, 'approve', false, 'note', 'Sai thể thức văn bản'));
+  ASSERT (SELECT status = 'todo' AND attempts = 1 FROM work.tasks WHERE id = tid), format('agent làm lại: %s', (SELECT row_to_json(x) FROM (SELECT status, attempts, agent_id FROM work.tasks WHERE id = tid) x));
+  RAISE NOTICE 'Duyệt kết quả agent ok';
+END $$;
+
+-- Quản trị: phòng ban, thành viên, dự án, Drive, báo cáo
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+              mgr constant uuid := 'eeeeeeee-0000-0000-0000-000000000011'; r jsonb; d uuid; rp jsonb; BEGIN
+  PERFORM pg_temp.as_user(own);
+  d := (agent.app_dept_save(jsonb_build_object('company_id', c, 'code', 'ph', 'name', 'Pháp chế'))->>'id')::uuid;
+  ASSERT (SELECT code FROM core.departments WHERE id = d) = 'PH', 'mã phòng viết hoa';
+  BEGIN PERFORM agent.app_dept_save(jsonb_build_object('company_id', c, 'code', 'PH', 'name', 'Trùng')); ASSERT false, 'trùng mã'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM agent.app_dept_save(jsonb_build_object('company_id', c, 'id', d, 'code', 'PH', 'name', 'Pháp chế & Tuân thủ', 'active', false));
+  ASSERT (SELECT NOT active FROM core.departments WHERE id = d), 'ngừng phòng';
+  PERFORM pg_temp.as_user(me);
+  BEGIN PERFORM agent.app_dept_save(jsonb_build_object('company_id', c, 'code', 'X', 'name', 'Xxx')); ASSERT false, 'thành viên tạo phòng'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- thành viên: không tự đổi mình, không để mất chủ sở hữu cuối cùng, admin không đụng owner
+  PERFORM pg_temp.as_user(own);
+  BEGIN PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', own, 'role', 'member')); ASSERT false, 'tự hạ vai trò'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  r := agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', me, 'role', 'admin', 'department_id', 'dddddddd-0000-0000-0000-000000000001', 'title', 'Phó phòng'));
+  ASSERT agent._role_of(me, c) = 'admin' AND (SELECT title FROM core.memberships WHERE user_id = me AND company_id = c) = 'Phó phòng', 'nâng lên admin';
+  PERFORM pg_temp.as_user(me);
+  BEGIN PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', own, 'role', 'member')); ASSERT false, 'admin hạ owner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', mgr, 'role', 'owner')); ASSERT false, 'admin phong owner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  r := agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', 'eeeeeeee-0000-0000-0000-000000000012', 'role', 'manager', 'department_id', 'dddddddd-0000-0000-0000-000000000002'));
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000012', c) = 'manager', 'đặt trưởng phòng';
+  BEGIN PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', mgr, 'role', 'manager')); ASSERT false, 'trưởng phòng thiếu phòng'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', 'eeeeeeee-0000-0000-0000-000000000012', 'role', 'member', 'department_id', 'dddddddd-0000-0000-0000-000000000002', 'active', false));
+  ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000012', c) IS NULL, 'khóa thành viên';
+  PERFORM pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000012');
+  BEGIN PERFORM agent.app_tasks(jsonb_build_object('company_id', c)); ASSERT false, 'thành viên bị khóa không xem được việc'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(own);
+  BEGIN PERFORM agent.app_member_set(jsonb_build_object('company_id', c, 'user_id', own, 'role', 'owner', 'active', false)); ASSERT false, 'tự khóa'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- dự án
+  r := agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'du-an-a', 'name', 'Dự án A', 'drive_url', 'https://drive.google.com/drive/folders/abcdefghij'));
+  ASSERT (SELECT code = 'DUANA' FROM core.projects WHERE id = (r->>'id')::uuid), 'sinh mã dự án';
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'Sai Slug', 'name', 'x')); ASSERT false, 'slug sai'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'slug', 'du-an-a', 'name', 'Trùng')); ASSERT false, 'trùng slug'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM agent.app_project_save(jsonb_build_object('company_id', c, 'id', r->>'id', 'slug', 'du-an-a', 'name', 'Dự án A', 'active', false));
+  ASSERT (SELECT status = 'done' FROM core.projects WHERE id = (r->>'id')::uuid), 'đóng dự án';
+  -- thông tin tổ chức
+  r := agent.app_org(jsonb_build_object('company_id', c));
+  ASSERT jsonb_array_length(r->'departments') >= 3 AND jsonb_array_length(r->'members') >= 4 AND jsonb_array_length(r->'projects') = 1 AND jsonb_array_length(r->'flows') >= 1, format('app_org: %s', left(r::text, 200));
+  ASSERT r->'flows'->0->'steps'->0->>'approver_role' = 'manager' AND r->'flows'->0->'steps'->1->>'approver_role' = 'owner', 'bước quy trình trả về dạng cũ (manager/owner)';
+  -- Drive
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_drive_set(jsonb_build_object('url', 'https://drive.google.com/drive/u/0/folders/1AbCdEfGhIjKlM?usp=sharing'));
+  ASSERT (SELECT drive_state = 'pending' AND drive_folder_url = 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlM' FROM core.users WHERE id = me), 'lưu thư mục Drive đã chuẩn hóa';
+  BEGIN PERFORM agent.app_drive_set(jsonb_build_object('url', 'https://evil.example/drive/folders/1AbCdEfGhIjKlM')); ASSERT false, 'chỉ nhận drive.google.com'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  ASSERT agent.app_drive_names('{}')->>0 = 'DEO - agt - HC - Web Test', format('tên thư mục: %s', agent.app_drive_names('{}'));
+  -- báo cáo (admin xem cả công ty)
+  rp := agent.app_report(jsonb_build_object('company_id', c));
+  ASSERT jsonb_typeof(rp->'depts') = 'array' AND jsonb_typeof(rp->'people') = 'array' AND (SELECT sum((x->>'done_30d')::int) FROM jsonb_array_elements(rp->'depts') x) >= 2, format('báo cáo: %s', left(rp::text, 300));
+  RAISE NOTICE 'Quản trị + báo cáo ok';
 END $$;
 
 DO $$ DECLARE r jsonb; pre text; BEGIN
@@ -399,7 +627,9 @@ DO $$ DECLARE bad text; bridge text; BEGIN
   SELECT string_agg(p.proname, ',' ORDER BY p.proname) INTO bridge FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'agent' AND p.prokind = 'f' AND has_function_privilege('agent_bridge', p.oid, 'EXECUTE');
   ASSERT bridge = 'ingest_event,outbox_ack,outbox_pull,request_confirmation', format('cầu nối chỉ gọi 4 hàm, thực tế: %s', bridge);
-  ASSERT has_function_privilege('web_svc', 'agent.web_login(text,text,text,text)', 'EXECUTE'), 'web_svc gọi được web_login';
+  ASSERT has_function_privilege('web_svc', 'agent.app_login(jsonb)', 'EXECUTE') AND has_function_privilege('web_svc', 'agent.app_decide(jsonb)', 'EXECUTE'), 'web_svc gọi được app_*';
+  ASSERT NOT has_function_privilege('web_svc', 'agent.web_login(text,text,text,text)', 'EXECUTE') AND NOT has_function_privilege('web_svc', 'agent.accept_result(bigint,text)', 'EXECUTE'), 'web_svc không gọi hàm cũ';
+  ASSERT NOT has_function_privilege('mcp_svc', 'agent.app_decide(jsonb)', 'EXECUTE') AND NOT has_function_privilege('agent_bridge', 'agent.app_login(jsonb)', 'EXECUTE'), 'MCP và cầu nối không gọi app_*';
   ASSERT NOT has_function_privilege('web_svc', 'agent.mcp_token_issue_agent(text,integer)', 'EXECUTE'), 'web_svc không cấp mã agent';
   ASSERT NOT has_function_privilege('web_svc', 'agent.outbox_pull(integer)', 'EXECUTE'), 'web_svc không kéo hộp thư đi';
   ASSERT NOT has_function_privilege('mcp_svc', 'agent.web_admin_overview()', 'EXECUTE'), 'MCP không gọi hàm quản trị web';

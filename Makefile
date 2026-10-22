@@ -6,7 +6,9 @@ test-db: ## Dựng CSDL thử, chạy test lược đồ + agent (cần EOS_TEST
 	scripts/test_db.sh
 test-mcp: ## Kiểm thử đầu–cuối máy chủ MCP (sau test-db)
 	scripts/test_mcp.sh
-test-web: ## Kiểm thử đầu–cuối giao diện web (Google giả lập)
+ui: ## Dựng giao diện React (web/ui → web/public); phải commit kết quả
+	cd web/ui && ([ -d node_modules ] || npm ci --ignore-scripts --no-audit --no-fund) && npm run build
+test-web: ## Kiểm thử đầu–cuối máy chủ web + API (Google giả lập)
 	scripts/test_web.sh
 test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgrest)
 	scripts/test_bridge.sh

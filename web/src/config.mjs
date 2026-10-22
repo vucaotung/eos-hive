@@ -8,8 +8,10 @@ export function loadConfig(env = process.env) {
     sessionSecret: env.SESSION_SECRET,
     sessionTtlSec: Math.round(Number(env.SESSION_TTL_HOURS || 8) * 3600),
     trustProxy: env.TRUST_PROXY === '1',
-    loginRatePerMin: Number(env.LOGIN_RATE_PER_MIN || 30),                 // số lượt bắt đầu/hoàn tất đăng nhập mỗi phút mỗi IP
-    writeRatePerMin: Number(env.WRITE_RATE_PER_MIN || 120),                // số thao tác ghi mỗi phút mỗi người
+    loginRatePerMin: Number(env.LOGIN_RATE_PER_MIN || 30),                 // số lượt bắt đầu/hoàn tất đăng nhập, nhập mã mời mỗi phút mỗi IP
+    apiRatePerMin: Number(env.API_RATE_PER_MIN || env.WRITE_RATE_PER_MIN || 600),   // số lệnh gọi API mỗi phút mỗi người
+    agentDriveEmail: env.AGENT_DRIVE_EMAIL || '',                          // tài khoản agent được chia sẻ thư mục Drive (hiện ở bước thiết lập Drive)
+    mcpUrl: env.MCP_URL || '',                                             // địa chỉ MCP hiện ở màn hình Kết nối AI
     google: {
       clientId: env.GOOGLE_LOGIN_CLIENT_ID || '',
       clientSecret: env.GOOGLE_LOGIN_CLIENT_SECRET || '',

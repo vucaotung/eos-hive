@@ -1,7 +1,7 @@
 {
   "name": "eos-web",
-  "version": "0.1.0",
-  "description": "Giao diện web Tổ Ong (hộp việc, duyệt kết quả agent, quản trị)",
+  "version": "0.2.0",
+  "description": "Máy chủ web Tổ Ong / Dẹo Work: API JSON + giao diện React dựng sẵn (web/public)",
   "type": "module",
   "private": true,
   "scripts": { "start": "node src/server.mjs", "test": "node test/e2e.mjs" },

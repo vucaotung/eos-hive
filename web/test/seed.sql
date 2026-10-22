@@ -14,6 +14,16 @@ INSERT INTO core.memberships (user_id, company_id, department_id) VALUES
  ('cccccccc-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333','dddddddd-0000-0000-0000-0000000000d1'),
  ('cccccccc-0000-0000-0000-000000000002','33333333-3333-3333-3333-333333333333','dddddddd-0000-0000-0000-0000000000d1'),
  ('cccccccc-0000-0000-0000-000000000003','44444444-4444-4444-4444-444444444444','dddddddd-0000-0000-0000-0000000000d2');
+INSERT INTO core.departments (id, company_id, code, name) VALUES ('dddddddd-0000-0000-0000-0000000000d3','33333333-3333-3333-3333-333333333333','KT','Kế toán');
+INSERT INTO core.users (id, email, name, kind, active, is_system_admin) VALUES
+ ('cccccccc-0000-0000-0000-000000000005','truongphong@demo.vn','Lê Trưởng Phòng','person',true,false),
+ ('cccccccc-0000-0000-0000-000000000006','ketoan@demo.vn','Phạm Kế Toán','person',true,false);
+INSERT INTO core.memberships (user_id, company_id, department_id, is_dept_head) VALUES
+ ('cccccccc-0000-0000-0000-000000000005','33333333-3333-3333-3333-333333333333','dddddddd-0000-0000-0000-0000000000d1', true),
+ ('cccccccc-0000-0000-0000-000000000006','33333333-3333-3333-3333-333333333333','dddddddd-0000-0000-0000-0000000000d3', false);
+INSERT INTO core.user_roles (company_id, user_id, role_id)
+SELECT m.company_id, m.user_id, agent._sys_role(CASE WHEN u.id = 'cccccccc-0000-0000-0000-000000000002' THEN 'owner' ELSE 'member' END)
+  FROM core.memberships m JOIN core.users u ON u.id = m.user_id;
 INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, description) VALUES
  ('a2222222-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-0000000000a2','van-thu','Văn thư AI','module','doc','eos-van-thu','Soạn dự thảo công văn');
 INSERT INTO agent.company_settings (company_id, enabled, kanban_board) VALUES ('33333333-3333-3333-3333-333333333333', true, 'eos-demo');

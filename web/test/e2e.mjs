@@ -1,4 +1,4 @@
-// Kiểm thử đầu–cuối giao diện web: server thật + Postgres thật + Google giả lập (kèm kiểm PKCE).
+// Kiểm thử đầu–cuối máy chủ web (API + giao diện tĩnh): server thật + Postgres thật + Google giả lập (kèm kiểm PKCE).
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
@@ -42,14 +42,13 @@ const sql = async (q, p) => (await admin.query(q, p)).rows;
 
 // ---------- "trình duyệt" tối giản có hũ cookie ----------
 class Browser {
-  constructor() { this.jar = new Map(); }
-  send(method, path, { form, host, headers = {} } = {}) {
+  constructor() { this.jar = new Map(); this.csrfToken = ''; }
+  send(method, path, { json, host, headers = {} } = {}) {
     return new Promise((ok, no) => {
-      const toForm = (o) => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(o)) for (const x of [].concat(v)) u.append(k, x); return u.toString(); };   // mảng -> khóa lặp, như trình duyệt
-      const body = form ? toForm(form) : null;
+      const body = json !== undefined ? JSON.stringify(json) : null;
       const h = { host: host || `127.0.0.1:${port}`, ...headers };
       if (this.jar.size) h.cookie = [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ');
-      if (body) { h['content-type'] = 'application/x-www-form-urlencoded'; h['content-length'] = Buffer.byteLength(body); }
+      if (body !== null) { h['content-type'] = h['content-type'] ?? 'application/json'; h['content-length'] = Buffer.byteLength(body); }
       const rq = http.request({ host: '127.0.0.1', port, method, path, headers: h }, (res) => {
         let t = ''; res.setEncoding('utf8'); res.on('data', (d) => (t += d));
         res.on('end', () => {
@@ -57,20 +56,27 @@ class Browser {
             const [kv] = sc.split(';'); const i = kv.indexOf('='); const k = kv.slice(0, i);
             if (/Max-Age=0/i.test(sc)) this.jar.delete(k); else this.jar.set(k, kv.slice(i + 1));
           }
-          ok({ status: res.statusCode, headers: res.headers, text: t, setCookie: [].concat(res.headers['set-cookie'] || []) });
+          let j = null; try { j = JSON.parse(t); } catch { /* không phải JSON */ }
+          ok({ status: res.statusCode, headers: res.headers, text: t, json: j, setCookie: [].concat(res.headers['set-cookie'] || []) });
         });
       });
-      rq.on('error', no); if (body) rq.write(body); rq.end();
+      rq.on('error', no); if (body !== null) rq.write(body); rq.end();
     });
   }
   get(p, o) { return this.send('GET', p, o); }
-  post(p, form, o) { return this.send('POST', p, { ...o, form }); }
-  async csrf(path = '/app/') { const r = await this.get(path); const m = /name="_csrf" value="([^"]+)"/.exec(r.text); assert.ok(m, `không có _csrf ở ${path}`); return m[1]; }
+  async me() { const r = await this.get('/app/api/me'); if (r.status === 200) this.csrfToken = r.json.csrf; return r; }
+  // gọi một thao tác CSDL qua API, có CSRF
+  async rpc(fn, body = {}, o = {}) {
+    if (!this.csrfToken) await this.me();
+    return this.send('POST', `/app/api/rpc/${encodeURIComponent(fn)}`, { json: body, headers: { 'x-csrf-token': this.csrfToken, 'x-requested-with': 'eos', ...(o.headers || {}) }, ...o });
+  }
+  // gọi và bắt buộc thành công, trả dữ liệu
+  async ok(fn, body = {}) { const r = await this.rpc(fn, body); assert.equal(r.status, 200, `${fn}: HTTP ${r.status} ${r.text.slice(0, 200)}`); return r.json; }
 }
 
 // Đăng nhập qua Google giả lập; claims ghi đè được để thử các ca xấu
-async function login(br, claims, { state, mutate } = {}) {
-  const start = await br.get('/app/auth/google?next=%2Fapp%2Ftasks');
+async function login(br, claims, { state, mutate, invite } = {}) {
+  const start = await br.get(`/app/auth/google${invite ? `?invite=${invite}` : ''}`);
   assert.equal(start.status, 303);
   const loc = new URL(start.headers.location);
   const q = Object.fromEntries(loc.searchParams);
@@ -78,240 +84,230 @@ async function login(br, claims, { state, mutate } = {}) {
   google.claims = { sub: 'g-' + claims.email.toLowerCase(), nonce: q.nonce, name: claims.name || 'Tên Google', ...claims };
   if (mutate) mutate(google.claims, q);
   const cb = await br.get(`/app/auth/callback?code=abc&state=${encodeURIComponent(state ?? q.state)}`);
+  br.csrfToken = '';
   return { start, q, loc, cb };
 }
+const as = async (email) => { const b = new Browser(); const r = await login(b, { email }); assert.equal(r.cb.status, 303); assert.equal(r.cb.headers.location, '/app/#/today', email); await b.me(); return b; };
 
 let passed = 0;
 const step = async (name, fn) => { await fn(); passed++; console.log('  ✓', name); };
-const has = (r, s) => assert.ok(r.text.includes(s), `thiếu "${s}" trong trang (HTTP ${r.status})`);
-const lacks = (r, s) => assert.ok(!r.text.includes(s), `không được có "${s}" trong trang`);
+const ID = { minh: 'cccccccc-0000-0000-0000-000000000001', adm: 'cccccccc-0000-0000-0000-000000000002', mgr: 'cccccccc-0000-0000-0000-000000000005', kt: 'cccccccc-0000-0000-0000-000000000006' };
+const CO = '33333333-3333-3333-3333-333333333333', HC = 'dddddddd-0000-0000-0000-0000000000d1', KT = 'dddddddd-0000-0000-0000-0000000000d3';
 
 try {
   const anon = new Browser();
-  await step('healthz không cần đăng nhập; trang khác chuyển về đăng nhập', async () => {
-    const h = await anon.get('/app/healthz'); assert.equal(h.status, 200); assert.equal(JSON.parse(h.text).ok, true);
-    for (const p of ['/app/', '/app/tasks', '/app/tasks/601', '/app/admin', '/app/tokens']) {
-      const r = await new Browser().get(p); assert.equal(r.status, 303, p); assert.match(r.headers.location, /^\/app\/login/);
-    }
+  await step('healthz và giao diện không cần đăng nhập; API cần đăng nhập (401 JSON)', async () => {
+    const h = await anon.get('/app/healthz'); assert.equal(h.status, 200); assert.equal(h.json.ok, true);
+    const idx = await anon.get('/app/'); assert.equal(idx.status, 200); assert.match(idx.headers['content-type'], /html/); assert.ok(idx.text.includes('<div id="root">'));
+    assert.match(idx.text, /\/app\/assets\/index-[\w-]+\.js/);
+    assert.equal((await anon.get('/app')).status, 200);
+    const root = await anon.get('/'); assert.equal(root.status, 302); assert.equal(root.headers.location, '/app/');
+    for (const p of ['/app/api/me']) { const r = await anon.get(p); assert.equal(r.status, 401); assert.equal(r.json.code, 'UNAUTHENTICATED'); }
+    const r = await anon.send('POST', '/app/api/rpc/app_tasks', { json: {}, headers: { 'x-requested-with': 'eos' } }); assert.equal(r.status, 401);
+    const c = await anon.get('/app/api/config'); assert.equal(c.status, 200); assert.equal(c.json.google, true); assert.ok(!('client_secret' in c.json) && !c.text.includes('secret-xyz'));
   });
-  await step('tiêu đề bảo mật: CSP chặt, chống nhúng khung, không lưu đệm, ẩn X-Powered-By', async () => {
-    const r = await anon.get('/app/login');
-    assert.match(r.headers['content-security-policy'], /default-src 'none'.*script-src 'self'.*frame-ancestors 'none'/);
-    assert.doesNotMatch(r.headers['content-security-policy'], /unsafe-inline|unsafe-eval/);
+  await step('tiêu đề bảo mật: CSP chặt (script chỉ self, không eval), chống nhúng khung, không lưu đệm trang, ẩn X-Powered-By', async () => {
+    const r = await anon.get('/app/');
+    const csp = r.headers['content-security-policy'];
+    assert.match(csp, /default-src 'none'.*script-src 'self'.*frame-ancestors 'none'/); assert.doesNotMatch(csp, /script-src[^;]*unsafe/); assert.doesNotMatch(csp, /unsafe-eval/);
+    assert.match(csp, /connect-src 'self'/); assert.match(csp, /base-uri 'none'/);
     assert.equal(r.headers['x-content-type-options'], 'nosniff'); assert.equal(r.headers['x-frame-options'], 'DENY');
-    assert.equal(r.headers['cache-control'], 'no-store'); assert.equal(r.headers['x-powered-by'], undefined);
+    assert.match(r.headers['cache-control'], /no-store|no-cache|max-age=0/); assert.equal(r.headers['x-powered-by'], undefined);
     assert.equal(r.headers['referrer-policy'], 'same-origin');
+    assert.equal((await anon.get('/app/api/me')).headers['cache-control'], 'no-store');
   });
-  await step('Host lạ bị từ chối (421)', async () => { assert.equal((await anon.get('/app/login', { host: 'evil.example' })).status, 421); });
-  await step('tệp tĩnh có; không đi ngược thư mục', async () => {
-    const css = await anon.get('/app/static/app.css'); assert.equal(css.status, 200); assert.match(css.headers['content-type'], /css/);
-    assert.equal((await anon.get('/app/static/app.js')).status, 200);
-    for (const p of ['/app/static/../src/config.mjs', '/app/static/%2e%2e/src/config.mjs', '/app/static/..%2fsrc%2fconfig.mjs']) {
-      const r = await new Browser().get(p); assert.notEqual(r.status, 200, p); assert.ok(!/loadConfig/.test(r.text), p);
+  await step('Host lạ bị từ chối (421)', async () => { assert.equal((await anon.get('/app/', { host: 'evil.example' })).status, 421); });
+  await step('tệp tĩnh: assets có băm cache dài; không đi ngược thư mục; không lộ mã nguồn', async () => {
+    const idx = (await anon.get('/app/')).text; const js = /\/app\/assets\/[\w.-]+\.js/.exec(idx)[0];
+    const r = await anon.get(js); assert.equal(r.status, 200); assert.match(r.headers['content-type'], /javascript/); assert.match(r.headers['cache-control'], /immutable/);
+    assert.equal((await anon.get('/app/manifest.webmanifest')).status, 200);
+    for (const p of ['/app/../src/config.mjs', '/app/%2e%2e/src/config.mjs', '/app/..%2fsrc%2fconfig.mjs', '/app/assets/../../src/config.mjs', '/app/src/config.mjs', '/app/.env', '/app/package.json']) {
+      const x = await new Browser().get(p); assert.notEqual(x.status, 200, p); assert.ok(!/loadConfig|sessionSecret/.test(x.text), p);
     }
   });
 
   // ---- đăng nhập ----
-  await step('bước 1 tới Google: PKCE S256, state, nonce, redirect_uri đúng, cookie hẹp', async () => {
-    const b = new Browser(); const { start, q } = await login(b, { email: 'minh@demo.vn' });
+  await step('bước 1 tới Google: PKCE S256, state, nonce, redirect_uri đúng, cookie hẹp; phiên khóa tài khoản có hiệu lực ngay', async () => {
+    const b = new Browser(); const { start, q, cb } = await login(b, { email: 'minh@demo.vn' });
     assert.equal(start.setCookie.length, 1); assert.match(start.setCookie[0], /^eos_o=.*Path=\/app\/auth.*HttpOnly.*SameSite=Lax/i);
     assert.equal(q.response_type, 'code'); assert.equal(q.code_challenge_method, 'S256'); assert.equal(q.client_id, CID);
     assert.equal(q.redirect_uri, `${origin}/app/auth/callback`); assert.match(q.scope, /openid email/); assert.ok(q.state.length >= 16 && q.nonce.length >= 16);
     assert.equal(google.lastRedirect, `${origin}/app/auth/callback`);
+    assert.equal(cb.status, 303); assert.equal(cb.headers.location, '/app/#/today');
+    assert.match(cb.setCookie.join(';'), /eos_s=.*Path=\/app.*HttpOnly.*SameSite=Lax/i);
+    const me = await b.me(); assert.equal(me.status, 200); assert.equal(me.json.user.email, 'minh@demo.vn'); assert.equal(me.json.memberships[0].role, 'member'); assert.ok(me.json.csrf.length >= 20);
+    assert.ok(!me.text.includes('google_sub') && !me.text.includes('token_hash'));
+    await sql("UPDATE core.users SET active=false WHERE email='minh@demo.vn'");
+    assert.equal((await b.me()).status, 401, 'khóa tài khoản có hiệu lực ngay'); assert.equal((await b.rpc('app_tasks', { company_id: CO })).status, 401);
+    await sql("UPDATE core.users SET active=true WHERE email='minh@demo.vn'");
   });
-  const minh = new Browser();
-  await step('người được phép đăng nhập; chuyển tới trang đích an toàn; cookie phiên HttpOnly/SameSite', async () => {
-    const { cb } = await login(minh, { email: 'Minh@Demo.vn', name: 'Tên Google' });
-    assert.equal(cb.status, 303); assert.equal(cb.headers.location, '/app/tasks');
-    const s = cb.setCookie.find((c) => c.startsWith('eos_s=')); assert.ok(s); assert.match(s, /HttpOnly/i); assert.match(s, /SameSite=Lax/i); assert.match(s, /Path=\/app/);
-    assert.doesNotMatch(s, /Secure/i, 'http thử nghiệm: không Secure');
-    assert.ok(cb.setCookie.some((c) => /^eos_o=;.*Max-Age=0/i.test(c)), 'cookie OAuth tạm bị xóa');
-    const rows = await sql("SELECT google_sub, last_login_at FROM core.users WHERE email='minh@demo.vn'"); assert.equal(rows[0].google_sub, 'g-minh@demo.vn'); assert.ok(rows[0].last_login_at);
-    assert.ok(Number((await sql("SELECT count(*) FROM core.audit_log WHERE module='web' AND action='login' AND user_id='cccccccc-0000-0000-0000-000000000001'"))[0].count) >= 1, 'đăng nhập được ghi nhật ký');
-  });
-  await step('các ca đăng nhập xấu đều bị từ chối bằng cùng một trang, không lộ lý do', async () => {
-    const bad = [
-      ['email lạ', { email: 'la@nowhere.vn' }], ['tài khoản khóa', { email: 'khoa@demo.vn' }], ['tài khoản agent', { email: 'van-thu@agent' }],
-      ['sub khác (giả mạo)', { email: 'minh@demo.vn', sub: 'g-ke-tan-cong' }], ['email chưa xác minh', { email: 'minh@demo.vn', email_verified: false }],
-      ['sai aud', { email: 'minh@demo.vn', aud: 'client-khac' }], ['sai nonce', { email: 'minh@demo.vn', nonce: 'nonce-sai' }],
-      ['hết hạn', { email: 'minh@demo.vn', exp: Math.floor(Date.now() / 1000) - 10 }], ['sai iss', { email: 'minh@demo.vn', iss: 'https://evil.example' }],
+  await step('đăng nhập bị từ chối: state sai, claims sai, email chưa xác minh, Google báo lỗi, tài khoản agent/khóa (chuyển về màn đăng nhập, không lộ lý do)', async () => {
+    const cases = [
+      ['state', (b) => login(b, { email: 'minh@demo.vn' }, { state: 'sai' }), 'state'],
+      ['aud', (b) => login(b, { email: 'minh@demo.vn' }, { mutate: (c) => { c.aud = 'khac'; } }), 'google'],
+      ['nonce', (b) => login(b, { email: 'minh@demo.vn' }, { mutate: (c) => { c.nonce = 'khac'; } }), 'google'],
+      ['hết hạn', (b) => login(b, { email: 'minh@demo.vn' }, { mutate: (c) => { c.exp = 1; } }), 'google'],
+      ['chưa xác minh', (b) => login(b, { email: 'minh@demo.vn' }, { mutate: (c) => { c.email_verified = false; } }), 'denied'],
+      ['sub khác', (b) => login(b, { email: 'minh@demo.vn', sub: 'g-ke-gia-mao' }), 'denied'],
+      ['agent', (b) => login(b, { email: 'van-thu@agent' }), 'denied'],
+      ['khóa', (b) => login(b, { email: 'khoa@demo.vn' }), 'denied'],
     ];
-    const pages = new Set();
-    for (const [why, claims] of bad) {
-      const b = new Browser(); const { cb } = await login(b, claims);
-      assert.ok([400, 403].includes(cb.status), `${why}: HTTP ${cb.status}`); assert.ok(!b.jar.has('eos_s'), `${why}: không được cấp phiên`);
-      assert.doesNotMatch(cb.text, /minh@demo|không có trong|sub|nonce|email/i, `${why}: lộ thông tin`); pages.add(cb.text);
+    for (const [name, run, e] of cases) {
+      const b = new Browser(); const { cb } = await run(b);
+      assert.equal(cb.status, 303, name); assert.ok(cb.headers.location.startsWith('/app/#/login?e=' + e), `${name}: ${cb.headers.location}`);
+      assert.ok(!b.jar.has('eos_s'), name); assert.equal((await b.me()).status, 401, name);
     }
-    const { cb: c2 } = await login(new Browser(), { email: 'minh@demo.vn' }, { state: 'state-sai' }); assert.equal(c2.status, 400);
-    const { cb: c3 } = await login(new Browser(), { email: 'minh@demo.vn' }, { mutate: () => { google.challenge = 'khac'; } }); assert.equal(c3.status, 502, 'PKCE sai bị Google từ chối');
-    const b4 = new Browser(); const r4 = await b4.get('/app/auth/callback?code=x&state=y'); assert.equal(r4.status, 400, 'không có cookie OAuth');
-    assert.equal(pages.size, 1, 'mọi lý do từ chối dùng đúng một trang');
+    const noCode = new Browser(); await noCode.get('/app/auth/google'); assert.equal((await noCode.get('/app/auth/callback?state=x')).headers.location.startsWith('/app/#/login?e='), true);
+    const replay = new Browser(); const { start } = await login(replay, { email: 'minh@demo.vn' }); // dùng lại state cũ không có cookie
+    const b2 = new Browser(); const r2 = await b2.get(`/app/auth/callback?code=abc&state=${new URL(start.headers.location).searchParams.get('state')}`); assert.ok(r2.headers.location.includes('e=state'));
   });
-  await step('không chuyển hướng mở (open redirect)', async () => {
-    for (const evil of ['//evil.com', 'https://evil.com', '/\\evil.com', '/app/../etc']) {
-      const b = new Browser(); const s = await b.get(`/app/auth/google?next=${encodeURIComponent(evil)}`); const q = Object.fromEntries(new URL(s.headers.location).searchParams);
-      google.challenge = q.code_challenge; google.claims = { email: 'minh@demo.vn', sub: 'g-minh@demo.vn', nonce: q.nonce };
-      const cb = await b.get(`/app/auth/callback?code=a&state=${q.state}`); assert.equal(cb.headers.location, '/app/', evil);
+
+  // ---- CSRF và biên API ----
+  await step('CSRF và nguồn yêu cầu: thiếu/sai mã, Origin lạ, Sec-Fetch-Site chéo, thiếu JSON; hàm lạ không gọi được', async () => {
+    const b = await as('minh@demo.vn');
+    const post = (fn, headers, json = { company_id: CO }) => b.send('POST', `/app/api/rpc/${fn}`, { json, headers: { 'x-requested-with': 'eos', ...headers } });
+    assert.equal((await post('app_tasks', {})).status, 403);
+    assert.equal((await post('app_tasks', { 'x-csrf-token': 'sai' })).status, 403);
+    assert.equal((await post('app_tasks', { 'x-csrf-token': b.csrfToken, origin: 'https://evil.example' })).status, 403);
+    assert.equal((await post('app_tasks', { 'x-csrf-token': b.csrfToken, 'sec-fetch-site': 'cross-site' })).status, 403);
+    assert.equal((await post('app_tasks', { 'x-csrf-token': b.csrfToken, origin })).status, 200);
+    assert.equal((await b.send('POST', '/app/api/logout', { json: {}, headers: { 'x-requested-with': 'eos' } })).status, 403, 'đăng xuất cũng cần CSRF');
+    for (const fn of ['agent.app_tasks', 'app_tasks; DROP TABLE core.users', 'web_login', 'mcp_token_issue_agent', 'outbox_pull', '__proto__', 'constructor', 'accept_result']) {
+      assert.equal((await b.rpc(fn, {})).status, 404, fn);
     }
+    assert.equal((await b.rpc('app_tasks', [1, 2])).status, 400, 'thân không phải đối tượng');
+    const big = await b.send('POST', '/app/api/rpc/app_comment', { json: { task: 1, body: 'x'.repeat(200_000) }, headers: { 'x-csrf-token': b.csrfToken, 'x-requested-with': 'eos' } });
+    assert.ok([400, 413].includes(big.status), `thân quá lớn: ${big.status}`);
+    assert.ok([403, 404].includes((await b.send('GET', '/app/api/rpc/app_tasks')).status), 'GET không gọi được rpc');
+  });
+  await step('thông báo lỗi không lộ SQL/chi tiết hệ thống', async () => {
+    const b = await as('minh@demo.vn');
+    const r1 = await b.rpc('app_task', { id: 'abc' }); assert.equal(r1.status, 400); assert.ok(!/invalid input|bigint|syntax|pg_|agent\./i.test(r1.text), r1.text);
+    const r2 = await b.rpc('app_task', { id: 605 }); assert.equal(r2.status, 403); assert.ok(!r2.text.includes('bí mật'));
+    const r3 = await b.rpc('app_task_save', { company_id: CO, title: 'a' }); assert.equal(r3.status, 400); assert.match(r3.json.error, /2 đến 300/);
+    const r4 = await b.rpc('app_tasks', { company_id: '44444444-4444-4444-4444-444444444444' }); assert.equal(r4.status, 403);
   });
 
-  // ---- hộp việc ----
-  await step('hộp việc: số liệu, danh sách chờ xem, agent đang hỏi, việc quá hạn', async () => {
-    const r = await minh.get('/app/'); assert.equal(r.status, 200);
-    has(r, 'Xin chào Tên Google'.replace('Tên Google', 'Trần Minh')); has(r, 'Kết quả chờ bạn xem'); has(r, 'Agent đang hỏi bạn');
-    has(r, 'T-601'); has(r, 'T-602'); has(r, 'T-603'); has(r, 'Việc thường đã quá hạn'); has(r, 'Quá hạn');
-    lacks(r, 'Việc bí mật của công ty khác'); has(r, 'data-refresh="30"');
+  // ---- vòng đời việc ----
+  await step('giao việc → danh sách → chi tiết → nộp → duyệt 2 bước (trưởng phòng, giám đốc) → Xong; trả lại rồi nộp lại', async () => {
+    const minh = await as('minh@demo.vn'), mgr = await as('truongphong@demo.vn'), adm = await as('admin@demo.vn');
+    const flow = await adm.ok('app_flow_save', { company_id: CO, name: 'Công văn đi', steps: [{ name: 'Trưởng phòng duyệt', approver_role: 'manager' }, { name: 'Giám đốc duyệt', approver_role: 'owner' }] });
+    const org = await minh.ok('app_org', { company_id: CO }); assert.ok(org.flows.some((f) => f.id === flow.id && f.steps.length === 2)); assert.ok(org.departments.length >= 2);
+    const t = await minh.ok('app_task_save', { company_id: CO, title: 'Soạn <b>công văn</b> gia hạn', description: 'Gửi sở', priority: 'high', approval_flow_id: flow.id, due_date: '2030-01-31' });
+    const open = await minh.ok('app_tasks', { company_id: CO }); const row = open.find((x) => x.id === t.id);
+    assert.ok(row && row.title === 'Soạn <b>công văn</b> gia hạn', 'tiêu đề giữ nguyên (giao diện React tự thoát HTML)'); assert.equal(row.status, 'todo');
+    assert.ok(!open.some((x) => x.id === 605), 'không thấy việc của công ty khác');
+    let d = await minh.ok('app_task', { id: t.id }); assert.equal(d.can_edit, true); assert.equal(d.can_submit, true); assert.equal(d.flow_steps, 2);
+    await minh.ok('app_comment', { task: t.id, body: 'Ghi chú đầu' });
+    const bad = await minh.rpc('app_link_add', { task: t.id, url: 'javascript:alert(1)' }); assert.equal(bad.status, 400);
+    await minh.ok('app_link_add', { task: t.id, url: 'https://drive.google.com/file/d/xyz', title: 'Bản nháp' });
+    assert.equal((await minh.ok('app_submit', { task: t.id, note: 'Bản v1' })).status, 'in_review');
+    const inbox = await mgr.ok('app_my_approvals'); const it = inbox.items.find((x) => x.task_id === t.id);
+    assert.ok(it && it.kind === 'approval' && it.step_no === 1 && it.steps === 2 && it.result.body === 'Bản v1' && it.links.length === 1, JSON.stringify(it));
+    assert.equal((await minh.rpc('app_decide', { task: t.id, approve: true })).status, 403, 'người làm không tự duyệt');
+    assert.equal((await mgr.rpc('app_decide', { task: t.id, approve: false })).status, 400, 'trả lại phải có lý do');
+    await mgr.ok('app_decide', { task: t.id, approve: false, note: 'Thiếu căn cứ' });
+    d = await minh.ok('app_task', { id: t.id }); assert.equal(d.task.status, 'in_progress'); assert.equal(d.task.attempts, 1);
+    assert.ok(d.comments.some((c) => c.kind === 'reject' && c.body.includes('Thiếu căn cứ')));
+    await minh.ok('app_submit', { task: t.id, note: 'Bản v2' });
+    assert.equal((await mgr.ok('app_decide', { task: t.id, approve: true })).step, 2);
+    assert.equal((await mgr.rpc('app_decide', { task: t.id, approve: true })).status, 403, 'trưởng phòng không duyệt bước giám đốc');
+    d = await adm.ok('app_task', { id: t.id }); assert.equal(d.can_approve, true); assert.equal(d.approvals.length, 2);
+    assert.equal((await adm.ok('app_decide', { task: t.id, approve: true })).status, 'done');
+    d = await minh.ok('app_task', { id: t.id }); assert.equal(d.task.status, 'done'); assert.ok(d.approvals.every((a) => a.decision === 'approved'));
+    const rep = await adm.ok('app_report', { company_id: CO }); assert.ok(rep.depts.some((x) => x.done_30d >= 1) && Array.isArray(rep.people));
   });
-  await step('danh sách việc: các hộp lọc; không thấy việc công ty khác', async () => {
-    const all = await minh.get('/app/tasks?box=assigned&status=all'); has(all, 'T-604'); lacks(all, 'T-605');
-    const rv = await minh.get('/app/tasks?box=review'); has(rv, 'T-601'); lacks(rv, 'T-604');
-    const q = await minh.get('/app/tasks?box=agent_questions'); has(q, 'T-603');
-    const junk = await minh.get('/app/tasks?box=<script>&status=x'); assert.equal(junk.status, 200); lacks(junk, '<script>');
+  await step('kết quả agent: người giao xem trước; chấp nhận → Xong; trả lại → agent làm lại (hàng đợi cầu nối)', async () => {
+    const minh = await as('minh@demo.vn');
+    const inbox = await minh.ok('app_my_approvals'); const ids = inbox.items.filter((x) => x.kind === 'review').map((x) => x.task_id);
+    assert.ok(ids.includes(601) && ids.includes(602), ids.join());
+    const d = await minh.ok('app_task', { id: 601 }); assert.equal(d.can_review, true); assert.match(d.reports[0].summary, /dự thảo công văn/);
+    assert.equal((await minh.ok('app_accept', { task: 601 })).status, 'done');
+    assert.equal((await minh.rpc('app_reject', { task: 602, reason: 'x' })).status, 400, 'lý do quá ngắn');
+    assert.equal((await minh.ok('app_reject', { task: 602, reason: 'Sai thể thức, soạn lại theo NĐ 30' })).status, 'rework');
+    assert.ok((await sql("SELECT 1 FROM agent.outbox WHERE task_id=602 AND kind='dispatch' AND done_at IS NULL")).length === 1, 'có thẻ làm lại chờ đẩy');
+    const q = await minh.ok('app_task', { id: 603 }); assert.equal(q.can_answer, true);
+    await minh.ok('app_answer', { task: 603, body: 'Nghỉ từ 30/4 đến 1/5' });
+    assert.ok((await sql("SELECT 1 FROM agent.outbox WHERE task_id=603 AND kind='answer'")).length === 1, 'câu trả lời chuyển cho agent');
+    assert.equal((await minh.rpc('app_answer', { task: 604, body: 'x' })).status, 400, 'việc không có agent hỏi');
   });
-
-  // ---- chi tiết, XSS, cách ly ----
-  await step('chi tiết việc chờ duyệt: báo cáo đầy đủ, tệp Drive là liên kết, nút duyệt có', async () => {
-    const r = await minh.get('/app/tasks/601'); assert.equal(r.status, 200);
-    has(r, 'Kết quả chờ bạn duyệt'); has(r, 'Tin cậy: Cao'); has(r, 'Rủi ro còn lại'); has(r, 'Chưa rõ người ký'); has(r, 'Đúng thể thức NĐ30');
-    has(r, 'href="https://drive.google.com/file/d/D601/view"'); has(r, 'rel="noopener noreferrer"'); has(r, 'Chấp nhận, đóng việc'); has(r, 'Trả lại để làm lại');
-    assert.equal((await minh.get('/app/tasks/T-601')).status, 200, 'chấp nhận tiền tố T-');
-  });
-  await step('XSS: nội dung do agent/người nhập luôn bị thoát; URL javascript: không thành liên kết', async () => {
-    const r2 = await minh.get('/app/tasks/602'); has(r2, '&lt;b&gt;độc hại&lt;/b&gt;'); lacks(r2, '<b>độc hại</b>'); lacks(r2, 'href="javascript:'); has(r2, 'href="https://drive.google.com/file/d/D602/view"');
-    has(r2, 'Tin cậy: Cao'); // 'high' đã được chuẩn hóa thành 'cao' ở CSDL
-    const r3 = await minh.get('/app/tasks/603'); has(r3, '&lt;script&gt;alert(1)&lt;/script&gt;'); lacks(r3, '<script>alert(1)</script>');
-    const csrf = await minh.csrf('/app/tasks/new');
-    const t = await minh.post('/app/tasks', { _csrf: csrf, title: '<img src=x onerror=alert(1)> việc XSS', description: '"><script>alert(2)</script>', agent: '', due: '', priority: 'medium' });
-    assert.equal(t.status, 303); const d = await minh.get(t.headers.location);
-    has(d, '&lt;img src=x onerror=alert(1)&gt;'); lacks(d, '<img src=x'); lacks(d, '<script>alert(2)');
-    const err = await minh.post('/app/tasks', { _csrf: csrf, title: '"><script>x</script>', description: '', agent: 'khong-co', priority: 'medium' });
-    assert.equal(err.status, 400); lacks(err, '<script>x</script>'); has(err, 'Agent');
-  });
-  await step('cách ly công ty: không xem, không duyệt, không hủy việc của người khác (không lộ tồn tại)', async () => {
-    const csrf = await minh.csrf('/app/tasks/new');
-    const r = await minh.get('/app/tasks/605'); assert.equal(r.status, 404); lacks(r, 'bí mật');
-    for (const a of ['accept', 'cancel']) { const p = await minh.post(`/app/tasks/605/${a}`, { _csrf: csrf }); assert.ok([403, 404].includes(p.status), a); }
-    assert.equal((await sql('SELECT status FROM work.tasks WHERE id=605'))[0].status, 'todo');
-    for (const bad of ['abc', '1;DROP', '99999999999999', '0x1']) assert.equal((await minh.get(`/app/tasks/${bad}`)).status, 404, bad);
-    const khach = new Browser(); await login(khach, { email: 'khach@khac.vn' });
-    assert.equal((await khach.get('/app/tasks/601')).status, 404);
-    const kc = await khach.csrf('/app/tokens'); assert.ok([403, 404].includes((await khach.post('/app/tasks/601/accept', { _csrf: kc })).status));
-    has(await khach.get('/app/'), 'Xin chào Khách Công Ty Khác'); lacks(await khach.get('/app/'), 'T-601');
-  });
-
-  // ---- CSRF ----
-  await step('CSRF: thiếu/sai mã bị chặn; Origin lạ bị chặn; không đổi dữ liệu', async () => {
-    for (const form of [{}, { _csrf: 'sai' }]) { const r = await minh.post('/app/tasks/601/accept', form); assert.equal(r.status, 403); }
-    const csrf = await minh.csrf();
-    const o = await minh.post('/app/tasks/601/accept', { _csrf: csrf }, { headers: { origin: 'https://evil.example' } }); assert.equal(o.status, 403);
-    const s = await minh.post('/app/tasks/601/accept', { _csrf: csrf }, { headers: { 'sec-fetch-site': 'cross-site' } }); assert.equal(s.status, 403);
-    assert.equal((await sql('SELECT status FROM work.tasks WHERE id=601'))[0].status, 'in_review');
-    const other = new Browser(); await login(other, { email: 'admin@demo.vn' });
-    assert.equal((await other.post('/app/tasks/601/accept', { _csrf: csrf })).status, 403, 'CSRF của người khác không dùng được');
-    assert.equal((await minh.post('/app/logout', {})).status, 403, 'đăng xuất cũng cần CSRF');
-  });
-
-  // ---- luồng nghiệp vụ ----
-  await step('trả lời agent đang hỏi → bình luận kind=answer, việc chuyển Đang làm', async () => {
-    const csrf = await minh.csrf('/app/tasks/603');
-    const r = await minh.post('/app/tasks/603/comment', { _csrf: csrf, kind: 'answer', body: 'Nghỉ từ 30/4 đến 3/5.' }); assert.equal(r.status, 303); assert.match(r.headers.location, /ok=answered/);
-    assert.equal((await sql("SELECT count(*) FROM work.comments WHERE task_id=603 AND kind='answer'"))[0].count, '1');
-    assert.equal((await sql('SELECT waiting_on_human FROM work.tasks WHERE id=603'))[0].waiting_on_human, false);
-    assert.equal((await sql("SELECT count(*) FROM agent.outbox WHERE task_id=603 AND kind='answer'"))[0].count, '1', 'đẩy câu trả lời sang Hermes');
-    const rr = await minh.get('/app/tasks/603?ok=answered'); has(rr, 'Đã gửi câu trả lời cho agent'); has(rr, 'Nghỉ từ 30/4 đến 3/5.');
-  });
-  await step('chấp nhận kết quả → Xong; báo cáo ghi accepted', async () => {
-    const csrf = await minh.csrf('/app/tasks/601');
-    const r = await minh.post('/app/tasks/601/accept', { _csrf: csrf, note: 'Tốt' }); assert.equal(r.status, 303);
-    assert.equal((await sql('SELECT status FROM work.tasks WHERE id=601'))[0].status, 'done');
-    assert.equal((await sql('SELECT verdict FROM agent.reports WHERE task_id=601'))[0].verdict, 'accepted');
-    const again = await minh.post('/app/tasks/601/accept', { _csrf: csrf }); assert.equal(again.status, 303, 'chấp nhận lần hai không lỗi');
-    lacks(await minh.get('/app/tasks/601'), 'Chấp nhận, đóng việc');
-  });
-  await step('trả lại: lý do bắt buộc; sau đó sinh thẻ làm lại kèm lý do', async () => {
-    const csrf = await minh.csrf('/app/tasks/602');
-    const short = await minh.post('/app/tasks/602/reject', { _csrf: csrf, reason: 'x' }); assert.equal(short.status, 400); has(short, 'lý do');
-    const r = await minh.post('/app/tasks/602/reject', { _csrf: csrf, reason: 'Thiếu người nhận, làm lại cho đủ.' }); assert.equal(r.status, 303);
-    assert.equal((await sql("SELECT count(*) FROM agent.cards WHERE task_id=602 AND kind='rework'"))[0].count, '1');
-    assert.equal((await sql("SELECT count(*) FROM agent.outbox WHERE task_id=602 AND kind='dispatch' AND payload ? 'rework_reason'"))[0].count, '1');
-  });
-  await step('tạo việc giao agent → có lệnh dispatch; mô tả và ưu tiên được lưu; người phụ trách là mình', async () => {
-    const csrf = await minh.csrf('/app/tasks/new');
-    const form = await minh.get('/app/tasks/new'); has(form, 'Văn thư AI');
-    const r = await minh.post('/app/tasks', { _csrf: csrf, title: 'Soạn công văn gửi đối tác', description: 'Nội dung chi tiết', agent: 'van-thu', due: '2026-12-31', priority: 'high' });
-    assert.equal(r.status, 303); assert.match(r.headers.location, /^\/app\/tasks\/\d+\?ok=created$/);
-    const id = r.headers.location.match(/tasks\/(\d+)/)[1];
-    const t = (await sql('SELECT priority, due_date::text, assignee_id, created_by, agent_id FROM work.tasks WHERE id=$1', [id]))[0];
-    assert.equal(t.priority, 'high'); assert.equal(t.due_date, '2026-12-31'); assert.equal(t.assignee_id, t.created_by); assert.ok(t.agent_id);
-    assert.equal((await sql("SELECT count(*) FROM agent.outbox WHERE task_id=$1 AND kind='dispatch'", [id]))[0].count, '1');
-    const bad = await minh.post('/app/tasks', { _csrf: csrf, title: 'ab', description: '', priority: 'medium' }); assert.equal(bad.status, 400); has(bad, 'Tiêu đề');
-    assert.equal((await minh.post('/app/tasks', { _csrf: csrf, title: 'Việc hạn xấu', due: 'khong-phai-ngay', priority: 'medium' })).status, 303, 'ngày sai bị bỏ qua, không làm hỏng');
-  });
-  await step('hủy việc: ghi bình luận; việc đã hủy không hủy lại; thẻ agent bị dừng (migration 0001)', async () => {
-    const csrf = await minh.csrf('/app/tasks/604');
-    const r = await minh.post('/app/tasks/604/cancel', { _csrf: csrf, reason: 'Không cần nữa' }); assert.equal(r.status, 303);
-    assert.equal((await sql('SELECT status, kpi_counted FROM work.tasks WHERE id=604'))[0].status, 'cancelled');
-    assert.match((await sql("SELECT body FROM work.comments WHERE task_id=604 ORDER BY id DESC LIMIT 1"))[0].body, /^Hủy việc: Không cần nữa/);
-    const t603 = (await sql("SELECT id FROM work.tasks WHERE title LIKE 'Soạn công văn gửi đối tác'"))[0].id;
-    const c2 = await minh.csrf(`/app/tasks/${t603}`); await minh.post(`/app/tasks/${t603}/cancel`, { _csrf: c2, reason: '' });
-    assert.equal((await sql("SELECT done_at IS NOT NULL AS d FROM agent.outbox WHERE task_id=$1 AND kind='dispatch'", [t603]))[0].d, true, 'lệnh dispatch chờ bị hủy');
+  await step('quyền xem: Kế toán không thấy việc phòng Hành chính; khách công ty khác bị chặn; người không phải thành viên không dùng được API công ty', async () => {
+    const kt = await as('ketoan@demo.vn'), khach = await as('khach@khac.vn');
+    assert.ok(!(await kt.ok('app_tasks', { company_id: CO })).some((x) => x.id === 604));
+    assert.equal((await kt.rpc('app_task', { id: 604 })).status, 403);
+    assert.equal((await kt.rpc('app_comment', { task: 604, body: 'xâm nhập' })).status, 403);
+    assert.equal((await kt.rpc('app_task_save', { id: 604, title: 'Bị sửa' })).status, 403);
+    assert.equal((await khach.rpc('app_tasks', { company_id: CO })).status, 403);
+    assert.equal((await khach.rpc('app_org', { company_id: CO })).status, 403);
+    assert.equal((await khach.rpc('app_task', { id: 601 })).status, 403);
+    assert.equal((await kt.rpc('app_dept_save', { company_id: CO, code: 'X', name: 'Xxx' })).status, 403, 'thành viên không tạo phòng');
+    assert.equal((await kt.rpc('app_invite_create', { company_id: CO, role: 'member' })).status, 403);
+    assert.equal((await kt.rpc('web_admin_overview', {})).status, 403, 'chỉ quản trị hệ thống');
   });
 
-  // ---- mã MCP ----
-  await step('tạo mã MCP: hiện đúng một lần, không lưu đệm; danh sách chỉ có tiền tố; quyền không hợp lệ bị từ chối', async () => {
-    const csrf = await minh.csrf('/app/tokens');
-    const r = await minh.post('/app/tokens', { _csrf: csrf, name: 'Claude laptop', client: 'claude', days: '30', scopes: ['read', 'write'] });
-    assert.equal(r.status, 200); assert.equal(r.headers['cache-control'], 'no-store');
-    const tok = /value="(eos_[0-9a-f]{48})"/.exec(r.text)?.[1]; assert.ok(tok, 'có mã trên trang');
-    const list = await minh.get('/app/tokens'); lacks(list, tok); has(list, `eos_${tok.slice(4, 12)}…`); has(list, 'read, write');
-    assert.equal((await sql('SELECT scopes::text, user_id FROM agent.mcp_tokens WHERE prefix=$1', [tok.slice(4, 12)]))[0].scopes, '{read,write}');
-    for (const [form, why] of [[{ name: 'Delegate', scopes: ['read', 'delegate'], days: '30' }, 'delegate'], [{ name: 'Draft', scopes: ['draft'], days: '30' }, 'draft'], [{ name: 'Quá hạn', scopes: ['read'], days: '365' }, '365'], [{ name: 'Rỗng', days: '30' }, 'rỗng'], [{ name: 'x', scopes: ['read'], days: '30' }, 'tên ngắn']]) {
-      const b = await minh.post('/app/tokens', { _csrf: csrf, client: 'other', ...form }); assert.equal(b.status, 400, why);
-    }
-    const id = (await sql('SELECT id FROM agent.mcp_tokens WHERE prefix=$1', [tok.slice(4, 12)]))[0].id;
-    const khach = new Browser(); await login(khach, { email: 'khach@khac.vn' }); const kc = await khach.csrf('/app/tokens');
-    await khach.post(`/app/tokens/${id}/revoke`, { _csrf: kc }); assert.equal((await sql('SELECT revoked_at FROM agent.mcp_tokens WHERE id=$1', [id]))[0].revoked_at, null, 'người khác không thu hồi được');
-    const rv = await minh.post(`/app/tokens/${id}/revoke`, { _csrf: csrf }); assert.equal(rv.status, 303);
-    assert.notEqual((await sql('SELECT revoked_at FROM agent.mcp_tokens WHERE id=$1', [id]))[0].revoked_at, null);
-    assert.equal((await minh.post('/app/tokens/khong-phai-uuid/revoke', { _csrf: csrf })).status, 404);
+  // ---- mã mời ----
+  await step('mã mời: người mới đăng nhập Google → chờ mã → nhập mã vào công ty; mã dùng hết/sai bị từ chối; link mời điền sẵn mã', async () => {
+    const adm = await as('admin@demo.vn');
+    const inv = await adm.ok('app_invite_create', { company_id: CO, role: 'member', department_id: KT, max_uses: 1, days: 7, note: 'NV mới' });
+    assert.match(inv.code, /^[A-Z0-9]{8}$/);
+    const nb = new Browser(); const r = await login(nb, { email: 'moi@demo.vn', name: 'Người Mới' });
+    assert.equal(r.cb.headers.location, '/app/#/login?e=invite_required'); assert.ok(!nb.jar.has('eos_s')); assert.ok(nb.jar.has('eos_p'));
+    assert.match(r.cb.setCookie.find((c) => c.startsWith('eos_p')), /Path=\/app\/api.*HttpOnly.*SameSite=Lax/i);
+    assert.equal((await nb.me()).status, 401, 'chưa có phiên khi chưa nhập mã');
+    const join = (code, b = nb, h = {}) => b.send('POST', '/app/api/join', { json: { code }, headers: { 'x-requested-with': 'eos', ...h } });
+    assert.equal((await join('KHONGCO1')).status, 400); assert.equal((await join('abc')).status, 400);
+    assert.equal((await join(inv.code, nb, { origin: 'https://evil.example' })).status, 403);
+    assert.equal((await nb.send('POST', '/app/api/join', { json: { code: inv.code } })).status, 400, 'thiếu tiêu đề X-Requested-With');
+    const ok = await join(inv.code.toLowerCase()); assert.equal(ok.status, 200);
+    assert.ok(nb.jar.has('eos_s') && !nb.jar.has('eos_p'));
+    const me = await nb.me(); assert.equal(me.json.memberships[0].role, 'member'); assert.equal(me.json.memberships[0].department_code, 'KT');
+    // mã đã hết lượt
+    const b2 = new Browser(); await login(b2, { email: 'khac2@demo.vn' }); assert.equal((await join(inv.code, b2)).status, 400);
+    // không có phiên Google đang chờ → không nhập mã được
+    assert.equal((await join(inv.code, new Browser())).status, 401);
+    // link mời có mã sẵn: đi thẳng qua Google
+    const inv2 = await adm.ok('app_invite_create', { company_id: CO, role: 'member', email: 'Rieng@Demo.vn' });
+    const b3 = new Browser(); const r3 = await login(b3, { email: 'rieng@demo.vn' }, { invite: inv2.code }); assert.equal(r3.cb.headers.location, '/app/#/today');
+    const b4 = new Browser(); const r4 = await login(b4, { email: 'ai-do@demo.vn' }, { invite: inv2.code }); assert.ok(r4.cb.headers.location.includes('e='), 'mã gắn email không dùng cho người khác');
+    await adm.ok('app_invite_revoke', { code: inv2.code });
+    const list = await adm.ok('app_invites', { company_id: CO }); assert.ok(list.some((i) => i.code === inv.code && i.uses === 1) && list.find((i) => i.code === inv2.code).revoked);
+    assert.equal((await new Browser().get('/app/#/login?code=' + inv.code)).status, 200);
   });
 
   // ---- quản trị ----
-  const adm = new Browser();
-  await step('quản trị: người thường bị chặn; quản trị thấy agent, cầu nối, mã, nhật ký MCP', async () => {
-    for (const p of ['/app/admin', '/app/admin/tokens', '/app/admin/calls']) assert.equal((await minh.get(p)).status, 403, p);
-    lacks(await minh.get('/app/'), 'href="/app/admin"');
-    await login(adm, { email: 'admin@demo.vn' });
-    const o = await adm.get('/app/admin'); assert.equal(o.status, 200); has(o, 'Cầu nối Hermes'); has(o, 'van-thu'); has(o, 'eos-van-thu'); has(o, 'Lệnh chờ đẩy sang Kanban'); has(o, 'href="/app/admin"');
-    const t = await adm.get('/app/admin/tokens'); assert.equal(t.status, 200); has(t, 'minh@demo.vn'); lacks(t, 'token_hash');
-    assert.equal((await adm.get('/app/admin/calls?denied=1')).status, 200);
-    const csrf = await adm.csrf('/app/admin');
-    const id = (await sql("SELECT id FROM agent.mcp_tokens WHERE revoked_at IS NULL AND name='Claude laptop' LIMIT 1"));
-    assert.equal(id.length, 0, 'mã trước đã thu hồi');
-    const mk = await adm.post('/app/tokens', { _csrf: csrf, name: 'Mã quản trị', client: 'other', days: '7', scopes: ['read'] }); assert.equal(mk.status, 200);
-    const mid = (await sql("SELECT id FROM agent.mcp_tokens WHERE name='Mã quản trị'"))[0].id;
-    const rv = await adm.post(`/app/admin/tokens/${mid}/revoke`, { _csrf: csrf }); assert.equal(rv.status, 303);
-    assert.notEqual((await sql('SELECT revoked_at FROM agent.mcp_tokens WHERE id=$1', [mid]))[0].revoked_at, null);
-    assert.equal((await minh.post(`/app/admin/tokens/${mid}/revoke`, { _csrf: await minh.csrf() })).status, 403, 'người thường không dùng đường quản trị');
+  await step('quản trị: phòng ban, thành viên (không tự hạ, giữ chủ sở hữu), dự án, Drive', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const d = await adm.ok('app_dept_save', { company_id: CO, code: 'ph', name: 'Pháp chế' }); assert.ok(d.id);
+    assert.equal((await adm.rpc('app_dept_save', { company_id: CO, code: 'PH', name: 'Trùng' })).status, 400);
+    assert.equal((await adm.rpc('app_member_set', { company_id: CO, user_id: ID.adm, role: 'member' })).status, 400, 'không tự hạ vai trò');
+    await adm.ok('app_member_set', { company_id: CO, user_id: ID.minh, role: 'member', department_id: HC, title: 'Chuyên viên' });
+    const org = await adm.ok('app_org', { company_id: CO }); assert.equal(org.members.find((m) => m.user_id === ID.minh).title, 'Chuyên viên');
+    const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'du-an-a', name: 'Dự án A', drive_url: 'https://drive.google.com/drive/folders/abcdefghij' }); assert.ok(pr.id);
+    assert.equal((await adm.rpc('app_project_save', { company_id: CO, slug: 'Sai Slug', name: 'x' })).status, 400);
+    assert.equal((await minh.rpc('app_drive_set', { url: 'https://evil.example/drive/folders/1AbCdEfGhIjK' })).status, 400);
+    await minh.ok('app_drive_set', { url: 'https://drive.google.com/drive/u/0/folders/1AbCdEfGhIjKlM?usp=sharing' });
+    const me = await minh.me(); assert.equal(me.json.user.drive_status, 'pending'); assert.equal(me.json.user.drive_folder_url, 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlM');
+    assert.match((await minh.ok('app_drive_names'))[0], /^DEO - demo - HC - /);
   });
-
-  // ---- phiên ----
-  await step('phiên: cookie giả/sai chữ ký/hết hạn bị bác; khóa tài khoản có hiệu lực ngay; đăng xuất xóa phiên', async () => {
-    const forged = new Browser(); forged.jar.set('eos_s', b64u(JSON.stringify({ sub: 'cccccccc-0000-0000-0000-000000000002', csrf: 'x', exp: 9999999999 })) + '.chuky-gia');
-    assert.equal((await forged.get('/app/admin')).status, 303);
-    const cookie = minh.jar.get('eos_s'); const [p, m] = cookie.split('.');
-    const tampered = new Browser(); tampered.jar.set('eos_s', b64u(JSON.stringify({ ...JSON.parse(Buffer.from(p, 'base64url')), sub: 'cccccccc-0000-0000-0000-000000000002' })) + '.' + m);
-    assert.equal((await tampered.get('/app/admin')).status, 303, 'sửa nội dung cookie làm hỏng chữ ký');
-    const expired = new Browser(); const { createAuth } = await import('../src/auth.mjs');
-    const au = createAuth(app.locals.cfg, app.locals.db);
-    expired.jar.set('eos_s', au.sign({ sub: 'cccccccc-0000-0000-0000-000000000001', csrf: 'c', exp: Math.floor(Date.now() / 1000) - 5 }));
-    assert.equal((await expired.get('/app/')).status, 303);
-    const victim = new Browser(); await login(victim, { email: 'admin@demo.vn' }); assert.equal((await victim.get('/app/admin')).status, 200);
-    await sql("UPDATE core.users SET active=false WHERE email='admin@demo.vn'");
-    const after = await victim.get('/app/admin'); assert.equal(after.status, 303, 'khóa tài khoản có hiệu lực ngay'); assert.match(after.headers.location, /\/app\/login/);
-    await sql("UPDATE core.users SET active=true WHERE email='admin@demo.vn'");
-    const csrf = await minh.csrf(); const out = await minh.post('/app/logout', { _csrf: csrf }); assert.equal(out.status, 303);
-    assert.ok(!minh.jar.has('eos_s')); assert.equal((await minh.get('/app/')).status, 303);
+  await step('kết nối AI: cấp mã MCP (hiện một lần, không lộ băm), liệt kê, thu hồi; quản trị hệ thống xem tổng quan', async () => {
+    const minh = await as('minh@demo.vn'), adm = await as('admin@demo.vn');
+    const t = await minh.ok('web_token_issue', { name: 'Claude laptop', client: 'claude', scopes: ['read', 'write'], days: 30 });
+    assert.match(t.token, /^eos_[0-9a-f]{48}$/);
+    assert.equal((await minh.rpc('web_token_issue', { name: 'x', client: 'claude', scopes: ['delegate'], days: 30 })).status, 400);
+    assert.equal((await minh.rpc('web_token_issue', { name: 'xx', client: 'claude', scopes: 'read', days: 30 })).status, 400);
+    const list = await minh.ok('web_my_tokens'); assert.equal(list.length, 1); assert.ok(!JSON.stringify(list).includes(t.token) && !JSON.stringify(list).includes('token_hash'));
+    assert.equal((await minh.rpc('web_token_revoke', { id: 'khong-phai-uuid' })).status, 400);
+    await minh.ok('web_token_revoke', { id: list[0].id }); assert.equal((await minh.ok('web_my_tokens'))[0].active, false);
+    const ov = await adm.ok('web_admin_overview'); assert.ok(ov.agents.length >= 1 && ov.bridge && ov.mcp);
+    assert.ok(Array.isArray(await adm.ok('web_admin_tokens'))); assert.ok(Array.isArray(await adm.ok('web_admin_calls', { limit: 20, denied: true })));
+    assert.ok(!JSON.stringify(await adm.ok('web_admin_tokens')).includes('token_hash'));
+  });
+  await step('đăng xuất xóa phiên; cookie cũ vẫn là chữ ký hợp lệ nhưng tài khoản khóa thì mất hiệu lực', async () => {
+    const b = await as('minh@demo.vn'); const saved = b.jar.get('eos_s');
+    const out = await b.send('POST', '/app/api/logout', { json: {}, headers: { 'x-csrf-token': b.csrfToken, 'x-requested-with': 'eos' } }); assert.equal(out.status, 200);
+    assert.ok(!b.jar.has('eos_s')); assert.equal((await b.me()).status, 401);
+    b.jar.set('eos_s', saved + 'x'); assert.equal((await b.me()).status, 401, 'chữ ký sai');
+    const [p] = saved.split('.'); b.jar.set('eos_s', `${p}.${'A'.repeat(43)}`); assert.equal((await b.me()).status, 401, 'chữ ký giả');
   });
   await step('cookie Secure khi PUBLIC_URL là https', async () => {
     const saved = { ...process.env }; process.env.PUBLIC_URL = 'https://work.example.test';
@@ -322,14 +318,22 @@ try {
     assert.match([].concat(r.headers['set-cookie']).join(';'), /Secure/); assert.ok(r.headers['strict-transport-security']);
     s2.close(); await a2.locals.db.close(); Object.assign(process.env, saved);
   });
-  await step('giới hạn tốc độ: đăng nhập và thao tác ghi vượt ngưỡng nhận 429', async () => {
-    const saved = { ...process.env }; Object.assign(process.env, { LOGIN_RATE_PER_MIN: '5', WRITE_RATE_PER_MIN: '4' });
+  await step('giới hạn tốc độ: đăng nhập và lệnh gọi API vượt ngưỡng nhận 429', async () => {
+    const saved = { ...process.env }; Object.assign(process.env, { LOGIN_RATE_PER_MIN: '5', API_RATE_PER_MIN: '4' });
     const { buildApp: build3 } = await import('../src/server.mjs?ratelimit'); const a3 = build3();
     const s3 = await new Promise((ok) => { const s = a3.listen(0, '127.0.0.1', () => ok(s)); });
     const hit = (path, method = 'GET', ph = {}) => new Promise((ok) => { const r = http.request({ host: '127.0.0.1', port: s3.address().port, path, method, headers: { host: `127.0.0.1:${port}`, ...ph } }, (res) => { res.resume(); ok(res.statusCode); }); r.end(); });
     const codes = []; for (let i = 0; i < 9; i++) codes.push(await hit('/app/auth/google')); assert.ok(codes.slice(0, 5).every((c) => c === 303) && codes.slice(5).every((c) => c === 429), codes.join(','));
-    const w = []; for (let i = 0; i < 7; i++) w.push(await hit('/app/tasks', 'POST', { origin })); assert.ok(w.includes(429), `thao tác ghi không bị giới hạn: ${w}`);
     s3.close(); await a3.locals.db.close(); Object.assign(process.env, saved);
+    // giới hạn theo người: dựng máy chủ thứ ba dùng chung phiên (cùng SESSION_SECRET của máy chủ chính)
+    const saved2 = { ...process.env }; Object.assign(process.env, { API_RATE_PER_MIN: '4' });
+    const { buildApp: build4 } = await import('../src/server.mjs?ratelimit2'); const a4 = build4();
+    const s4 = await new Promise((ok) => { const s = a4.listen(0, '127.0.0.1', () => ok(s)); });
+    const minh = await as('minh@demo.vn'); const cookie = `eos_s=${minh.jar.get('eos_s')}`;
+    const rpc4 = () => new Promise((ok) => { const body = JSON.stringify({ company_id: CO }); const r = http.request({ host: '127.0.0.1', port: s4.address().port, path: '/app/api/rpc/app_tasks', method: 'POST',
+      headers: { host: `127.0.0.1:${port}`, cookie, 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), 'x-csrf-token': minh.csrfToken, 'x-requested-with': 'eos' } }, (res) => { res.resume(); ok(res.statusCode); }); r.end(body); });
+    const w = []; for (let i = 0; i < 7; i++) w.push(await rpc4()); assert.deepEqual(w.slice(0, 4), [200, 200, 200, 200], w.join()); assert.ok(w.slice(4).every((c) => c === 429), w.join());
+    s4.close(); await a4.locals.db.close(); Object.assign(process.env, saved2);
   });
 
   console.log(`web e2e: ${passed} bước đạt`);

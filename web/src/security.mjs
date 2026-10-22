@@ -4,8 +4,8 @@ import crypto from 'node:crypto';
 export function securityHeaders(cfg) {
   return (req, res, next) => {
     res.setHeader('Content-Security-Policy',
-      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://lh3.googleusercontent.com data:; connect-src 'self'; " +
-      "form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; font-src 'self'; connect-src 'self'; " +
+      "manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");   // style 'unsafe-inline': thư viện giao diện đặt style theo phần tử; script vẫn chỉ 'self'
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'same-origin');

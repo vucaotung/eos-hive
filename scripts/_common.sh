@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Thứ tự nạp lược đồ. Đổi thứ tự = hỏng khóa ngoại.
-DB_FILES=(00_core 10_work 20_doc 30_hr 31_payroll_kpi 40_crm 45_kb 50_views 60_agent)
+DB_FILES=(00_core 10_work 20_doc 30_hr 31_payroll_kpi 40_crm 45_kb 50_views 60_agent 61_app)
 # EOS_TEST_DSN: chuỗi kết nối tới Postgres 16 (tài khoản superuser) dùng để thử. Cơ sở dữ liệu trong đó sẽ bị XÓA và dựng lại.
 need_dsn() {
   [ -n "${EOS_TEST_DSN:-}" ] || { echo "Thiếu EOS_TEST_DSN, ví dụ: postgres://postgres:pw@127.0.0.1:5432/eos_test" >&2; exit 2; }
@@ -13,7 +13,7 @@ split_dsn() {
   DBNAME="${EOS_TEST_DSN##*/}"; DBNAME="${DBNAME%%\?*}"
   ADMIN_DSN="${EOS_TEST_DSN%/*}/postgres"
 }
-# Xóa và dựng lại CSDL thử từ 9 tệp lược đồ (mỗi bộ kiểm thử bắt đầu từ trạng thái sạch, chạy thứ tự nào cũng được)
+# Xóa và dựng lại CSDL thử từ các tệp lược đồ db/*.sql (mỗi bộ kiểm thử bắt đầu từ trạng thái sạch, chạy thứ tự nào cũng được)
 rebuild_db() {
   split_dsn
   psql "$ADMIN_DSN" -X -q -c "DROP DATABASE IF EXISTS \"$DBNAME\"" -c "CREATE DATABASE \"$DBNAME\""

@@ -1,4 +1,5 @@
-// Máy chủ web Tổ Ong: Express, chỉ nghe localhost, Caddy chuyển tiếp /app vào đây.
+// Máy chủ web Tổ Ong (Dẹo Work): Express, chỉ nghe localhost, Caddy chuyển tiếp /app vào đây.
+// Phục vụ giao diện React đã dựng sẵn (web/public) và API JSON /app/api.
 import express from 'express';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -8,9 +9,9 @@ import { createDb } from './db.mjs';
 import { createAuth } from './auth.mjs';
 import { createRoutes } from './routes.mjs';
 import { securityHeaders, hostGuard, noStore, rateLimiter } from './security.mjs';
-import { errorPage } from './views.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const pub = path.join(here, '../public');
 
 export function buildApp(env = process.env) {
   const cfg = loadConfig(env);
@@ -21,19 +22,23 @@ export function buildApp(env = process.env) {
   if (cfg.trustProxy) app.set('trust proxy', 1);
   app.use(securityHeaders(cfg));
   app.use(hostGuard(cfg));
-  const limiter = rateLimiter({ max: cfg.loginRatePerMin, windowMs: 60_000 });   // đăng nhập, theo IP
-  const writes = rateLimiter({ max: cfg.writeRatePerMin, windowMs: 60_000 })((q) => `w:${auth.readSession(q)?.sub || q.ip}`);   // thao tác ghi: 120 lượt/phút/người
-  app.use('/app/static', express.static(path.join(here, '../public'), { maxAge: '1h', index: false, dotfiles: 'ignore' }));
-  app.use('/app', noStore, express.urlencoded({ extended: false, limit: '100kb' }),
-    // giới hạn thao tác ghi theo người dùng (hoặc IP khi chưa đăng nhập)
-    (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()),
-    createRoutes({ cfg, db, auth, limiter }));
+  const limiter = rateLimiter({ max: cfg.loginRatePerMin, windowMs: 60_000 });                    // đăng nhập, nhập mã mời: theo IP
+  const apiLimit = rateLimiter({ max: cfg.apiRatePerMin, windowMs: 60_000 })((q) => `api:${q.session?.sub || q.ip}`);   // lệnh gọi API: theo người
+
+  // tệp tĩnh có băm tên (assets/*) cache dài; còn lại luôn kiểm lại
+  app.use('/app', express.static(pub, { index: false, dotfiles: 'ignore', redirect: false, setHeaders: (res, file) => {
+    res.setHeader('Cache-Control', file.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache');
+  } }));
+  app.use('/app', noStore, createRoutes({ cfg, db, auth, limiter, apiLimit }));
+  app.get(['/app', '/app/'], (req, res) => res.sendFile(path.join(pub, 'index.html')));
   app.get('/', (req, res) => res.redirect(302, '/app/'));
-  app.use((err, req, res, next) => {                              // lỗi không lường trước: ghi nhật ký có mã, trả trang chung, không lộ chi tiết
+  app.use((req, res) => res.status(404).type('text/plain').send('Không tìm thấy'));
+  app.use((err, req, res, next) => {                              // lỗi không lường trước: ghi nhật ký có mã, trả câu chung, không lộ chi tiết
     const ref = crypto.randomBytes(4).toString('hex');
     console.error(JSON.stringify({ evt: 'error', ref, path: req.path, msg: String(err?.message || err).slice(0, 300) }));
     if (res.headersSent) return next(err);
-    res.status(500).type('html').send(String(errorPage({ title: 'Có lỗi xảy ra', message: `Thử lại sau. Mã tham chiếu: ${ref}`, me: res.locals.me, csrf: res.locals.csrf })));
+    const code = err?.type === 'entity.too.large' ? 413 : err?.type?.startsWith?.('entity.') ? 400 : 500;
+    res.status(code).json({ error: code === 500 ? `Có lỗi xảy ra. Mã tham chiếu: ${ref}` : 'Dữ liệu gửi lên không hợp lệ' });
   });
   app.locals.db = db; app.locals.cfg = cfg;
   return app;

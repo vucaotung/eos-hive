@@ -28,7 +28,7 @@ Chưa có Postgres: `docker run -d --name eos-pg -e POSTGRES_PASSWORD=pw -p 5432
 | --- | --- |
 | `db/` | 9 tệp lược đồ (00→60), 2 tệp kiểm thử SQL |
 | `mcp/` | Máy chủ MCP (Node 22) — chạy trên VPS 169 |
-| `web/` | Giao diện web `/app` (Node 22, Express): hộp việc, duyệt kết quả agent, quản trị — chạy trên VPS 169 |
+| `web/` | **Dẹo Work** tại `/app`: máy chủ Node 22 (Express, API JSON) + giao diện React/HeroUI dựng sẵn (`web/ui` → `web/public`): hôm nay, việc (danh sách/bảng), duyệt nhiều bước, báo cáo, quản trị (thành viên, mã mời, phòng ban, quy trình duyệt, dự án), kết nối AI, quản trị agent/MCP — chạy trên VPS 169 |
 | `bridge/` | Cầu nối Kanban (Python) + plugin Hermes — chạy trên VPS 173 |
 | `deploy/` | systemd, Caddy, mẫu `.env`, `setup_agents.sql`, `mint_bridge_jwt.py` |
 | `scripts/` | test, quét bí mật, ghép lược đồ, xuất bản lên GitHub |

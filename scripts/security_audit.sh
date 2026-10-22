@@ -108,11 +108,14 @@ need=$yr; [ "$mo" -ge 10 ] && need=$((yr+1))
 echo; echo "9. Giao diện web (/app) và quyền hàm CSDL"
 [ "$(rd 'systemctl is-active eos-web 2>/dev/null')" = active ] && ok "dịch vụ eos-web đang chạy" || bad "eos-web không chạy"
 [ "$(curl -s -o /dev/null -w '%{http_code}' https://work.enterpriseos.bond/app/healthz)" = 200 ] && ok "/app/healthz qua HTTPS trả 200" || bad "/app/healthz không trả 200"
-hdr="$(curl -s -D - -o /dev/null https://work.enterpriseos.bond/app/login | tr -d '\r' | tr 'A-Z' 'a-z')"
-echo "$hdr" | grep -q "^content-security-policy:.*default-src 'none'" && ok "/app/login có CSP chặt" || bad "thiếu CSP chặt ở /app/login"
-echo "$hdr" | grep -q "^x-frame-options: deny" && echo "$hdr" | grep -q "^cache-control: no-store" && ok "chống nhúng khung và không lưu đệm" || bad "thiếu X-Frame-Options hoặc no-store"
-webopen=0; for p in /app/ /app/admin /app/tasks/1; do [ "$(curl -s -o /dev/null -w '%{http_code}' https://work.enterpriseos.bond$p)" = 303 ] || webopen=1; done
-[ "$webopen" = 0 ] && ok "chưa đăng nhập: /app/, /app/admin, /app/tasks/1 đều chuyển về đăng nhập" || bad "có trang web trả nội dung khi chưa đăng nhập"
+hdr="$(curl -s -D - -o /dev/null https://work.enterpriseos.bond/app/api/me | tr -d '\r' | tr 'A-Z' 'a-z')"
+csp="$(curl -s -D - -o /dev/null https://work.enterpriseos.bond/app/ | tr -d '\r' | tr 'A-Z' 'a-z' | grep '^content-security-policy:')"
+{ echo "$csp" | grep -q "default-src 'none'" && echo "$csp" | grep -q "script-src 'self'" && ! echo "$csp" | grep -Eq "script-src[^;]*unsafe|unsafe-eval"; } && ok "/app/ có CSP chặt (script chỉ self, không eval)" || bad "thiếu CSP chặt ở /app/"
+echo "$csp" | grep -q "style-src[^;]*unsafe-inline" && warn "style-src có 'unsafe-inline' (thư viện giao diện đặt style theo phần tử; chỉ ảnh hưởng kiểu dáng, không thực thi mã; docs/10 §Bảo mật)" || ok "style-src không cần unsafe-inline"
+echo "$hdr" | grep -q "^x-frame-options: deny" && echo "$hdr" | grep -q "^cache-control: no-store" && ok "chống nhúng khung; API không lưu đệm" || bad "thiếu X-Frame-Options hoặc no-store ở API"
+webopen=0; for p in /app/api/me; do [ "$(curl -s -o /dev/null -w '%{http_code}' https://work.enterpriseos.bond$p)" = 401 ] || webopen=1; done
+[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Requested-With: eos' -d '{}' https://work.enterpriseos.bond/app/api/rpc/app_tasks)" = 401 ] || webopen=1
+[ "$webopen" = 0 ] && ok "chưa đăng nhập: API web trả 401, không trả dữ liệu" || bad "API web trả nội dung khi chưa đăng nhập"
 closed "$DB_IP" 8791 && ok "cổng 8791 của web không vào được từ ngoài" || bad "cổng 8791 mở ra ngoài"
 [ "$(rd 'stat -c "%a %U" /opt/apps/enterprise-os/web/.env 2>/dev/null')" = "600 eos" ] && ok "web/.env quyền 600, chủ eos" || bad "web/.env sai quyền"
 [ "$(rd 'grep -c "^GOOGLE_LOGIN_CLIENT_ID=.\+" /opt/apps/enterprise-os/web/.env')" = 1 ] && ok "đăng nhập Google đã cấu hình" || warn "đăng nhập Google chưa cấu hình (chưa ai vào được web)"

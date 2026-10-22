@@ -239,27 +239,32 @@ s_A7() {
 }
 
 web_code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@"; }   # -w ở cuối lệnh gọi sẽ ghi đè định dạng
-web_headers() { curl -s -D - -o /dev/null -m 15 https://work.enterpriseos.bond/app/login | tr -d '\r' | tr 'A-Z' 'a-z'; }
-web_csp_strict()  { local h; h="$(web_headers)"; echo "$h" | grep -q "content-security-policy:.*default-src 'none'" && ! echo "$h" | grep -q unsafe-inline; }
-web_hdr_basic()   { local h; h="$(web_headers)"; echo "$h" | grep -q strict-transport-security && echo "$h" | grep -q 'x-content-type-options: nosniff' && echo "$h" | grep -q 'x-frame-options: deny' && echo "$h" | grep -q 'cache-control: no-store'; }
+web_headers() { curl -s -D - -o /dev/null -m 15 "${1:-https://work.enterpriseos.bond/app/}" | tr -d '\r' | tr 'A-Z' 'a-z'; }
+# CSP: script chỉ 'self' (không unsafe-inline/eval trong script-src); style-src có unsafe-inline vì thư viện giao diện đặt style theo phần tử (docs/10)
+web_csp_strict()  { local h csp; h="$(web_headers)"; csp="$(echo "$h" | grep '^content-security-policy:')"; echo "$csp" | grep -q "default-src 'none'" && echo "$csp" | grep -q "script-src 'self'" && ! echo "$csp" | grep -Eq "script-src[^;]*unsafe" && ! echo "$csp" | grep -q unsafe-eval; }
+web_hdr_basic()   { local h; h="$(web_headers https://work.enterpriseos.bond/app/api/me)"; echo "$h" | grep -q strict-transport-security && echo "$h" | grep -q 'x-content-type-options: nosniff' && echo "$h" | grep -q 'x-frame-options: deny' && echo "$h" | grep -q 'cache-control: no-store'; }
 web_no_powered()  { ! web_headers | grep -q x-powered-by; }
+web_index_ok()    { local t; t="$(curl -s -m 15 https://work.enterpriseos.bond/app/)"; echo "$t" | grep -q '<div id="root">' && echo "$t" | grep -Eq '/app/assets/index-[A-Za-z0-9_-]+\.js'; }
+web_asset_ok()    { local js h; js="$(curl -s -m 15 https://work.enterpriseos.bond/app/ | grep -Eo '/app/assets/index-[A-Za-z0-9_-]+\.js' | head -1)"; [ -n "$js" ] && h="$(web_headers "https://work.enterpriseos.bond$js")" && echo "$h" | grep -q 'content-type: .*javascript' && echo "$h" | grep -q 'cache-control: .*immutable'; }
 s_A8() {
-  say ""; say "A8 · Giao diện web trên Internet: chưa đăng nhập thì không thấy gì, tiêu đề an toàn, các đường khác vẫn đóng"
+  say ""; say "A8 · Giao diện web trên Internet: chưa đăng nhập thì API đóng, tiêu đề an toàn, các đường khác vẫn đóng"
   local base="https://work.enterpriseos.bond"
   check "gốc / chuyển sang /app/ (302)"                       [ "$(web_code -w '%{http_code} %{redirect_url}' $base/)" = "302 $base/app/" ]
   check "/app chuyển sang /app/ (308)"                        [ "$(web_code -w '%{http_code} %{redirect_url}' $base/app)" = "308 $base/app/" ]
   check "đường lạ trả 404"                                    [ "$(web_code $base/khong-co-trang-nay)" = 404 ]
   check "/app/healthz trả 200"                                [ "$(web_code $base/app/healthz)" = 200 ]
-  check "/app/login trả 200"                                  [ "$(web_code $base/app/login)" = 200 ]
-  for p in /app/ /app/tasks /app/tasks/1 /app/tasks/new /app/tokens /app/admin /app/admin/tokens /app/admin/calls; do
-    check "chưa đăng nhập: $p chuyển về đăng nhập (303)"      [ "$(web_code $base$p)" = 303 ]
-  done
-  check "thao tác ghi không có phiên không đổi được gì (303 về đăng nhập)" [ "$(web_code -X POST -d 'title=x' $base/app/tasks)" = 303 ]
-  check "CSP chặt, không unsafe-inline"                       web_csp_strict
-  check "HSTS, nosniff, chống nhúng khung, no-store"          web_hdr_basic
+  check "/app/ trả giao diện (có #root và tệp JS có băm)"     web_index_ok
+  check "tệp JS có băm: đúng kiểu, cache dài (immutable)"     web_asset_ok
+  check "chưa đăng nhập: /app/api/me trả 401"                 [ "$(web_code $base/app/api/me)" = 401 ]
+  check "chưa đăng nhập: gọi thao tác không có phiên trả 401" [ "$(web_code -X POST $base/app/api/rpc/app_tasks -H 'Content-Type: application/json' -H 'X-Requested-With: eos' -d '{}')" = 401 ]
+  check "cookie phiên giả không qua được (401)"               [ "$(web_code $base/app/api/me -H 'Cookie: eos_s=giamao.giamao')" = 401 ]
+  check "/app/api/config không lộ bí mật Google"              bash -c "! curl -s -m 15 $base/app/api/config | grep -Eiq 'secret|GOCSPX'"
+  check "CSP chặt: script chỉ self, không eval"               web_csp_strict
+  check "HSTS, nosniff, chống nhúng khung, API no-store"      web_hdr_basic
   check "không lộ X-Powered-By"                               web_no_powered
-  check "/app/auth/callback không có state bị từ chối (400)" [ "$(web_code "$base/app/auth/callback?code=x&state=y")" = 400 ]
-  check "không đọc được mã nguồn qua đường tĩnh"              [ "$(web_code --path-as-is "$base/app/static/../src/config.mjs")" != 200 ]
+  check "/app/auth/callback không có state bị từ chối (303 về màn đăng nhập)" [ "$(web_code -w '%{http_code} %{redirect_url}' "$base/app/auth/callback?code=x&state=y")" = "303 $base/app/#/login?e=state" ]
+  check "/app/api/join không có phiên Google chờ trả 401"     [ "$(web_code -X POST $base/app/api/join -H 'Content-Type: application/json' -H 'X-Requested-With: eos' -d '{"code":"ABCD2345"}')" = 401 ]
+  check "không đọc được mã nguồn qua đường tĩnh"              bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --path-as-is $base/app/../src/config.mjs)\" != 200 ] && [ \"\$(curl -s -o /dev/null -w '%{http_code}' $base/app/src/config.mjs)\" != 200 ]"
   check "/mcp vẫn từ chối mã sai (401) sau khi thêm /app"     [ "$(web_code -X POST $base/mcp -H 'Authorization: Bearer eos_sai' -H 'Content-Type: application/json' -d '{}')" = 401 ]
   check "/api vẫn khóa theo IP (403)"                          [ "$(web_code -X POST $base/api/rpc/outbox_pull)" = 403 ]
 }
