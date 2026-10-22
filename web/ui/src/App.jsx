@@ -6,13 +6,14 @@ import Login from "./pages/Login.jsx";
 import Today from "./pages/Today.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import Approvals from "./pages/Approvals.jsx";
+import Projects from "./pages/Projects.jsx";
 import Reports from "./pages/Reports.jsx";
 import Admin from "./pages/Admin.jsx";
 import Me from "./pages/Me.jsx";
 import DriveSetup from "./pages/DriveSetup.jsx";
 import { ErrorBox } from "./components/ui.jsx";
 
-const PAGES = { today: Today, tasks: Tasks, approvals: Approvals, reports: Reports, admin: Admin, me: Me };
+const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me };
 
 function Gate() {
   const { me, meError, loadMe, route, signOut } = useApp();

@@ -38,7 +38,7 @@ export default function Tasks() {
   const [view, setView] = useState(() => { try { return localStorage.getItem("deo.view") || "list"; } catch { return "list"; } });
   const [dept, setDept] = useState(null);
   const [assignee, setAssignee] = useState(null);
-  const [project, setProject] = useState(null);
+  const [project, setProject] = useState(route.params.p || null);
   const [q, setQ] = useState("");
 
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);

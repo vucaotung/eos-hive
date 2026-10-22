@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Dropdown, Label } from "@heroui/react";
-import { Calendar, ListUl, SealCheck, ChartColumn, Gear, Person as PersonIcon, Plus, Factory, ChevronDown } from "@gravity-ui/icons";
+import { Calendar, ListUl, Folder, SealCheck, ChartColumn, Gear, Person as PersonIcon, Plus, Factory, ChevronDown } from "@gravity-ui/icons";
 import { useApp, useLoad, go } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { ROLE } from "../lib/format.js";
@@ -10,6 +10,7 @@ import TaskForm from "./TaskForm.jsx";
 const NAV = [
   { id: "today", label: "Hôm nay", icon: Calendar },
   { id: "tasks", label: "Việc", icon: ListUl },
+  { id: "projects", label: "Dự án", icon: Folder },
   { id: "approvals", label: "Duyệt", icon: SealCheck, badge: true },
   { id: "reports", label: "Báo cáo", icon: ChartColumn },
   { id: "admin", label: "Quản trị", icon: Gear, adminOnly: true },
