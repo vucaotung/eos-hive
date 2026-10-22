@@ -244,7 +244,7 @@ CREATE TABLE agent.mcp_tokens (
   prefix       text NOT NULL UNIQUE,                          -- 8 ký tự đầu, hiện trên màn hình để nhận ra
   token_hash   text NOT NULL UNIQUE,                          -- sha256 hex; không lưu mã gốc
   agent_id     uuid REFERENCES agent.agents(id) ON DELETE CASCADE,   -- NULL = mã của người; có giá trị = mã của worker agent hệ thống
-  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft','project','runner']::text[] AND cardinality(scopes) > 0),
+  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft','project','runner','ingest']::text[] AND cardinality(scopes) > 0),
   expires_at   timestamptz NOT NULL,
   last_used_at timestamptz,
   last_ip      inet,
@@ -253,7 +253,7 @@ CREATE TABLE agent.mcp_tokens (
   CHECK (expires_at <= created_at + interval '366 days'),
   -- mã của agent hệ thống chỉ đọc (chia việc nếu được phép, soạn dự thảo nếu là văn thư); mã của người không có quyền chia việc hay soạn dự thảo
   -- `draft` (soạn dự thảo văn bản) chỉ dành cho agent hệ thống
-  CHECK (CASE WHEN agent_id IS NULL THEN NOT (scopes && ARRAY['delegate','draft','project','runner']::text[]) ELSE scopes <@ ARRAY['read','kb','delegate','draft','project','runner']::text[] END)
+  CHECK (CASE WHEN agent_id IS NULL THEN NOT (scopes && ARRAY['delegate','draft','project','runner','ingest']::text[]) ELSE scopes <@ ARRAY['read','kb','delegate','draft','project','runner','ingest']::text[] END)
 );
 CREATE INDEX mcp_tokens_user_idx ON agent.mcp_tokens (user_id) WHERE revoked_at IS NULL;
 

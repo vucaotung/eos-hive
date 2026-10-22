@@ -8,7 +8,7 @@ Thứ tự và phụ thuộc (chỉ số `after` tính từ 0 trong danh sách c
 | 1 | `quan-tri-du-lieu` | `kb-quan-tri-du-lieu` | `{"stage":"data_quality"}` | [0] | Báo cáo chất lượng dữ liệu, đề xuất cấu trúc KB và bộ sự thật chính |
 | 2 | `van-thu` | `ho-so-danh-muc` | `{"stage":"catalog"}` (thêm `doc_types` nếu người theo dõi chỉ định) | [0] | Danh mục hồ sơ (doc.records) + bản tổng hợp văn bản (Markdown trên Drive) |
 | 3 | `phap-che` | `ra-soat-phap-che` | `{"stage":"legal","doc_types":["phap-ly","hop-dong"]}` | [0, 2] | Báo cáo rà soát: rủi ro, thiếu sót, mốc hạn |
-| 4 | `ho-so-runner` | `xu-ly-ho-so` | `{"stage":"kb_ingest"}` | [1, 2] | Nạp kho tri thức (người duyệt bước nạp), ghi mã KB và nguồn đã nạp |
+| 4 | `quan-tri-du-lieu` | `kb-quan-tri-du-lieu` | `{"stage":"kb_ingest"}` | [1, 2] | Nạp kho tri thức WeKnora bằng `eos_kb_ingest`: số tệp nạp/bỏ qua/lỗi |
 
 Ghi chú:
 - `phap-che` có thể chưa bật cho công ty: nếu `eos_delegate` báo "chưa bật cho công ty", bỏ việc 3 và ghi rõ vào bản tổng hợp, đừng thay bằng agent khác.

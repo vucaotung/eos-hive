@@ -14,6 +14,8 @@ const files = new Map([['FOLDER_MINH', { id: 'FOLDER_MINH', name: 'DEO - Demo - 
                        ['MDFILE0000001', { id: 'MDFILE0000001', name: 'HD-01.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Hợp đồng 01\n' + 'Điều khoản. '.repeat(4000) }],
                        ['MDSUB00000001', { id: 'MDSUB00000001', name: 'phap-ly', mimeType: 'application/vnd.google-apps.folder', parents: ['MDROOT0000001'] }],
                        ['MDFILE0000002', { id: 'MDFILE0000002', name: 'QD-02.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '# Quyết định 02\nPhê duyệt dự án.' }],
+                       ['MDIDX0000001', { id: 'MDIDX0000001', name: '00_MUC_LUC.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Mục lục\nbảng mục lục dài hơn hai mươi ký tự' }],
+                       ['MDFILE0000003', { id: 'MDFILE0000003', name: 'FM.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '---\nsha256: abc123\nsource_path: A/B/gốc.pdf\npages: 7\n---\n\nNội dung thật của văn bản, đủ dài để nạp vào kho.' }],
                        ['OUTMD00000001', { id: 'OUTMD00000001', name: 'ngoai.md', mimeType: 'text/markdown', parents: ['SOMEONE_ELSE'], content: 'bí mật ngoài phạm vi' }]]);
 let seq = 0;
 const drive = express();
@@ -51,6 +53,16 @@ const dport = driveSrv.address().port;
 process.env.DRIVE_API_BASE = `http://127.0.0.1:${dport}`;
 process.env.GOOGLE_TOKEN_URL = `http://127.0.0.1:${dport}/token`;
 Object.assign(process.env, { GOOGLE_CLIENT_ID: 'x', GOOGLE_CLIENT_SECRET: 'y', GOOGLE_REFRESH_TOKEN: 'z' });
+
+// ---------- WeKnora giả lập: ghi lại yêu cầu, kiểm khóa API ----------
+const wkCalls = [];
+const wk = express(); wk.use(express.json());
+wk.use((req, res, next) => (req.get('x-api-key') === 'wk-test-key' ? next() : res.status(401).json({ message: 'bad key' })));
+wk.get('/api/v1/knowledge-bases', (req, res) => res.json({ data: [{ id: 'tplkb000001', name: 'kdc-thanh-lap', embedding_model_id: 'emb-1', summary_model_id: 'sum-1', chunking_config: { chunk_size: 512 } }] }));
+wk.post('/api/v1/knowledge-bases', (req, res) => { wkCalls.push(['kb', req.body]); res.json({ data: { id: 'wkkb-new-0001' } }); });
+wk.post('/api/v1/knowledge-bases/:id/knowledge/manual', (req, res) => { wkCalls.push(['doc', req.params.id, req.body]); res.json({ data: { id: `wkdoc-${wkCalls.length}` } }); });
+const wkSrv = await new Promise((ok) => { const s = wk.listen(0, '127.0.0.1', () => ok(s)); });
+Object.assign(process.env, { WEKNORA_BASE_URL: `http://127.0.0.1:${wkSrv.address().port}/api/v1`, WEKNORA_API_KEY: 'wk-test-key' });
 
 // ---------- Máy chủ MCP ----------
 const { buildApp } = await import('../src/server.mjs');
@@ -166,7 +178,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -315,6 +327,36 @@ try {
     const t = json(await (await connect(process.env.TOKEN_FULL)).callTool({ name: 'eos_get_task', arguments: { task: kvt } }));
     assert.ok(t.files.some((f) => f.name === rep.name), 'báo cáo gắn vào việc');
   });
+  await step('nạp kho tri thức bởi agent: chỉ đúng agent, đúng giai đoạn kb_ingest; tạo KB sao chép cấu hình mẫu; bỏ mục lục; tệp ngoài phạm vi lỗi; chạy lại không nạp trùng', async () => {
+    const kb = await connect(process.env.TOKEN_KB);
+    await sql("UPDATE kb.bases SET weknora_kb_id = 'pending:du-an-thu' WHERE project_id = (SELECT project_id FROM agent.workflow_runs LIMIT 1)");   // runner đã ghi mã thử ở bước trước: đưa về giữ chỗ để thử đường tạo KB
+    const tid = (await sql(`INSERT INTO work.tasks (company_id, department_id, project_id, parent_id, source, title, assignee_id, created_by, created_by_agent)
+       SELECT company_id, department_id, project_id, $1, 'agent', 'Nạp kho tri thức', assignee_id, created_by, 'dieu-phoi' FROM work.tasks WHERE id = $1 RETURNING id`, [ROOT]))[0].id;
+    await sql(`INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by) VALUES ($1, (SELECT run_id FROM agent.task_scopes WHERE task_id = $2), 'kb-quan-tri-du-lieu', '{"stage":"kb_ingest","agent":"quan-tri-du-lieu"}', 'agent:dieu-phoi')`, [tid, ROOT]);
+    await sql("UPDATE work.tasks SET agent_id = (SELECT id FROM agent.agents WHERE code = 'quan-tri-du-lieu') WHERE id = $1", [tid]);
+    const ob = (await sql("SELECT id FROM agent.outbox WHERE task_id = $1 AND kind = 'dispatch'", [tid]))[0];
+    await sql("SELECT agent.outbox_ack($1, 't_kb_mcp')", [ob.id]); await sql("SELECT agent.ingest_event('eos-demo','t_kb_mcp','claimed','k-kb-mcp')");
+    const call = (args) => kb.callTool({ name: 'eos_kb_ingest', arguments: { task: tid, ...args } });
+    const denied = await vt.callTool({ name: 'eos_kb_ingest', arguments: { task: kvt, file_ids: ['MDFILE0000001'] } });
+    assert.equal(denied.isError, true); assert.match(text(denied), /phạm vi "ingest"/, 'văn thư không có phạm vi ingest');
+    const savedKey = process.env.WEKNORA_API_KEY; delete process.env.WEKNORA_API_KEY;
+    const nocfg = await call({ file_ids: ['MDFILE0000001'] }); assert.equal(nocfg.isError, true); assert.match(text(nocfg), /chưa cấu hình WeKnora/); process.env.WEKNORA_API_KEY = savedKey;
+    const wrongTask = await kb.callTool({ name: 'eos_kb_ingest', arguments: { task: kvt, file_ids: ['MDFILE0000001'] } });
+    assert.equal(wrongTask.isError, true, 'không nạp trong việc của agent khác / không phải kb_ingest');
+    const r = json(await call({ file_ids: ['MDFILE0000001', 'MDFILE0000003', 'MDIDX0000001', 'OUTMD00000001'] }));
+    assert.equal(r.ingested, 2); assert.equal(r.kb_created, true); assert.equal(r.weknora_kb_id, 'wkkb-new-0001');
+    assert.equal(r.skipped.length, 1); assert.match(r.skipped[0].reason, /mục lục/); assert.equal(r.failed.length, 1); assert.match(r.failed[0].error, /ngoài phạm vi/);
+    const kbBody = wkCalls.find((c) => c[0] === 'kb')[1];
+    assert.equal(kbBody.embedding_model_id, 'emb-1'); assert.equal(kbBody.name, 'Dự án Dự án thử nạp hồ sơ'); assert.deepEqual(kbBody.chunking_config, { chunk_size: 512 });
+    const docs = wkCalls.filter((c) => c[0] === 'doc'); assert.equal(docs.length, 2); assert.equal(docs[0][1], 'wkkb-new-0001');
+    const fm = docs.find((d) => d[2].title === 'FM')[2].content;
+    assert.match(fm, /^Nguồn: gốc\.pdf\n\nNội dung thật/); assert.ok(!/sha256|---/.test(fm), 'front-matter bị bỏ');
+    const rows = await sql("SELECT weknora_kb_id, (SELECT count(*)::int FROM kb.sources s WHERE s.base_id = b.id AND s.state = 'loaded') n FROM kb.bases b WHERE project_id = (SELECT project_id FROM agent.workflow_runs LIMIT 1)");
+    assert.equal(rows[0].weknora_kb_id, 'wkkb-new-0001'); assert.equal(rows[0].n, 2);
+    const again = json(await call({ file_ids: ['MDFILE0000001', 'MDFILE0000003'] }));
+    assert.equal(again.ingested, 0); assert.equal(again.skipped.length, 2); assert.equal(wkCalls.filter((c) => c[0] === 'doc').length, 2, 'không nạp trùng'); assert.equal(wkCalls.filter((c) => c[0] === 'kb').length, 1, 'không tạo KB lần hai');
+    await kb.close();
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
@@ -327,5 +369,5 @@ try {
 
   console.log(`MCP e2e: ${passed} bước đạt`);
 } finally {
-  srv.close(); driveSrv.close(); await close();
+  srv.close(); driveSrv.close(); wkSrv.close(); await close();
 }

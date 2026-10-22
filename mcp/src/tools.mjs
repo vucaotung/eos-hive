@@ -5,6 +5,7 @@ import { GUIDE, TOPICS } from './guide.mjs';
 import { uploadResult, fileInsideFolder, driveIdFromUrl, MAX_BYTES, listFolder, readText, isFolder } from './drive.mjs';
 import { renderVanBan, vanBanShape, DOCX_MIME } from './vanban.mjs';
 import { createHash } from 'node:crypto';
+import * as weknora from './weknora.mjs';
 
 const taskRef = z.union([z.string().regex(/^(T-)?\d{1,12}$/i), z.number().int().positive()])
   .describe('Mã việc, ví dụ "T-123" hoặc 123');
@@ -342,6 +343,39 @@ function registerAgentTools(server, ident, tool, call) {
     await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, createHash('sha256').update(bytes).digest('hex')]);
     return { result: { saved: f.name, drive_id: f.driveId, name: f.name, url: f.url, folder: f.folder, bytes: f.size }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), filename: a.filename, chars: a.content?.length }));
+
+  tool('eos_kb_ingest', 'ingest', {
+    title: 'Nạp tài liệu Markdown của dự án vào kho tri thức (WeKnora)',
+    description: 'Chỉ dùng trong việc có giai đoạn kb_ingest. Truyền 1–20 file_id (lấy từ eos_project_files) mỗi lần; gọi nhiều lần cho đến hết. Máy chủ tạo KB của dự án nếu chưa có (cấu hình sao chép từ KB mẫu), tải từng tệp lên, ghi nguồn vào CSDL. Bỏ qua tệp đã nạp, mục lục (00_*) và tệp bắt đầu bằng "_". Kết quả cho biết đã nạp, bỏ qua, lỗi từng tệp: đưa vào báo cáo, đừng nạp lại tệp lỗi quá 2 lần.',
+    inputSchema: { task: taskRef, file_ids: z.array(z.string().regex(/^[A-Za-z0-9_-]{10,}$/)).min(1).max(20) },
+  }, async ({ task, file_ids }) => {
+    const id = toId(task);
+    if (!weknora.configured()) throw new DbError('Máy chủ MCP chưa cấu hình WeKnora (WEKNORA_BASE_URL, WEKNORA_API_KEY). Dùng kanban_block để báo người quản trị.', 'P0001');
+    const tg = await call('SELECT agent.mcp_kb_ingest_target($1) AS r', [id]);
+    let kbId = tg.weknora_kb_id, created = false;
+    if (!tg.kb_ready) {
+      try { ({ id: kbId, created } = await weknora.ensureKb(tg.kb_name, tg.description)); }
+      catch (e) { throw new DbError(`Không tạo được kho tri thức: ${e.message}`, 'P0001'); }
+      await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ weknora_kb_id: kbId })]);
+    }
+    const loaded = new Set(tg.loaded_drive_ids || []);
+    const done = [], skipped = [], failed = [];
+    for (const fid of file_ids) {
+      if (loaded.has(fid)) { skipped.push({ file_id: fid, reason: 'đã nạp trước đó' }); continue; }
+      try { await insideMd(fid, tg.md_folder_id); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
+      let f;
+      try { f = await readText(fid); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
+      if (/^00_/.test(f.name) || f.name.startsWith('_')) { skipped.push({ file_id: fid, name: f.name, reason: 'mục lục hoặc tệp nội bộ' }); continue; }
+      if (f.text.trim().length < 20) { skipped.push({ file_id: fid, name: f.name, reason: 'tệp rỗng' }); continue; }
+      try {
+        const p = weknora.prepare(f.name, f.text);
+        const docId = await weknora.addMarkdown(kbId, p.title, p.content);
+        done.push({ weknora_doc_id: docId, title: p.title, drive_id: fid, pages: p.pages });
+      } catch (e) { failed.push({ file_id: fid, name: f.name, error: e.message }); }
+    }
+    if (done.length) await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ sources: done })]);
+    return { result: { kb: tg.kb_name, weknora_kb_id: kbId, kb_created: created, ingested: done.length, skipped, failed }, entity: { type: 'task', id: String(id) } };
+  }, (a) => ({ task: toId(a.task), files: a.file_ids?.length }));
 
   // ---------- Runner (Z2): nhận việc, báo cáo, đăng ký dữ liệu. Chỉ mã có phạm vi `runner` ----------
   tool('eos_runner_claim', 'runner', {

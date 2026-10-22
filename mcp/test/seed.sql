@@ -63,3 +63,9 @@ SELECT agent.ingest_event('eos-demo','t_root1','claimed','eos-demo:t_root1:1');
 \pset tuples_only on
 SELECT 'ROOT_TASK=' || (SELECT root_task FROM agent.workflow_runs LIMIT 1);
 SELECT 'TOKEN_RUNNER=' || agent.mcp_token_issue_agent('ho-so-runner', 30);
+-- agent kho tri thức: được nạp (phạm vi ingest)
+INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000a4','kb@agent','Quản trị dữ liệu AI','agent');
+INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile) VALUES
+ ('a2222222-0000-0000-0000-000000000004','cccccccc-0000-0000-0000-0000000000a4','quan-tri-du-lieu','Quản trị dữ liệu AI','module','kb','eos-quan-tri-du-lieu');
+INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000004');
+SELECT 'TOKEN_KB=' || agent.mcp_token_issue_agent('quan-tri-du-lieu', 30);
