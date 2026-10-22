@@ -304,6 +304,21 @@ try {
     assert.equal((await adm.ok('app_project_delete', { id: pr.id })).tasks_unlinked, 1);
     assert.equal((await adm.ok('app_task', { id: t.id })).task.project_id, null);
   });
+  await step('phải duyệt: quy trình dựng sẵn có ngay; nộp → Chờ duyệt; người giao duyệt mới Xong (không tự duyệt, không Xong tắt)', async () => {
+    const mgr = await as('truongphong@demo.vn'), minh = await as('minh@demo.vn');
+    const org = await minh.ok('app_org', { company_id: CO });
+    const names = org.flows.map((f) => f.name); for (const n of ['Người giao duyệt', 'Trưởng phòng duyệt', 'Quản trị công ty duyệt']) assert.ok(names.includes(n), n);
+    const fl = org.flows.find((f) => f.name === 'Người giao duyệt'); assert.equal(fl.steps[0].approver_role, 'creator');
+    const t = await mgr.ok('app_task_save', { company_id: CO, title: 'Việc bắt buộc duyệt', assignee_id: ID.minh, approval_flow_id: fl.id, department_id: HC });
+    assert.equal((await minh.ok('app_task', { id: t.id })).task.approval_status, 'none');
+    await minh.ok('app_submit', { task: t.id, note: 'Đã làm' });
+    let d = await minh.ok('app_task', { id: t.id }); assert.equal(d.task.status, 'in_review'); assert.equal(d.task.approval_status, 'pending'); assert.equal(d.can_approve, false);
+    assert.equal((await minh.rpc('app_task_save', { id: t.id, status: 'cancelled' })).status, 400, 'đang chờ duyệt không đổi trạng thái tay');
+    assert.equal((await minh.rpc('app_decide', { task: t.id, approve: true })).status, 403, 'người nộp không tự duyệt');
+    d = await mgr.ok('app_task', { id: t.id }); assert.equal(d.can_approve, true);
+    await mgr.ok('app_decide', { task: t.id, approve: true });
+    d = await minh.ok('app_task', { id: t.id }); assert.equal(d.task.status, 'done'); assert.equal(d.task.approval_status, 'approved');
+  });
   await step('nạp hồ sơ dự án: chỉ chủ sở hữu/quản trị bắt đầu; việc gốc giao điều phối, người theo dõi phụ trách; phạm vi hiện trong chi tiết', async () => {
     const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
     const body = { company_id: CO, project_name: 'Khu đô thị thử', drive_url: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOp', supervisor_id: ID.minh, note: 'Ưu tiên pháp lý' };

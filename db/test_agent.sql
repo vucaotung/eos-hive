@@ -518,6 +518,62 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   RAISE NOTICE 'Duyệt nhiều bước ok';
 END $$;
 
+-- Phải duyệt: quy trình dựng sẵn, trạng thái duyệt (none/pending/approved/rejected), chỉ Xong khi đã duyệt
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001'; mgr constant uuid := 'eeeeeeee-0000-0000-0000-000000000011';
+              kt constant uuid := 'eeeeeeee-0000-0000-0000-000000000012'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; fl uuid; hd uuid; tid bigint; tid2 bigint; r jsonb; BEGIN
+  PERFORM pg_temp.as_user(me);
+  r := agent.app_org(jsonb_build_object('company_id', c));
+  ASSERT (SELECT count(*) FROM jsonb_array_elements(r->'flows') f WHERE f->>'name' IN ('Người giao duyệt', 'Trưởng phòng duyệt', 'Quản trị công ty duyệt')) = 3, format('có 3 quy trình dựng sẵn: %s', left(r->>'flows', 300));
+  SELECT (f->>'id')::uuid INTO fl FROM jsonb_array_elements(r->'flows') f WHERE f->>'name' = 'Người giao duyệt';
+  SELECT (f->>'id')::uuid INTO hd FROM jsonb_array_elements(r->'flows') f WHERE f->>'name' = 'Trưởng phòng duyệt';
+  ASSERT (SELECT count(*) FROM core.approval_flows WHERE company_id = c AND name = 'Người giao duyệt') = 1, 'không tạo trùng khi gọi lại';
+  PERFORM agent.app_org(jsonb_build_object('company_id', c));
+  ASSERT (SELECT count(*) FROM core.approval_flows WHERE company_id = c AND name = 'Người giao duyệt') = 1, 'gọi lại vẫn một quy trình';
+  -- người giao (trưởng phòng) giao cho me, bắt buộc duyệt
+  PERFORM pg_temp.as_user(mgr);
+  tid := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc phải duyệt bởi người giao', 'assignee_id', me, 'approval_flow_id', fl, 'department_id', 'dddddddd-0000-0000-0000-000000000001'))->>'id')::bigint;
+  ASSERT (SELECT approval_status = 'none' FROM work.tasks WHERE id = tid), 'chưa nộp: none';
+  PERFORM pg_temp.as_user(me);
+  ASSERT agent.app_submit(jsonb_build_object('task', tid, 'note', 'Xong phần của tôi'))->>'status' = 'in_review', 'nộp → Chờ duyệt';
+  ASSERT (SELECT approval_status = 'pending' AND status = 'in_review' FROM work.tasks WHERE id = tid), 'approval_status pending';
+  BEGIN UPDATE work.tasks SET status = 'done', completed_at = now() WHERE id = tid; ASSERT false, 'không được Xong khi chưa duyệt'; EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%phải được duyệt xong%' THEN RAISE; END IF; END;
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'approval_flow_id', '')); ASSERT false, 'không đổi quy trình khi đang chờ duyệt'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'người nộp tự duyệt'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(kt);
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', true)); ASSERT false, 'người khác duyệt bước người giao'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(mgr);
+  PERFORM agent.app_decide(jsonb_build_object('task', tid, 'approve', false, 'note', 'Làm lại phần 2'));
+  ASSERT (SELECT approval_status = 'rejected' AND status = 'in_progress' FROM work.tasks WHERE id = tid), 'trả lại: rejected';
+  PERFORM pg_temp.as_user(me);
+  PERFORM agent.app_submit(jsonb_build_object('task', tid, 'note', 'Đã sửa'));
+  ASSERT (SELECT approval_status = 'pending' FROM work.tasks WHERE id = tid), 'nộp lại: pending';
+  PERFORM pg_temp.as_user(mgr);
+  ASSERT agent.app_decide(jsonb_build_object('task', tid, 'approve', true))->>'status' = 'done', 'người giao duyệt → Xong';
+  ASSERT (SELECT approval_status = 'approved' AND status = 'done' AND completed_at IS NOT NULL FROM work.tasks WHERE id = tid), 'approved + done';
+  -- người giao cũng là người làm: không tự duyệt, trưởng phòng duyệt thay
+  PERFORM pg_temp.as_user(me);
+  tid2 := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc tự giao phải duyệt', 'assignee_id', me, 'approval_flow_id', fl, 'department_id', 'dddddddd-0000-0000-0000-000000000001'))->>'id')::bigint;
+  PERFORM agent.app_submit(jsonb_build_object('task', tid2));
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid2, 'approve', true)); ASSERT false, 'tự duyệt việc tự giao'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(kt);
+  BEGIN PERFORM agent.app_decide(jsonb_build_object('task', tid2, 'approve', true)); ASSERT false, 'người phòng khác'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_temp.as_user(mgr);
+  ASSERT agent.app_decide(jsonb_build_object('task', tid2, 'approve', true))->>'status' = 'done', 'trưởng phòng duyệt thay';
+  -- nộp qua MCP của người cũng phải qua duyệt (trước đây đặt Chờ duyệt mà không mở yêu cầu duyệt)
+  PERFORM pg_temp.as_user(mgr);
+  tid := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Nộp qua MCP phải duyệt', 'assignee_id', me, 'approval_flow_id', hd, 'department_id', 'dddddddd-0000-0000-0000-000000000001'))->>'id')::bigint;
+  PERFORM pg_temp.as_user(me);
+  ASSERT agent.mcp_submit(tid, 'Đã làm xong theo yêu cầu')->>'status' = 'in_review', 'MCP nộp → Chờ duyệt';
+  ASSERT EXISTS (SELECT 1 FROM core.approval_requests WHERE entity_id = tid AND state = 'pending') AND (SELECT approval_status = 'pending' FROM work.tasks WHERE id = tid), 'MCP nộp mở yêu cầu duyệt';
+  -- không quy trình: nộp là Xong, approval_status none
+  tid := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Không cần duyệt', 'assignee_id', me))->>'id')::bigint;
+  ASSERT agent.app_submit(jsonb_build_object('task', tid))->>'status' = 'done' AND (SELECT approval_status = 'none' FROM work.tasks WHERE id = tid), 'không cần duyệt: Xong luôn';
+  -- bước "người giao" tạo được trong quy trình tùy biến
+  PERFORM pg_temp.as_user(own);
+  ASSERT agent.app_flow_save(jsonb_build_object('company_id', c, 'name', 'Người giao rồi giám đốc', 'steps', jsonb_build_array(jsonb_build_object('approver_role', 'creator'), jsonb_build_object('approver_role', 'owner')))) ? 'id', 'quy trình có bước người giao';
+  RAISE NOTICE 'Phải duyệt ok';
+END $$;
+
 -- Việc của agent có quy trình: người giao chấp nhận → mở yêu cầu duyệt (accept_result trả to_approval); người duyệt trả lại → agent làm lại
 DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001';
               fid uuid := (SELECT id FROM core.approval_flows WHERE name = 'Công văn đi'); tid bigint; r jsonb; ap jsonb; BEGIN

@@ -791,10 +791,9 @@ BEGIN
   IF t.assignee_id IS DISTINCT FROM me THEN RAISE EXCEPTION 'Chỉ người được giao mới nộp kết quả T-%', p_task USING ERRCODE = '42501'; END IF;
   IF t.status NOT IN ('todo','in_progress','blocked') THEN RAISE EXCEPTION 'Việc đang ở trạng thái %, không nộp được', t.status; END IF;
   IF length(btrim(coalesce(p_summary, ''))) < 10 THEN RAISE EXCEPTION 'Tóm tắt kết quả quá ngắn'; END IF;
-  new_status := CASE WHEN t.approval_flow_id IS NOT NULL THEN 'in_review' ELSE 'done' END;
-  UPDATE work.tasks SET status = new_status, result = left(p_summary, 4000), progress = 100, waiting_on_human = false,
-         completed_at = CASE WHEN new_status = 'done' THEN now() END, updated_at = now() WHERE id = p_task;
+  UPDATE work.tasks SET result = left(p_summary, 4000), progress = 100, waiting_on_human = false, updated_at = now() WHERE id = p_task;
   INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, agent._mcp_actor(), 'submit', p_summary);
+  new_status := agent._approval_start(p_task, me)::work.task_status;   -- có quy trình: mở yêu cầu duyệt (Chờ duyệt, approval_status = pending); không có: Xong (db/61_app.sql)
   INSERT INTO core.audit_log (company_id, actor, user_id, module, action, entity_type, entity_id, summary)
   VALUES (t.company_id, agent._mcp_actor(), me, 'work', 'submit', 'task', p_task::text, 'Nộp kết quả T-' || p_task || ' qua ' || core.current_via());
   RETURN jsonb_build_object('id', 'T-' || p_task, 'status', new_status);
@@ -842,7 +841,7 @@ BEGIN
   IF t.approval_flow_id IS NOT NULL THEN
     -- còn quy trình duyệt: giữ Chờ duyệt và mở yêu cầu duyệt (core.approval_requests), các bước do agent.app_decide xử lý
     INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, 'user:' || me, 'note', coalesce(p_note, 'Đã xem kết quả của agent, chuyển duyệt'));
-    RETURN CASE agent._approval_start(p_task, me) WHEN 'in_review' THEN 'to_approval' ELSE 'done' END;   -- agent._approval_start: db/61_app.sql
+    RETURN CASE agent._approval_start(p_task, NULL) WHEN 'in_review' THEN 'to_approval' ELSE 'done' END;   -- agent._approval_start: db/61_app.sql
   END IF;
   UPDATE work.tasks SET status = 'done', completed_at = now(), updated_at = now() WHERE id = p_task;
   INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, 'user:' || me, 'approve', coalesce(p_note, 'Chấp nhận kết quả'));

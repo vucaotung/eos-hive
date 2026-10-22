@@ -95,7 +95,7 @@ export default function TaskDrawer() {
                   ["Ưu tiên", PRIORITY[t.priority]],
                   t.due_date && ["Hạn", <span key="d">{ddmmyyyy(parseDate(t.due_date))} <DueText task={t} className="ml-1" /></span>],
                   lookups.project[t.project_id] && ["Dự án", lookups.project[t.project_id].name],
-                  flow && ["Quy trình duyệt", `${flow.name}, ${flow.steps?.length || 0} bước`],
+                  flow && ["Duyệt", `${flow.name}${flow.steps?.length > 1 ? `, ${flow.steps.length} bước` : ""} · ${({ none: "chưa nộp", pending: "chờ duyệt", approved: "đã duyệt", rejected: "bị trả lại, cần sửa" })[t.approval_status] || t.approval_status}`],
                   ["Người giao", t.created_by ? (lookups.person[t.created_by]?.name || "Không rõ") : (t.created_by_agent || "Hệ thống")],
                   ["Cập nhật", ago(t.updated_at)],
                 ]} />
