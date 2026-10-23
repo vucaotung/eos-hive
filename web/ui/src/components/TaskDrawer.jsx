@@ -91,7 +91,7 @@ export default function TaskDrawer() {
                 <Facts rows={[
                   ["Phòng ban", lookups.dept[t.department_id] ? `${lookups.dept[t.department_id].code} · ${lookups.dept[t.department_id].name}` : "Chung công ty"],
                   ["Phụ trách", <Person key="a" user={lookups.person[t.assignee_id]} />],
-                  t.agent_role && ["Agent", <span key="g" className="inline-flex items-center gap-1.5"><FaceRobot className="size-4" />{agentName(t.agent_role)}{t.claimed_by ? `, chạy trên ${t.claimed_by.replace(/^hermes:/, "")}` : ""}</span>],
+                  t.agent_role && ["Agent", <span key="g" className="inline-flex items-center gap-1.5"><FaceRobot className="size-4" />{agentName(t.agent_role)}</span>],
                   ["Ưu tiên", PRIORITY[t.priority]],
                   t.due_date && ["Hạn", <span key="d">{ddmmyyyy(parseDate(t.due_date))} <DueText task={t} className="ml-1" /></span>],
                   lookups.project[t.project_id] && ["Dự án", lookups.project[t.project_id].name],
@@ -100,12 +100,28 @@ export default function TaskDrawer() {
                   ["Cập nhật", ago(t.updated_at)],
                 ]} />
 
-                {t.result && (t.status === "done" || t.status === "in_review") && !report && (
-                  <section className="flex flex-col gap-2">
-                    <h3 className="font-extrabold">Kết quả</h3>
-                    <p className="whitespace-pre-wrap rounded-xl bg-surface px-4 py-3 [overflow-wrap:anywhere]">{t.result}</p>
-                  </section>
-                )}
+                {(t.status === "done" || t.status === "in_review") && (() => {
+                  const outs = [
+                    ...d.files.map((f) => ({ url: f.web_url, name: f.name })),
+                    ...d.links.map((l) => ({ url: l.url, name: l.title })),
+                    ...((report?.outputs || []).filter((o) => /^https:\/\//.test(o?.url || "")).map((o) => ({ url: o.url, name: o.name || "Tệp kết quả" }))),
+                  ].filter((o, i, arr) => arr.findIndex((x) => x.url === o.url) === i);
+                  const text = report?.summary || t.result;
+                  return (
+                    <section className="flex flex-col gap-3 rounded-xl bg-surface p-4">
+                      <h3 className="font-extrabold">Kết quả</h3>
+                      {text ? <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{text}</p>
+                        : !outs.length && <p className="text-muted">Việc này chưa có kết quả nào được ghi nhận (không có tóm tắt, tài liệu hay link). {t.status === "done" ? "Nếu cần làm lại, tạo việc mới hoặc việc con." : ""}</p>}
+                      {outs.length > 0 && (
+                        <ul className="flex flex-col gap-2">
+                          {outs.map((o) => (
+                            <li key={o.url}><a href={o.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg bg-accent-soft px-3.5 py-2.5 font-semibold text-accent hover:underline"><FileText className="size-4 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">Mở: {o.name}</span></a></li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })()}
 
                 {d.workflow && (
                   <section className="flex flex-col gap-2">
@@ -147,9 +163,8 @@ export default function TaskDrawer() {
                 {/* Kết quả agent nộp: người giao xem trước */}
                 {report && (t.status === "in_review" || t.status === "done") && (
                   <section className="flex flex-col gap-2">
-                    <h3 className="font-extrabold">Báo cáo của agent</h3>
+                    <h3 className="font-extrabold">Chi tiết báo cáo của agent</h3>
                     <div className="flex flex-col gap-2 rounded-xl bg-surface p-4">
-                      <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{report.summary}</p>
                       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                         {report.confidence && <span>Độ tin cậy: {report.confidence}</span>}
                         {report.residual_risk && <span>Rủi ro còn lại: {report.residual_risk}</span>}
@@ -279,7 +294,7 @@ export default function TaskDrawer() {
                         <li key={c.id} className="flex flex-col gap-1 bg-surface px-4 py-3">
                           <span className="flex flex-wrap gap-x-3 text-sm text-muted">
                             <b className={KIND_TONE[c.kind] || "text-foreground"}>{KIND[c.kind] || c.kind}</b>
-                            <span>{c.user_id ? lookups.person[c.user_id]?.name || "Người dùng" : `Agent ${agentName(c.actor.replace(/^agent:/, ""))}`}</span>
+                            <span>{c.actor?.startsWith("agent:") ? `Agent ${agentName(c.actor.slice(6))}` : c.user_id ? lookups.person[c.user_id]?.name || "Người dùng" : c.actor === "system" ? "Hệ thống" : "Người dùng"}</span>
                             <span>{ago(c.created_at)}</span>
                           </span>
                           <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{c.body}</span>

@@ -17,6 +17,8 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - Migration `0010`.
 
 ### Sửa
+- **Việc đã Xong nhưng không có kết quả / không có nút mở kết quả** (T-37): người dùng bấm "Nộp kết quả" ngay lúc agent đang hỏi lại, việc bị đóng không có kết quả nào và agent bị bỏ rơi. Nay: (1) việc đang giao cho agent **không còn nút nộp** (người trả lời agent, chờ agent nộp, hoặc bỏ giao agent ở Sửa); CSDL cũng chặn; (2) nộp việc phải kèm **tóm tắt kết quả hoặc tài liệu/link**; (3) ngăn chi tiết việc đã xong/chờ duyệt có khối **Kết quả**: tóm tắt và các nút **"Mở: <tên tệp>"** cho mọi tài liệu, link và tệp báo cáo; không có kết quả thì nói rõ. Migration `0012`.
+- Ngăn chi tiết: lời của agent không còn hiện là "Người dùng"; bỏ dòng "chạy trên agent:…".
 - **Kết quả của agent không nhìn thấy được**: danh mục hồ sơ (`doc.records`) không có màn hình nào, và kết quả/tóm tắt của việc đã xong chỉ nằm trong phần trao đổi. Nay có hộp **Kết quả** ở thẻ dự án (nút "Xem kết quả"): tổng quan và kết quả từng việc của lần chạy, danh mục hồ sơ theo nhóm (số hiệu, ngày, giá trị, link tệp nguồn), báo cáo và tài liệu agent lưu, kho tri thức; ngăn chi tiết việc có mục **Kết quả** khi việc đã xong hoặc chờ duyệt. Migration `0011` (`agent.app_project_results`).
 - `agent.mcp_submit` (nộp qua MCP của người) với việc có quy trình trước đây đặt Chờ duyệt mà **không mở yêu cầu duyệt**, nên không ai duyệt được; nay đi qua cùng động cơ duyệt (`agent._approval_start`).
 

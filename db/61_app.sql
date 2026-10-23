@@ -354,7 +354,7 @@ BEGIN
     'approval_state', r.state,
     'can_approve', can_appr AND t.status = 'in_review',
     'can_edit', agent._can_edit(me.id, t),
-    'can_submit', t.status IN ('todo','in_progress','blocked') AND (t.assignee_id = me.id OR agent._can_edit(me.id, t)),
+    'can_submit', t.status IN ('todo','in_progress','blocked') AND t.agent_id IS NULL AND (t.assignee_id = me.id OR agent._can_edit(me.id, t)),   -- việc giao agent: agent nộp, người xem và chấp nhận
     'can_answer', t.waiting_on_human AND t.status NOT IN ('done','cancelled') AND (t.assignee_id = me.id OR t.created_by = me.id OR agent._can_edit(me.id, t)),
     'can_review', t.status = 'in_review' AND t.agent_id IS NOT NULL AND r.state IS DISTINCT FROM 'pending'
                   AND me.id IS NOT DISTINCT FROM coalesce(t.created_by, (SELECT default_reviewer FROM agent.company_settings WHERE company_id = t.company_id)),
@@ -445,6 +445,10 @@ BEGIN
   IF t.id IS NULL OR NOT agent._can_see(me.id, t) THEN RAISE EXCEPTION 'Không tìm thấy việc' USING ERRCODE = '42501'; END IF;
   IF NOT (t.assignee_id = me.id OR agent._can_edit(me.id, t)) THEN RAISE EXCEPTION 'Chỉ người phụ trách hoặc người có quyền sửa mới nộp được' USING ERRCODE = '42501'; END IF;
   IF t.status NOT IN ('todo','in_progress','blocked') THEN RAISE EXCEPTION 'Việc đang % nên không nộp được', t.status; END IF;
+  IF t.agent_id IS NOT NULL THEN RAISE EXCEPTION 'Việc đang giao cho agent: trả lời câu hỏi của agent hoặc chờ agent nộp kết quả. Muốn tự làm thì vào Sửa và bỏ giao agent.'; END IF;
+  IF note IS NULL AND NOT EXISTS (SELECT 1 FROM work.task_links WHERE task_id = t.id) AND NOT EXISTS (SELECT 1 FROM core.attachments WHERE entity_type = 'task' AND entity_id = t.id::text) THEN
+    RAISE EXCEPTION 'Ghi kết quả (tóm tắt) hoặc gắn link tài liệu trước khi nộp';
+  END IF;
   IF note IS NOT NULL THEN UPDATE work.tasks SET result = left(note, 4000) WHERE id = t.id; END IF;
   INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (t.id, me.id, 'user:' || me.id, 'submit', left(coalesce(note, 'Nộp kết quả'), 8000));
   res := agent._approval_start(t.id, me.id);
