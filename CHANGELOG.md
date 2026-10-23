@@ -6,6 +6,7 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 ## [0.2.1] — 2026-10-23
 
 ### Đổi
+- **Logo mới**: ô tổ ong (Tổ Ong) có người và AI agent (tia sáng) cạnh nhau, dấu duyệt đỏ son ở góc. Component `Logo.jsx`, bản vector `web/public/logo.svg`, favicon SVG, bộ icon PNG (192, 512, apple-touch, maskable).
 - Tên hiển thị của giao diện: **Enterprise OS | AI agent and Human collab platform** (thay "Dẹo Work"): tiêu đề trang, thanh bên, màn đăng nhập, manifest cài đặt ứng dụng.
 
 ### Thêm

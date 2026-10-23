@@ -3,6 +3,7 @@ import { Button, Card } from "@heroui/react";
 import { join } from "../lib/api.js";
 import { useApp } from "../lib/store.jsx";
 import { ErrorBox, TextInput } from "../components/ui.jsx";
+import Logo from "../components/Logo.jsx";
 
 const MESSAGES = {
   denied: "Tài khoản Google này chưa được cấp quyền vào hệ thống, hoặc phiên đăng nhập đã hết hạn. Nếu bạn có mã mời, nhập mã rồi đăng nhập lại.",
@@ -32,7 +33,7 @@ export default function Login() {
     <div className="grid min-h-dvh place-items-center px-4 py-10">
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 32 32" className="size-10" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="var(--seal)" /><path d="M10 16.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <Logo className="size-16" />
           <span className="flex flex-col leading-tight"><span className="text-2xl font-extrabold tracking-tight">Enterprise OS</span><span className="text-sm font-semibold text-muted">AI agent and Human collab platform</span></span>
         </div>
         <div>
