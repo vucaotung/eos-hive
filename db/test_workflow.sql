@@ -119,6 +119,16 @@ DO $$ DECLARE c constant uuid := '77777777-7777-7777-7777-777777777777'; own con
   BEGIN PERFORM agent.mcp_catalog_upsert(k_z2, '[{"category":"Khác","title":"Hồ sơ lạ"}]'); ASSERT false, 'văn thư không có thẻ cho việc của runner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN PERFORM agent.mcp_catalog_upsert(k_vt, (SELECT jsonb_agg(jsonb_build_object('category','A','title','Hồ sơ ' || g)) FROM generate_series(1, 51) g)); ASSERT false, 'quá 50 mục'; EXCEPTION WHEN raise_exception THEN NULL; END;
 
+  -- 5a. Màn hình kết quả: danh mục, việc của lần chạy, kho tri thức; chỉ người liên quan xem được
+  PERFORM pg_temp.as_user(sup);
+  res := agent.app_project_results(jsonb_build_object('project_id', (SELECT project_id FROM agent.workflow_runs WHERE id = run)));
+  ASSERT jsonb_array_length(res->'records') = 2 AND jsonb_array_length(res->'tasks') = 3 AND res->'kb'->>'ready' = 'true' AND (res->'run'->>'md_url') LIKE '%1MdFolderIdAbcdef', format('kết quả dự án: %s', left(res::text, 300));
+  ASSERT res->'records'->0->>'file_url' LIKE 'https://drive.google.com/file/d/%' AND EXISTS (SELECT 1 FROM jsonb_array_elements(res->'tasks') x WHERE (x->>'id')::bigint = k_z2 AND (x->>'result') LIKE 'Đã chuyển 2 tệp%'), 'hồ sơ có link tệp nguồn; việc có kết quả';
+  PERFORM pg_temp.as_user(own);
+  ASSERT jsonb_array_length(agent.app_project_results(jsonb_build_object('project_id', (SELECT project_id FROM agent.workflow_runs WHERE id = run)))->'records') = 2, 'chủ sở hữu xem được';
+  PERFORM pg_temp.as_user('77aaaaaa-0000-0000-0000-000000000003');
+  BEGIN PERFORM agent.app_project_results(jsonb_build_object('project_id', (SELECT project_id FROM agent.workflow_runs WHERE id = run))); ASSERT false, 'người không liên quan xem kết quả'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+
   -- 5b. Runner hỏi người (kb_ingest cần người nạp WeKnora): người trả lời → thẻ sẵn sàng lại, không có lệnh gửi cầu nối
   PERFORM pg_temp.as_user(sup);
   INSERT INTO work.tasks (id, company_id, title, assignee_id, created_by, agent_id) OVERRIDING SYSTEM VALUE

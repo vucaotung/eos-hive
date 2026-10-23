@@ -330,6 +330,8 @@ try {
     const d = await minh.ok('app_task', { id: r.root_task });
     assert.equal(d.task.agent_role, 'dieu-phoi'); assert.equal(d.workflow.skill, 'dieu-phoi-du-an'); assert.equal(d.task.assignee_id, ID.minh); assert.equal(d.workflow.scope.stage, 'orchestrate'); assert.equal(d.workflow.scope.note, 'Ưu tiên pháp lý');
     assert.equal((await adm.rpc('app_workflow_start', { ...body, project_name: undefined, project_id: r.project_id })).status, 400, 'đang có lần chạy chưa xong');
+    const res = await minh.ok('app_project_results', { project_id: r.project_id }); assert.equal(res.run.root_task, r.root_task); assert.equal(res.tasks.length, 1); assert.deepEqual(res.records, []); assert.equal(res.kb.ready, false);
+    assert.equal((await (await as('ketoan@demo.vn')).rpc('app_project_results', { project_id: r.project_id })).status, 403, 'người không liên quan không xem kết quả');
     const runs = await adm.ok('app_workflow_runs', { company_id: CO }); assert.equal(runs.length, 1); assert.equal(runs[0].root_task, r.root_task);
     assert.equal((await minh.ok('app_workflow_runs', { company_id: CO })).length, 1, 'người theo dõi thấy lần chạy của mình');
     assert.equal((await (await as('ketoan@demo.vn')).ok('app_workflow_runs', { company_id: CO })).length, 0);

@@ -17,6 +17,7 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 - Migration `0010`.
 
 ### Sửa
+- **Kết quả của agent không nhìn thấy được**: danh mục hồ sơ (`doc.records`) không có màn hình nào, và kết quả/tóm tắt của việc đã xong chỉ nằm trong phần trao đổi. Nay có hộp **Kết quả** ở thẻ dự án (nút "Xem kết quả"): tổng quan và kết quả từng việc của lần chạy, danh mục hồ sơ theo nhóm (số hiệu, ngày, giá trị, link tệp nguồn), báo cáo và tài liệu agent lưu, kho tri thức; ngăn chi tiết việc có mục **Kết quả** khi việc đã xong hoặc chờ duyệt. Migration `0011` (`agent.app_project_results`).
 - `agent.mcp_submit` (nộp qua MCP của người) với việc có quy trình trước đây đặt Chờ duyệt mà **không mở yêu cầu duyệt**, nên không ai duyệt được; nay đi qua cùng động cơ duyệt (`agent._approval_start`).
 
 ## [0.2.0] — 2026-10-22

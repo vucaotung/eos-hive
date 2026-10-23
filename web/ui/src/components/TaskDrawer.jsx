@@ -100,6 +100,13 @@ export default function TaskDrawer() {
                   ["Cập nhật", ago(t.updated_at)],
                 ]} />
 
+                {t.result && (t.status === "done" || t.status === "in_review") && !report && (
+                  <section className="flex flex-col gap-2">
+                    <h3 className="font-extrabold">Kết quả</h3>
+                    <p className="whitespace-pre-wrap rounded-xl bg-surface px-4 py-3 [overflow-wrap:anywhere]">{t.result}</p>
+                  </section>
+                )}
+
                 {d.workflow && (
                   <section className="flex flex-col gap-2">
                     <h3 className="font-extrabold">Phạm vi trong quy trình dự án</h3>

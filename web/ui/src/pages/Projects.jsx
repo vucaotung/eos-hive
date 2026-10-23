@@ -163,12 +163,116 @@ function IntakeDialog({ isOpen, onClose, project }) {
   );
 }
 
+// Kết quả của dự án: tiến độ từng việc và kết quả của agent, danh mục hồ sơ, báo cáo/tài liệu, kho tri thức
+const money = (n) => (n == null ? "" : new Intl.NumberFormat("vi-VN").format(n) + " đ");
+function ResultsDialog({ project, isOpen, onClose }) {
+  const { openTask, lookups: lk } = useApp();
+  const agentLabel = (c) => lk.agent[c]?.name || c;
+  const { data, error, loading } = useLoad(() => (isOpen && project ? rpc("app_project_results", { project_id: project.id }) : Promise.resolve(null)), [isOpen, project?.id]);
+  const [tab, setTab] = useState("overview");
+  const [open, setOpen] = useState({});
+  const D = data;
+  const cats = []; (D?.records || []).forEach((r) => { let c = cats.find((x) => x.name === r.category); if (!c) cats.push(c = { name: r.category, items: [] }); c.items.push(r); });
+  const ST = { todo: "Chờ làm", in_progress: "Đang làm", blocked: "Vướng", in_review: "Chờ duyệt", done: "Xong", cancelled: "Đã hủy" };
+  const link = (u, t) => u ? <a href={u} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">{t}</a> : null;
+  return (
+    <Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <Modal.Container placement="auto" scroll="inside">
+        <Modal.Dialog className="sm:max-w-4xl">
+          <Modal.CloseTrigger />
+          <Modal.Header><Modal.Heading>Kết quả: {project?.name}</Modal.Heading></Modal.Header>
+          <Modal.Body>
+            <ErrorBox error={error} />
+            {loading && !D ? <LoadingList rows={3} /> : D && (
+              <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(String(k))}>
+                <Tabs.ListContainer className="no-scrollbar overflow-x-auto"><Tabs.List aria-label="Kết quả dự án">
+                  <Tabs.Tab id="overview">Tổng quan<Tabs.Indicator /></Tabs.Tab>
+                  <Tabs.Tab id="records">Danh mục hồ sơ ({D.records.length})<Tabs.Indicator /></Tabs.Tab>
+                  <Tabs.Tab id="files">Báo cáo và tài liệu ({D.files.length})<Tabs.Indicator /></Tabs.Tab>
+                  <Tabs.Tab id="kb">Kho tri thức<Tabs.Indicator /></Tabs.Tab>
+                </Tabs.List></Tabs.ListContainer>
+                <Tabs.Panel id="overview" className="flex flex-col gap-4 pt-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[[D.records.length, "hồ sơ trong danh mục"], [D.files.length, "báo cáo và tài liệu"], [D.kb?.sources ?? 0, "tài liệu trong kho tri thức"], [D.tasks.filter((t) => t.status === "done").length + "/" + D.tasks.length, "việc đã xong"]].map(([n, l]) => (
+                      <div key={l} className="flex flex-col gap-0.5 rounded-xl bg-surface-secondary px-4 py-3"><b className="text-2xl font-extrabold tracking-tight">{n}</b><span className="text-sm font-semibold text-muted">{l}</span></div>
+                    ))}
+                  </div>
+                  {D.run && <p className="flex flex-wrap gap-x-4 text-sm text-muted">{link(D.run.source_url, "Thư mục Drive nguồn")}{link(D.run.md_url, "Thư mục Markdown")}</p>}
+                  {D.tasks.length ? D.tasks.map((t) => (
+                    <section key={t.id} className="flex flex-col gap-2 rounded-xl bg-surface-secondary p-4">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <b className="min-w-0 flex-1 [overflow-wrap:anywhere]">{t.title}</b>
+                        <span className="text-sm font-semibold">{ST[t.status]}</span>
+                        <span className="text-sm text-muted">{t.agent ? `Agent ${agentLabel(t.agent)}` : ""} · T-{t.id}</span>
+                        <Button size="sm" variant="ghost" onPress={() => openTask(t.id)}>Mở việc</Button>
+                      </div>
+                      {t.result ? (
+                        <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] ${open[t.id] ? "" : "line-clamp-4"}`}>{t.result}</p>
+                      ) : <p className="text-sm text-muted">Chưa có kết quả.</p>}
+                      {t.result && t.result.length > 280 && <button type="button" className="self-start text-sm font-semibold text-accent hover:underline" onClick={() => setOpen((o) => ({ ...o, [t.id]: !o[t.id] }))}>{open[t.id] ? "Thu gọn" : "Xem đầy đủ"}</button>}
+                    </section>
+                  )) : <Empty>Dự án chưa có lần nạp hồ sơ nào.</Empty>}
+                </Tabs.Panel>
+                <Tabs.Panel id="records" className="flex flex-col gap-5 pt-4">
+                  {cats.length ? cats.map((c) => (
+                    <section key={c.name} className="flex flex-col gap-2">
+                      <h3 className="font-extrabold">{c.name} <span className="font-semibold text-muted">{c.items.length}</span></h3>
+                      <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
+                        {c.items.map((r) => (
+                          <div key={r.id} className="flex flex-col gap-1 bg-surface-secondary px-4 py-3">
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                              {r.record_no && <code className="text-sm font-bold">{r.record_no}</code>}
+                              <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">{r.title}</span>
+                              {r.issued_on && <span className="text-sm text-muted">{ddmmyyyy(parseDate(r.issued_on))}</span>}
+                              {r.contract_value != null && <span className="text-sm font-semibold">{money(r.contract_value)}</span>}
+                              {link(r.file_url, "Mở tệp nguồn")}
+                            </div>
+                            {r.description && <p className="text-sm text-muted [overflow-wrap:anywhere]">{r.description}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )) : <Empty>Chưa có hồ sơ trong danh mục.</Empty>}
+                </Tabs.Panel>
+                <Tabs.Panel id="files" className="pt-4">
+                  {D.files.length ? (
+                    <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
+                      {D.files.map((f, i) => (
+                        <div key={i} className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-surface-secondary px-4 py-3">
+                          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{link(f.url, f.name)}</span>
+                          <button type="button" className="text-sm text-muted hover:underline" onClick={() => openTask(f.task_id)}>T-{f.task_id}</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <Empty>Chưa có báo cáo hoặc tài liệu nào.</Empty>}
+                </Tabs.Panel>
+                <Tabs.Panel id="kb" className="pt-4">
+                  {D.kb ? (
+                    <div className="flex flex-col gap-1 rounded-xl bg-surface-secondary p-4">
+                      <b>{D.kb.name}</b>
+                      <span className={D.kb.ready ? "font-semibold text-success" : "font-semibold text-warning"}>{D.kb.ready ? "Đã tạo trên WeKnora" : "Chưa nạp (kho giữ chỗ)"}</span>
+                      <span className="text-sm text-muted">{D.kb.sources} tài liệu đã nạp. Hỏi kho này qua agent Quản trị dữ liệu hoặc trên kb.enterpriseos.bond.</span>
+                    </div>
+                  ) : <Empty>Dự án chưa có kho tri thức.</Empty>}
+                </Tabs.Panel>
+              </Tabs>
+            )}
+          </Modal.Body>
+          <Modal.Footer><Button variant="secondary" onPress={onClose}>Đóng</Button></Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+  );
+}
+
 // Danh sách dự án kèm tiến độ; bấm thẻ để xem việc, "Cài đặt" để quản lý
 export default function Projects() {
   const { companyId, org, lookups, isAdmin, isManager, openTask } = useApp();
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);
   const [editing, setEditing] = useState(undefined);              // undefined: đóng · null: tạo mới · object: sửa
-  const [intake, setIntake] = useState(undefined);                // undefined: đóng · null: dự án mới · object: dự án có sẵn
+  const [intake, setIntake] = useState(undefined);
+  const [results, setResults] = useState(null);                  // dự án đang xem kết quả
+  const agentLabel = (c) => lookups.agent[c]?.name || c;                // undefined: đóng · null: dự án mới · object: dự án có sẵn
   const runs = useLoad(() => companyId ? rpc("app_workflow_runs", { company_id: companyId }) : Promise.resolve([]), [companyId]);
   const runOf = (pid) => (runs.data || []).find((r) => r.project_id === pid);
   const rows = org.projects.map((p) => {
@@ -200,9 +304,9 @@ export default function Projects() {
                 </span>
               </button>
               {runOf(p.id) && (
-                <button type="button" onClick={() => openTask(runOf(p.id).root_task)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-left text-sm">
+                <button type="button" onClick={() => setResults(p)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-left text-sm">
                   <FaceRobot className="size-4 shrink-0" /><b>{runOf(p.id).state === "running" ? "Đang nạp hồ sơ" : runOf(p.id).state === "done" ? "Đã nạp hồ sơ" : "Đã dừng nạp hồ sơ"}</b>
-                  {Object.entries(runOf(p.id).tasks || {}).map(([k, n]) => <span key={k}>{n} {({ todo: "chờ", in_progress: "đang làm", blocked: "vướng", in_review: "chờ duyệt", done: "xong", cancelled: "hủy" })[k] || k}</span>)}
+                  <b className="ml-auto text-accent">Xem kết quả</b>{Object.entries(runOf(p.id).tasks || {}).map(([k, n]) => <span key={k}>{n} {({ todo: "chờ", in_progress: "đang làm", blocked: "vướng", in_review: "chờ duyệt", done: "xong", cancelled: "hủy" })[k] || k}</span>)}
                 </button>
               )}
               <span className="flex flex-wrap gap-2">
@@ -214,6 +318,7 @@ export default function Projects() {
           ))}
         </div>
       ) : <Empty>Chưa có dự án. {canCreate ? "Bấm Thêm dự án để tạo dự án đầu tiên." : "Nhờ quản trị hoặc trưởng phòng tạo dự án."}</Empty>}
+      <ResultsDialog project={results} isOpen={!!results} onClose={() => setResults(null)} />
       <ProjectDialog project={editing || null} isOpen={editing !== undefined} onClose={() => setEditing(undefined)} />
       <IntakeDialog project={intake || null} isOpen={intake !== undefined} onClose={() => setIntake(undefined)} />
     </div>
