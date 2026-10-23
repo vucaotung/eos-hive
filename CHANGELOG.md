@@ -5,6 +5,9 @@ Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ
 
 ## [0.2.1] — 2026-10-23
 
+### Đổi
+- Tên hiển thị của giao diện: **Enterprise OS | AI agent and Human collab platform** (thay "Dẹo Work"): tiêu đề trang, thanh bên, màn đăng nhập, manifest cài đặt ứng dụng.
+
 ### Thêm
 - **"Phải duyệt" trong cửa sổ Giao việc**: ô "Duyệt kết quả" có hai lựa chọn: *Không cần duyệt (nộp là xong)* và *Phải duyệt (chờ duyệt, được duyệt mới hoàn thành)*; chọn phải duyệt thì chọn "Ai duyệt". Mỗi công ty có sẵn ba quy trình: **Người giao duyệt**, **Trưởng phòng duyệt**, **Quản trị công ty duyệt** (tạo tự động, không cần quản trị dựng trước). Trước đó ô này chỉ có "Không cần duyệt" vì công ty chưa có quy trình nào.
 - Bước duyệt mới **"Người giao việc"** (`approver_kind = 'creator'`, cũng chọn được khi tạo quy trình tùy biến). Người nộp không tự duyệt: khi người giao cũng là người làm thì trưởng phòng (hoặc quản trị nếu phòng chưa có trưởng phòng) duyệt thay.

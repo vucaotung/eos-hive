@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-/* Dẹo Work — ánh xạ bản sắc "con dấu" lên theme HeroUI.
+/* Enterprise OS (giao diện gốc Dẹo Work) — ánh xạ bản sắc "con dấu" lên theme HeroUI.
    Mực ký xanh cho hành động chính, đỏ son chỉ cho con dấu duyệt và cảnh báo quá hạn.
    Bề mặt tách bằng bậc tông, không dùng bóng đổ khi đứng yên. */
 :root,

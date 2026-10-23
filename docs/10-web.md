@@ -1,6 +1,6 @@
-# 10 · Dẹo Work — giao diện web (`/app`)
+# 10 · Enterprise OS — giao diện web (`/app`)
 
-Ứng dụng quản lý dự án và công việc tại `https://work.enterpriseos.bond/app`, thiết kế theo bản Dẹo Work (HeroUI + Tailwind, chế độ tối, dùng được trên điện thoại), chạy trên lược đồ 108 bảng của Tổ Ong và có sẵn agent AI.
+Ứng dụng quản lý dự án và công việc tại `https://work.enterpriseos.bond/app`, thiết kế theo bản Dẹo Work gốc (HeroUI + Tailwind, chế độ tối, dùng được trên điện thoại), chạy trên lược đồ 108 bảng của Tổ Ong và có sẵn agent AI.
 
 | Màn hình | Làm gì |
 | --- | --- |

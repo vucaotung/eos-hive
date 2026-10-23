@@ -33,10 +33,10 @@ export default function Login() {
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="flex items-center gap-3">
           <svg viewBox="0 0 32 32" className="size-10" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="var(--seal)" /><path d="M10 16.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span className="text-2xl font-extrabold tracking-tight">Dẹo Work</span>
+          <span className="flex flex-col leading-tight"><span className="text-2xl font-extrabold tracking-tight">Enterprise OS</span><span className="text-sm font-semibold text-muted">AI agent and Human collab platform</span></span>
         </div>
         <div>
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-balance">Giao việc, theo dõi và duyệt trong một nơi.</h1>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-balance">Con người và AI agent cùng làm việc trong một nơi.</h1>
           <p className="mt-2 text-muted">Đăng nhập bằng tài khoản Google của bạn. Lần đầu vào cần mã mời từ quản trị công ty.</p>
         </div>
         <Card className="gap-5 p-5">
