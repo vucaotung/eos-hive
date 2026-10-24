@@ -437,6 +437,8 @@ BEGIN
     ELSE
       INSERT INTO agent.outbox (company_id, kind, task_id, card_ref, payload)
       VALUES (t.company_id, 'answer', t.id, c.id, jsonb_build_object('board', c.board, 'card_id', c.card_id, 'body', NEW.body, 'by', NEW.actor));
+      -- agent sẽ chạy lại: thẻ coi là đang chạy, để lần chặn kế tiếp (câu hỏi mới) không bị bỏ qua là "không đổi" (việc đứng yên)
+      UPDATE agent.cards SET status = 'running', last_event_at = now() WHERE id = c.id;
     END IF;
     UPDATE work.tasks SET status = 'in_progress', waiting_on_human = false, updated_at = now() WHERE id = t.id;
   ELSIF NEW.kind = 'reject' AND t.status = 'in_review' THEN

@@ -518,6 +518,25 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   RAISE NOTICE 'Duyệt nhiều bước ok';
 END $$;
 
+-- Agent chặn hỏi → người trả lời → agent chạy lại rồi chặn lần nữa: câu hỏi mới phải tới việc (trước đây bị bỏ, việc đứng yên)
+DO $$ DECLARE oid bigint; BEGIN
+  INSERT INTO work.tasks (id, company_id, department_id, title, assignee_id, agent_id, created_by) OVERRIDING SYSTEM VALUE
+  VALUES (9950, '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000001', 'Việc chặn hai lần', 'bbbbbbbb-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000002');
+  SELECT id INTO oid FROM agent.outbox WHERE task_id = 9950 AND kind = 'dispatch';
+  PERFORM agent.outbox_ack(oid, 't_rr1');
+  PERFORM agent.ingest_event('eos-agt', 't_rr1', 'claimed', 'rr-claim-1');
+  PERFORM agent.ingest_event('eos-agt', 't_rr1', 'blocked', 'rr-block-1', '{"reason":"Câu hỏi thứ nhất"}');
+  ASSERT (SELECT status = 'blocked' AND waiting_on_human FROM work.tasks WHERE id = 9950), 'chặn lần 1';
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000001","via":"web"}', true);
+  PERFORM agent.app_answer('{"task": 9950, "body": "Trả lời 1"}');
+  ASSERT (SELECT status = 'running' FROM agent.cards WHERE task_id = 9950), 'sau khi trả lời thẻ coi là đang chạy';
+  ASSERT (SELECT status = 'in_progress' AND NOT waiting_on_human FROM work.tasks WHERE id = 9950), 'việc Đang làm lại';
+  ASSERT agent.ingest_event('eos-agt', 't_rr1', 'blocked', 'rr-block-2', '{"reason":"Câu hỏi thứ hai"}') = 'ok', 'chặn lần 2 được ghi nhận (không phải no_change)';
+  ASSERT (SELECT status = 'blocked' AND waiting_on_human FROM work.tasks WHERE id = 9950), 'việc Vướng lại, chờ người';
+  ASSERT (SELECT count(*) FROM work.comments WHERE task_id = 9950 AND kind = 'question') = 2, 'hai câu hỏi đều tới việc';
+  RAISE NOTICE 'Chặn nhiều lần ok';
+END $$;
+
 -- Nộp việc: phải có kết quả (tóm tắt hoặc tài liệu); việc đang giao cho agent thì người không nộp tay được
 DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; me constant uuid := 'eeeeeeee-0000-0000-0000-000000000001'; tid bigint; BEGIN
   PERFORM pg_temp.as_user(me);

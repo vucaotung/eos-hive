@@ -74,4 +74,17 @@ b.push("t_d69159f5", "kanban_task_completed", "200")
 assert [r[1] for r in rpcs] == ["claimed", "blocked", "completed"], rpcs
 assert rpcs[0][2] == "eos-smoke:t_d69159f5:claimed:implied", rpcs
 step("blocked/completed không có claimed trước -> phát claimed ngầm đúng một lần")
+# Agent chạy lại sau khi người trả lời: khóa sự kiện của lượt mới KHÁC khóa lượt trước (trước đây trùng → bị bỏ, việc đứng yên)
+b2 = br.Bridge(); b2.save = lambda: None
+b2.cards = {"t_x1": {"board": "eos-smoke", "task_id": 1, "status": "blocked", "claimed": True}}
+keys = []
+b2.rpc = lambda fn, **kw: (keys.append(kw.get("p_event_key")), "ok")[1] if fn == "ingest_event" else None
+b2.hermes = lambda verb, *a, **kw: load("show-blocked.json")
+b2.push("t_x1", None, "reconcile-blocked-T0")
+b2.handle_outbox({"id": 1, "kind": "answer", "task_id": 1, "payload": {"board": "eos-smoke", "card_id": "t_x1", "body": "ok", "by": "user:1"}})
+assert b2.cards["t_x1"].get("epoch") == 1 and b2.cards["t_x1"]["claimed"] is False
+b2.push("t_x1", None, "reconcile-blocked-T0")
+ev = [k for k in keys if k and ":blocked:" in k]
+assert len(ev) == 2 and ev[0] != ev[1] and ev[1].endswith(":e1"), ev
+step("sau câu trả lời, sự kiện của lượt chạy lại có khóa riêng (epoch)")
 print(f"fixtures: {ok} bước đạt")

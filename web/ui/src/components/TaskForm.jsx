@@ -78,6 +78,8 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
               <div className="sm:col-span-2">
                 <SelectField label="Giao cho agent AI" value={f.agent_role} onChange={set("agent_role")} allowEmpty emptyLabel="Không, người làm"
                   options={(me?.agents || []).map((a) => ({ value: a.code, label: a.name }))} />
+                {f.agent_role && (() => { const who = f.assignee_id ? lookups.person[f.assignee_id] : lookups.person[me?.user?.id]; return who && who.drive_status !== "ok" && (
+                  <p className="mt-1 text-sm font-semibold text-warning">{who.name} chưa thiết lập thư mục Drive (Tài khoản → Thư mục Drive). Agent soạn xong vẫn không lưu được tệp .docx cho đến khi có thư mục này.</p>); })()}
                 <p className="mt-1 text-sm text-muted">Agent nhận việc ở lượt quét kế tiếp, hỏi lại khi thiếu thông tin và nộp kết quả để người phụ trách duyệt.</p>
               </div>
               <button type="submit" hidden />
