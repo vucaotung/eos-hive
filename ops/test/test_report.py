@@ -13,14 +13,14 @@ D = {'company': 'Valnex', 'scope': 'Toàn công ty', 'date': '2026-10-24', 'days
 class T(unittest.TestCase):
     def test_daily(self):
         t = R.render(D)
-        for s in ['Bản tin sáng 24/10', 'Công việc đang mở 12', 'Quá hạn 3', 'T-1 Soạn công văn (Minh, trễ 4 ngày)', 'chưa giao, trễ 3 ngày', 'Đến hạn hôm nay:', 'T-4 Duyệt bảng khối lượng [chờ duyệt]',
-                  'Đã xong hôm qua', 'HC 8 công việc mở, 2 quá hạn', 'đang nạp hồ sơ', 'đang chờ người 2', 'https://work.enterpriseos.bond/app/']:
+        for s in ['Bản tin sáng 24/10', 'Công việc đang thực hiện 12', 'Quá hạn 3', 'T-1 Soạn công văn (Minh, trễ 4 ngày)', 'chưa giao, trễ 3 ngày', 'Đến hạn hôm nay:', 'T-4 Duyệt bảng khối lượng [chờ duyệt]',
+                  'Đã xong hôm qua', 'HC 8 công việc, 2 quá hạn', 'đang nạp hồ sơ', 'đang chờ người 2', 'https://work.enterpriseos.bond/app/']:
             self.assertIn(s, t, s)
         self.assertNotIn('Theo người', t)
 
     def test_weekly(self):
         t = R.render(D, True)
-        self.assertIn('Tổng kết tuần', t); self.assertIn('Theo người: Minh 5 công việc mở, 2 quá hạn', t); self.assertNotIn('Đến hạn hôm nay:', t); self.assertIn('trong tuần', t)
+        self.assertIn('Tổng kết tuần', t); self.assertIn('Theo người: Minh 5 công việc, 2 quá hạn', t); self.assertNotIn('Đến hạn hôm nay:', t); self.assertIn('trong tuần', t)
 
     def test_limits_and_length(self):
         big = dict(D, overdue=[{'id': f'T-{i}', 'title': 'x' * 90, 'who': 'A', 'days_late': 1} for i in range(12)])
