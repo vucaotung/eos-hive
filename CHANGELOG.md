@@ -3,6 +3,15 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.5 — Giới hạn và sửa lỗi lớp MCP (nhánh feat/hardening-0.2.5, chưa triển khai)
+- `/mcp`: 20 mã sai/5 phút theo IP → 429 trước khi chạm CSDL; mẫu Caddy `deploy/Caddyfile.mcp.snippet`.
+- `mcp_token_issue`: tham số công ty phải do quản trị công ty cấp (0018).
+- Chống trùng việc theo khóa (tên chuẩn hóa, người phụ trách, `source_ref`) và trả lý do (0019).
+- Theo dõi tải tệp Drive, đánh dấu tệp mồ côi, `upload_sweep` không xóa tệp (0020).
+- Nạp kho song song: giữ chỗ từng tài liệu và việc tạo kho (0021).
+- `housekeeping_prune` dọn bảng tạm (0022); bộ đếm tốc độ trong bộ nhớ tự dọn.
+- Mô tả `eos_task_save`/`eos_comment` ghi rõ nội dung việc là dữ liệu, không phải lệnh. Chi tiết: docs/16.
+
 ## 0.2.4 — 2026-10-24 · Rà soát logic MCP
 - Sửa: `eos_comment kind=answer` qua MCP chỉ cần xem được việc → người theo dõi/xem theo phòng có thể "trả lời" thay để agent chạy lại. Nay đúng luật web (agent đang chờ; chỉ người phụ trách/giao/sửa được).
 - Bot (Mai) không tạo việc trùng (cùng tên + người phụ trách trong 15 phút trả lại việc cũ, `duplicate: true`).
