@@ -437,6 +437,14 @@ BEGIN
     q := q || jsonb_build_object('company_id', cid);
   END IF;
   PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
+  -- (2) Bot (Zalo hay gửi lại tin) có thể tạo trùng: cùng người tạo + cùng tên + cùng người phụ trách trong 15 phút thì trả lại việc cũ
+  IF me.kind = 'agent' AND (p->>'id') IS NULL THEN
+    SELECT id INTO t.id FROM work.tasks
+     WHERE created_by = me.id AND company_id = cid AND created_at > now() - interval '15 minutes' AND lower(btrim(title)) = lower(btrim(coalesce(p->>'title', '')))
+       AND assignee_id IS NOT DISTINCT FROM (SELECT u2.id FROM core.users u2 WHERE lower(u2.email) = lower(btrim(coalesce(p->>'assignee_email', ''))) AND u2.kind = 'person')
+     ORDER BY id DESC LIMIT 1;
+    IF t.id IS NOT NULL THEN RETURN jsonb_build_object('id', 'T-' || t.id, 'url', 'https://work.enterpriseos.bond/app/#/tasks', 'duplicate', true); END IF;
+  END IF;
   IF p ? 'assignee_email' THEN
     SELECT u.id INTO uid FROM core.users u JOIN core.memberships m ON m.user_id = u.id AND m.company_id = cid AND m.active WHERE lower(u.email) = lower(btrim(p->>'assignee_email')) AND u.kind = 'person';
     IF uid IS NULL THEN RAISE EXCEPTION 'Không có thành viên có email %', p->>'assignee_email'; END IF;
@@ -504,6 +512,26 @@ BEGIN
   VALUES (a.user_id, a.id, 'Agent ' || a.code, CASE WHEN a.executor = 'runner' THEN 'other' ELSE 'hermes' END, substr(raw, 5, 8), encode(digest(raw, 'sha256'), 'hex'), sc,
           now() + make_interval(days => least(greatest(p_days, 1), 365)));
   RETURN raw;
+END $$;
+
+-- ---------- Rà soát logic MCP (24/10/2026) ----------
+-- (1) eos_comment kind=answer qua MCP chỉ cần xem được việc, trong khi web (app_answer) đòi: agent đang chờ + người phụ trách/người giao/người sửa được.
+--     Người chỉ theo dõi hoặc xem theo phòng không được "trả lời" thay để cho agent chạy lại. Nay MCP áp đúng luật của web.
+CREATE OR REPLACE FUNCTION agent.mcp_comment(p_task bigint, p_body text, p_kind text DEFAULT 'note') RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me uuid := core.current_user_id(); new_id bigint; t work.tasks;
+BEGIN
+  IF NOT work.can_view_task(me, p_task) THEN RAISE EXCEPTION 'Không có quyền với T-%', p_task USING ERRCODE = '42501'; END IF;
+  IF p_kind NOT IN ('note','answer') THEN RAISE EXCEPTION 'Loại bình luận không hợp lệ'; END IF;
+  IF btrim(coalesce(p_body, '')) = '' THEN RAISE EXCEPTION 'Nhập nội dung'; END IF;
+  IF p_kind = 'answer' THEN
+    SELECT * INTO t FROM work.tasks WHERE id = p_task;
+    IF NOT (t.waiting_on_human AND t.status NOT IN ('done','cancelled')) THEN RAISE EXCEPTION 'Agent không đang chờ trả lời việc này'; END IF;
+    IF NOT (t.assignee_id = me OR t.created_by = me OR agent._can_edit(me, t)) THEN RAISE EXCEPTION 'Chỉ người phụ trách hoặc người giao trả lời được' USING ERRCODE = '42501'; END IF;
+  END IF;
+  INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (p_task, me, agent._mcp_actor(), p_kind::work.comment_kind, left(p_body, 8000))
+  RETURNING id INTO new_id;
+  RETURN new_id;
 END $$;
 
 -- ---------- Vai trò tối thiểu cho trợ lý AI nhận yêu cầu (Mai) ----------

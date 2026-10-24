@@ -3,6 +3,11 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.4 — 2026-10-24 · Rà soát logic MCP
+- Sửa: `eos_comment kind=answer` qua MCP chỉ cần xem được việc → người theo dõi/xem theo phòng có thể "trả lời" thay để agent chạy lại. Nay đúng luật web (agent đang chờ; chỉ người phụ trách/giao/sửa được).
+- Bot (Mai) không tạo việc trùng (cùng tên + người phụ trách trong 15 phút trả lại việc cũ, `duplicate: true`).
+- Mai tắt `company_agents.enabled` để không ai giao việc/chia việc cho agent này (cầu nối sẽ đẩy thẻ sang team_admin). Migration 0017; MCP e2e 32 bước.
+
 ## 0.2.3 — 2026-10-24 · Tài khoản agent Mai (phạm vi `task_create`)
 - Phạm vi mã mới `task_create` (chỉ mã agent): tạo việc mới cho người + bình luận ghi chú; không sửa việc, không đổi trạng thái, không giao agent, không trả lời thay. Mã agent vẫn không có `write`.
 - Cột `agent.agents.token_scopes` (thu hẹp mã của một agent); vai trò mẫu `tro_ly_ai` (tạo việc, xem việc mình tạo phạm vi own, bình luận, hỏi kho); quyền `work.comment.create`, `kb.ask`.

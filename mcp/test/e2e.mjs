@@ -415,6 +415,25 @@ try {
     // người không được mang phạm vi task_create; mã người dùng không cấp được
     await assert.rejects(() => sql("SELECT agent.mcp_token_issue('x','other','{read,task_create}',30)"));
   });
+  await step('trả lời agent qua MCP đúng luật như web: người chỉ theo dõi bị từ chối, người phụ trách được; Mai không tạo trùng', async () => {
+    await sql("INSERT INTO work.task_watchers (task_id, user_id) VALUES (504, 'cccccccc-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING");
+    await sql("UPDATE work.tasks SET waiting_on_human = false WHERE id = 504");
+    const watcher = await connect(process.env.TOKEN_OTHER), owner = await connect(process.env.TOKEN_FULL);
+    let x = await watcher.callTool({ name: 'eos_comment', arguments: { task: 'T-504', body: 'chen câu trả lời', kind: 'answer' } });
+    assert.equal(x.isError, true); assert.match(text(x), /không đang chờ trả lời/, 'agent không chờ thì không trả lời được');
+    await sql("UPDATE work.tasks SET waiting_on_human = true WHERE id = 504");
+    x = await watcher.callTool({ name: 'eos_comment', arguments: { task: 'T-504', body: 'chen câu trả lời', kind: 'answer' } });
+    assert.equal(x.isError, true); assert.match(text(x), /Chỉ người phụ trách hoặc người giao/);
+    x = await watcher.callTool({ name: 'eos_comment', arguments: { task: 'T-504', body: 'ghi chú thường', kind: 'note' } }); assert.ok(!x.isError, 'người theo dõi vẫn ghi chú thường được');
+    x = await owner.callTool({ name: 'eos_comment', arguments: { task: 'T-504', body: 'đây là câu trả lời của người phụ trách', kind: 'answer' } }); assert.ok(!x.isError, text(x));
+    await sql("UPDATE work.tasks SET waiting_on_human = false WHERE id = 504");
+    const mai = await connect(process.env.TOKEN_MAI);
+    const args = { title: 'Mai tạo việc trùng thử', assignee_email: 'minh@demo.vn' };
+    const a = json(await mai.callTool({ name: 'eos_task_save', arguments: args })), b = json(await mai.callTool({ name: 'eos_task_save', arguments: args }));
+    assert.equal(b.id, a.id); assert.equal(b.duplicate, true);
+    assert.equal((await sql("SELECT count(*)::int n FROM work.tasks WHERE title = 'Mai tạo việc trùng thử'"))[0].n, 1);
+    await watcher.close(); await owner.close(); await mai.close();
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
