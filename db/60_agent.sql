@@ -632,6 +632,15 @@ DECLARE me uuid := core.current_user_id(); raw text;
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'Chưa đăng nhập' USING ERRCODE = '42501'; END IF;
   IF (SELECT kind FROM core.users WHERE id = me) <> 'person' THEN RAISE EXCEPTION 'Chỉ người dùng mới tạo mã MCP'; END IF;
+  -- Mã gắn một công ty: người phát hành phải là thành viên đang hoạt động có quyền quản trị thành viên ở công ty đó (hoặc quản trị hệ thống)
+  IF p_company IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM core.companies WHERE id = p_company) THEN RAISE EXCEPTION 'Không có công ty này'; END IF;
+    IF NOT (coalesce((SELECT is_system_admin FROM core.users WHERE id = me), false)
+            OR (EXISTS (SELECT 1 FROM core.memberships m WHERE m.user_id = me AND m.company_id = p_company AND m.active)
+                AND coalesce(core.perm_scope_of(me, p_company, 'core.member.manage') = 'company', false))) THEN
+      RAISE EXCEPTION 'Chỉ quản trị công ty mới cấp mã gắn với công ty này' USING ERRCODE = '42501';
+    END IF;
+  END IF;
   IF (SELECT count(*) FROM agent.mcp_tokens WHERE user_id = me AND revoked_at IS NULL AND expires_at > now()) >= 5 THEN
     RAISE EXCEPTION 'Mỗi người tối đa 5 mã đang dùng. Thu hồi mã cũ trước.';
   END IF;
