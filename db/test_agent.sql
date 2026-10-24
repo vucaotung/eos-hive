@@ -345,7 +345,10 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; BEGIN
   ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000001', c) = 'member', 'thành viên';
   ASSERT agent._role_of('bbbbbbbb-0000-0000-0000-000000000003', c) = 'member', 'thành viên không có dòng user_roles vẫn là member';
   ASSERT agent._role_of('eeeeeeee-0000-0000-0000-000000000003', c) IS NULL, 'người ngoài/khóa không có vai trò';
-  ASSERT (SELECT count(*) FROM core.roles WHERE company_id IS NULL AND builtin) = 3, '3 vai trò mẫu';
+  ASSERT (SELECT count(*) FROM core.roles WHERE company_id IS NULL AND builtin) = 4, '4 vai trò mẫu (owner, admin, member, tro_ly_ai)';
+  ASSERT (SELECT count(*) FROM core.role_permissions rp JOIN core.roles r ON r.id = rp.role_id WHERE r.company_id IS NULL AND r.code = 'tro_ly_ai') = 4
+     AND NOT EXISTS (SELECT 1 FROM core.role_permissions rp JOIN core.roles r ON r.id = rp.role_id WHERE r.code = 'tro_ly_ai' AND rp.permission IN ('work.task.edit','work.report.view','core.member.manage','core.invite.create'))
+     AND (SELECT rp.scope FROM core.role_permissions rp JOIN core.roles r ON r.id = rp.role_id WHERE r.code = 'tro_ly_ai' AND rp.permission = 'work.task.view') = 'own', 'tro_ly_ai chỉ có 4 quyền, xem việc phạm vi own';
   ASSERT core.perm_scope_of('eeeeeeee-0000-0000-0000-000000000002', c, 'work.task.view') = 'company'
      AND core.perm_scope_of('eeeeeeee-0000-0000-0000-000000000001', c, 'work.task.view') = 'department', 'phạm vi quyền xem việc theo vai trò';
   RAISE NOTICE 'Vai trò và quyền mẫu ok';

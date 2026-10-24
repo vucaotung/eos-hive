@@ -71,3 +71,11 @@ INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3
 SELECT 'TOKEN_KB=' || agent.mcp_token_issue_agent('quan-tri-du-lieu', 30);
 SELECT set_config('request.jwt.claims','{"sub":"cccccccc-0000-0000-0000-0000000000ad"}', false) \g /dev/null
 SELECT 'TOKEN_ADMIN=' || agent.mcp_token_issue('Quản trị đọc ghi','claude','{read,write}',30);
+-- Mai (bot nhận yêu cầu): phạm vi mã riêng read + task_create, vai trò tối thiểu tro_ly_ai (giống dữ liệu thật)
+INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000a5','mai@agent','Mai - Trợ lý AI','agent');
+INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, token_scopes) VALUES
+ ('a2222222-0000-0000-0000-000000000005','cccccccc-0000-0000-0000-0000000000a5','mai','Mai - Trợ lý AI','specialist','work','team_admin','{read,task_create}');
+INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000005');
+INSERT INTO core.memberships (user_id, company_id) VALUES ('cccccccc-0000-0000-0000-0000000000a5','33333333-3333-3333-3333-333333333333');
+INSERT INTO core.user_roles (company_id, user_id, role_id) VALUES ('33333333-3333-3333-3333-333333333333','cccccccc-0000-0000-0000-0000000000a5', agent._sys_role('tro_ly_ai'));
+SELECT 'TOKEN_MAI=' || agent.mcp_token_issue_agent('mai', 30);

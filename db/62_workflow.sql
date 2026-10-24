@@ -425,6 +425,9 @@ CREATE OR REPLACE FUNCTION agent.mcp_task_save(p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
 DECLARE me core.users := agent._web_me(); cid uuid; q jsonb := p - 'assignee_email' - 'project' - 'agent' - 'approval'; t work.tasks; uid uuid; pid uuid; fid uuid; r jsonb;
 BEGIN
+  IF me.kind = 'agent' AND ((p->>'id') IS NOT NULL OR p ? 'status' OR coalesce(p->>'agent', '') <> '') THEN
+    RAISE EXCEPTION 'Tài khoản agent chỉ được tạo việc mới cho người, không sửa việc, không đổi trạng thái, không giao cho agent' USING ERRCODE = '42501';
+  END IF;
   IF (p->>'id') IS NOT NULL THEN
     SELECT * INTO t FROM work.tasks WHERE id = (regexp_replace(p->>'id', '^T-', '', 'i'))::bigint;
     IF t.id IS NULL THEN RAISE EXCEPTION 'Không tìm thấy việc'; END IF;
@@ -489,7 +492,8 @@ BEGIN
   END IF;
   SELECT * INTO a FROM agent.agents WHERE code = p_agent AND active;
   IF a.id IS NULL THEN RAISE EXCEPTION 'Không có agent %', p_agent; END IF;
-  IF a.executor = 'runner' THEN sc := '{runner}'::text[];
+  IF a.token_scopes IS NOT NULL THEN sc := a.token_scopes;   -- agent có phạm vi riêng (vd. mai: read + task_create)
+  ELSIF a.executor = 'runner' THEN sc := '{runner}'::text[];
   ELSE
     sc := CASE WHEN a.can_delegate THEN '{read,kb,delegate,project}'::text[] ELSE '{read,kb,project}'::text[] END;
     IF a.module = 'doc' THEN sc := sc || '{draft}'::text[]; END IF;
@@ -501,6 +505,21 @@ BEGIN
           now() + make_interval(days => least(greatest(p_days, 1), 365)));
   RETURN raw;
 END $$;
+
+-- ---------- Vai trò tối thiểu cho trợ lý AI nhận yêu cầu (Mai) ----------
+-- Chỉ: giao việc, xem việc mình tạo/được giao (phạm vi own), bình luận, hỏi kho dữ liệu. Không sửa việc, không xem báo cáo, không quản trị.
+INSERT INTO core.permissions (code, module, area, name, scoped, sort) VALUES
+ ('work.comment.create', 'work', 'Công việc',   'Bình luận vào việc',        false, 25),
+ ('kb.ask',              'kb',   'Kho dữ liệu', 'Hỏi Kho dữ liệu chung',     false, 70)
+ON CONFLICT (code) DO NOTHING;
+INSERT INTO core.roles (company_id, code, name, description, builtin)
+SELECT NULL, 'tro_ly_ai', 'Trợ lý AI', 'Bot tiếp nhận yêu cầu: tạo việc, bình luận, hỏi kho dữ liệu; chỉ thấy việc mình tạo hoặc được giao', true
+ WHERE NOT EXISTS (SELECT 1 FROM core.roles r WHERE r.company_id IS NULL AND r.code = 'tro_ly_ai');
+INSERT INTO core.role_permissions (role_id, permission, scope)
+SELECT r.id, v.p, v.s::core.perm_scope FROM core.roles r,
+  (VALUES ('work.task.create','company'), ('work.task.view','own'), ('work.comment.create','company'), ('kb.ask','company')) v(p, s)
+ WHERE r.company_id IS NULL AND r.code = 'tro_ly_ai'
+ON CONFLICT (role_id, permission) DO NOTHING;
 
 -- ---------- Quyền ----------
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent FROM PUBLIC;

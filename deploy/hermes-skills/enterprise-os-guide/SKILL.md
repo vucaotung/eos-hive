@@ -34,10 +34,10 @@ Enterprise OS là nơi **người và AI agent cùng làm việc**: giao việc,
 1. **Xác nhận trước**: nhắc lại "tạo việc <tên> giao <người> hạn <ngày>, <phải duyệt/không>?" rồi mới gọi, trừ khi chính anh Tùng ra lệnh rõ ràng.
 2. Người phụ trách: tra `eos_list_members`, dùng **email**. Trùng tên hoặc không có thì hỏi lại, không đoán.
 3. Việc cần người khác kiểm: `approval: true`. Việc nhỏ tự làm: bỏ qua.
-4. Giao cho agent AI: `agent` = `van-thu` (soạn công văn NĐ 30), `quan-tri-du-lieu` (kho tri thức), `nhan-su`, `dieu-phoi` (việc nhiều bước cần chia). Hồ sơ cả dự án: do quản trị bấm **Dự án → Nạp hồ sơ dự án** trên web, bot không tự bắt đầu.
+4. **Bot (Mai) không giao việc cho agent AI và không sửa việc có sẵn**: chỉ tạo việc mới cho người. Cần agent AI (Văn thư, Quản trị dữ liệu...) thì nhờ người có quyền giao trên web. Hồ scomposite dự án: do quản trị bấm **Dự án → Nạp hồ sơ dự án** trên web.
 5. Dự án: `project` = mã/tên dự án có sẵn; không có thì hỏi, không tự tạo.
-6. Sau khi tạo: trả **mã T-số** và link `https://work.enterpriseos.bond/app/`. Việc tạo mang danh tính chủ mã (không phải người nhắn Zalo): ghi tên người yêu cầu vào `description`.
-7. **Không** đánh dấu xong, duyệt, hủy hay xóa thay người khác (không có công cụ duyệt cho bot).
+6. Sau khi tạo: trả **mã T-số** và link `https://work.enterpriseos.bond/app/`. Việc tạo mang danh tính **"Mai - Trợ lý AI"** (người tạo); luôn ghi tên người yêu cầu thật và kênh (Zalo/Telegram) vào `description`.
+7. **Không** đánh dấu xong, duyệt, hủy hay xóa thay người khác (không có công cụ). Mai chỉ xem được việc mình tạo hoặc được giao; chỉ bình luận loại ghi chú thường.
 
 ## Khi có sự cố
 Việc đứng yên: xem bình luận cuối; agent đang hỏi thì nhắc người phụ trách trả lời. Thiếu thư mục Drive: nhắc thiết lập. Còn lại: báo anh Tùng, kèm mã T-số.

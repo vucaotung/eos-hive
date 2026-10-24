@@ -27,12 +27,16 @@ const TEXT_MIME = { md: 'text/markdown', txt: 'text/plain', csv: 'text/csv', htm
 
 export function registerTools(server, ident) {
   // Bọc mỗi công cụ: kiểm tra phạm vi mã, ghi nhật ký, đổi lỗi CSDL thành câu dễ hiểu
+  // Mã agent có `task_create` (Mai, bot nhận yêu cầu) chỉ thấy bộ công cụ tối thiểu, không thấy công văn, duyệt, nhân sự, Drive
+  const MAI_TOOLS = new Set(['eos_guide', 'eos_whoami', 'eos_my_day', 'eos_list_tasks', 'eos_get_task', 'eos_search', 'eos_list_members', 'eos_company_digest', 'eos_list_kbs', 'eos_task_save', 'eos_comment']);
   const tool = (name, scope, config, handler, logArgs = () => ({})) => {
+    if (ident.agentId && ident.scopes.includes('task_create') && !MAI_TOOLS.has(name)) return;
     server.registerTool(name, config, async (args) => {
       const t0 = Date.now();
-      if (!ident.scopes.includes(scope)) {
+      const need = [].concat(scope);
+      if (!need.some((x) => ident.scopes.includes(x))) {
         await logCall(ident, name, logArgs(args), 'denied', null, 0);
-        return fail(`Mã MCP này không có phạm vi "${scope}". Tạo mã mới trên app (Tài khoản → Kết nối AI agent) nếu cần.`);
+        return fail(`Mã MCP này không có phạm vi "${need[0]}". Tạo mã mới trên app (Tài khoản → Kết nối AI agent) nếu cần.`);
       }
       try {
         const { result, entity } = await handler(args);
@@ -56,7 +60,7 @@ export function registerTools(server, ident) {
     annotations: { readOnlyHint: true },
   }, async ({ topic }) => ({ result: GUIDE[topic || 'overview'] }));
 
-  if (ident.agentId) { registerAgentTools(server, ident, tool, call); registerGuides(server); return; }
+  if (ident.agentId && !ident.scopes.includes('task_create')) { registerAgentTools(server, ident, tool, call); registerGuides(server); return; }
 
   // ---------- Đọc hiểu hệ thống ----------
   tool('eos_whoami', 'read', {
@@ -139,14 +143,19 @@ export function registerTools(server, ident) {
     inputSchema: { company_id: z.string().uuid().optional() }, annotations: { readOnlyHint: true },
   }, async ({ company_id }) => ({ result: await call('SELECT agent.mcp_list_members($1::jsonb) AS r', [JSON.stringify({ company_id })]), entity: { type: 'members', id: 'list' } }), () => ({}));
 
-  tool('eos_task_save', 'write', {
+  // `task_create` (chỉ mã agent, vd. Mai): CHỈ tạo việc mới, không sửa việc có sẵn, không đổi trạng thái
+  const createOnly = () => !ident.scopes.includes('write');
+  tool('eos_task_save', ['write', 'task_create'], {
     title: 'Tạo hoặc sửa việc',
     description: 'Tạo việc mới (không truyền id) hoặc sửa việc có sẵn (id = "T-123"). Trường: title, description, assignee_email (email người phụ trách), project (mã hoặc tên dự án), due_date (YYYY-MM-DD), priority (low|medium|high|urgent), agent (mã agent AI làm việc này: dieu-phoi, van-thu, nhan-su, quan-tri-du-lieu...), approval (true = PHẢI DUYỆT: nộp xong chờ người giao duyệt mới hoàn thành; false = nộp là xong), status (todo|in_progress|blocked|cancelled khi sửa). Việc tạo mang danh tính chủ mã. Xác nhận lại với người ra lệnh trước khi tạo việc giao cho người khác.',
     inputSchema: { id: z.string().regex(/^(T-)?\d{1,12}$/i).optional(), title: z.string().min(2).max(300).optional(), description: z.string().max(8000).optional(),
       assignee_email: z.string().email().optional(), project: z.string().max(120).optional(), due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(), agent: z.string().regex(/^[a-z][a-z-]{1,31}$/).or(z.literal('')).optional(), approval: z.boolean().optional(),
       status: z.enum(['todo', 'in_progress', 'blocked', 'cancelled']).optional() },
-  }, async (args) => ({ result: await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(args)]), entity: { type: 'task', id: String(args.id || 'new') } }),
+  }, async (args) => {
+    if (createOnly() && (args.id || args.status)) throw new DbError('Mã này chỉ được tạo việc mới, không sửa việc có sẵn', '42501');
+    return { result: await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(args)]), entity: { type: 'task', id: String(args.id || 'new') } };
+  },
   (a) => ({ id: a.id || null, title: String(a.title || '').slice(0, 80), agent: a.agent || null, approval: a.approval }));
 
   tool('eos_list_kbs', 'kb', {
@@ -157,11 +166,12 @@ export function registerTools(server, ident) {
   }, async () => ({ result: await call('SELECT agent.mcp_my_kbs() AS r') }));
 
   // ---------- Ghi, thay mặt người dùng ----------
-  tool('eos_comment', 'write', {
+  tool('eos_comment', ['write', 'task_create'], {
     title: 'Ghi bình luận',
     description: 'Ghi bình luận vào việc. kind = "answer" khi trả lời câu hỏi của agent hệ thống (việc đang Vướng sẽ được làm tiếp).',
     inputSchema: { task: taskRef, body: z.string().min(1).max(8000), kind: z.enum(['note', 'answer']).default('note') },
   }, async ({ task, body, kind }) => {
+    if (createOnly() && kind !== 'note') throw new DbError('Mã này chỉ được ghi bình luận thường', '42501');
     const id = await call('SELECT agent.mcp_comment($1,$2,$3) AS r', [toId(task), body, kind]);
     return { result: { comment_id: id }, entity: { type: 'task', id: String(toId(task)) } };
   }, (a) => ({ task: toId(a.task), kind: a.kind, chars: a.body?.length }));

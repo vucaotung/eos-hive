@@ -389,6 +389,32 @@ try {
     assert.equal(ro.isError, true); assert.match(text(ro), /phạm vi "write"/);
     await ad.close(); await me.close(); await other.close();
   });
+  await step('Mai (mã agent task_create): chỉ tạo việc mới + bình luận thường, chỉ thấy việc mình tạo, không sửa/duyệt/trả lời thay', async () => {
+    const mai = await connect(process.env.TOKEN_MAI);
+    const who = json(await mai.callTool({ name: 'eos_whoami', arguments: {} }));
+    assert.deepEqual([...who.token_scopes].sort(), ['read', 'task_create']);
+    const t = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: 'Mai tạo: gọi nhà cung cấp', description: 'Yêu cầu của anh Tùng qua Zalo', assignee_email: 'minh@demo.vn' } }));
+    assert.match(t.id, /^T-\d+$/);
+    const n = Number(t.id.slice(2));
+    assert.equal((await sql('SELECT created_by FROM work.tasks WHERE id = $1', [n]))[0].created_by, 'cccccccc-0000-0000-0000-0000000000a5');
+    const note = json(await mai.callTool({ name: 'eos_comment', arguments: { task: t.id, body: 'Đã ghi nhận yêu cầu' } }));
+    assert.ok(note.comment_id);
+    const names = (await mai.listTools()).tools.map((x) => x.name);
+    for (const n of ['eos_update_progress', 'eos_submit_result', 'eos_delegate', 'eos_project_scope', 'eos_incoming_list', 'eos_approvals_pending', 'eos_my_hr', 'eos_save_to_drive', 'eos_kb_ingest']) assert.ok(!names.includes(n), 'Mai không thấy ' + n);
+    for (const n of ['eos_task_save', 'eos_comment', 'eos_list_members', 'eos_my_day']) assert.ok(names.includes(n), 'Mai thấy ' + n);
+    const bad = [
+      ['eos_task_save', { id: t.id, title: 'sửa lại' }, /chỉ được tạo việc mới/], ['eos_task_save', { id: t.id, status: 'cancelled' }, /chỉ được tạo việc mới/],
+      ['eos_comment', { task: t.id, body: 'trả lời thay', kind: 'answer' }, /bình luận thường/],
+      ['eos_task_save', { title: 'giao agent', agent: 'van-thu' }, /không giao cho agent/],
+    ];
+    for (const [name, args, re] of bad) { const x = await mai.callTool({ name, arguments: args }); assert.equal(x.isError, true, name); assert.match(text(x), re, name); }
+    const other = await mai.callTool({ name: 'eos_get_task', arguments: { task: 501 } }); assert.equal(other.isError, true, 'không xem được việc của người khác');
+    const cmt = await mai.callTool({ name: 'eos_comment', arguments: { task: 501, body: 'chen vào' } }); assert.equal(cmt.isError, true);
+    const dg = json(await mai.callTool({ name: 'eos_company_digest', arguments: { days: 1 } })); assert.equal(dg.scope, 'Việc của tôi');
+    await mai.close();
+    // người không được mang phạm vi task_create; mã người dùng không cấp được
+    await assert.rejects(() => sql("SELECT agent.mcp_token_issue('x','other','{read,task_create}',30)"));
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],

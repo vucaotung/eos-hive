@@ -3,6 +3,11 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.3 — 2026-10-24 · Tài khoản agent Mai (phạm vi `task_create`)
+- Phạm vi mã mới `task_create` (chỉ mã agent): tạo việc mới cho người + bình luận ghi chú; không sửa việc, không đổi trạng thái, không giao agent, không trả lời thay. Mã agent vẫn không có `write`.
+- Cột `agent.agents.token_scopes` (thu hẹp mã của một agent); vai trò mẫu `tro_ly_ai` (tạo việc, xem việc mình tạo phạm vi own, bình luận, hỏi kho); quyền `work.comment.create`, `kb.ask`.
+- Mã `task_create` chỉ thấy 11 công cụ tối thiểu; `agent._web_me` chấp nhận agent có `task_create`; `mcp_task_save` chặn sửa/đổi trạng thái/giao agent ở lớp CSDL. Migration 0016; kiểm thử MCP 31 bước.
+
 ## 0.2.2 — 2026-10-24 · Hợp nhất Ever Teams → Enterprise OS
 - Gỡ Ever Teams: dừng 14 container (giữ volume), Caddy `teams.*` chuyển hướng về Enterprise OS, gỡ MCP/plugin/skill/persona Ever khỏi `team_admin`, `ks-kinh-te-xd`, `ops-admin` (`ops/hermes_remove_everteams.py`, có sao lưu); nhập 21 việc Ever vào EOS.
 - Bản tin ngày/tuần từ EOS (`eos_company_digest`, `ops/eos_report.py`) thay cron Ever; cron Ever tạm dừng.

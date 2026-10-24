@@ -55,6 +55,7 @@ CREATE TABLE agent.agents (
   skills        text[] NOT NULL DEFAULT '{}',                 -- skill Hermes gắn vào thẻ Kanban
   max_level     smallint NOT NULL DEFAULT 1 CHECK (max_level BETWEEN 0 AND 2),   -- L3 không bao giờ cho agent
   can_delegate  boolean NOT NULL DEFAULT false,               -- được chia việc con cho agent khác (mặc định chỉ dieu-phoi)
+  token_scopes  text[] CHECK (token_scopes IS NULL OR (token_scopes <@ ARRAY['read','kb','delegate','draft','project','runner','ingest','task_create']::text[] AND cardinality(token_scopes) > 0)),   -- NULL = phạm vi mặc định theo vai trò (agent.mcp_token_issue_agent); đặt để thu hẹp riêng một agent (vd. mai)
   executor      text NOT NULL DEFAULT 'hermes' CHECK (executor IN ('hermes','runner')),   -- runner: dịch vụ ngoài Hermes (Z2) tự nhận việc qua MCP, không qua hộp thư đi
   description   text,
   active        boolean NOT NULL DEFAULT true,
@@ -244,7 +245,7 @@ CREATE TABLE agent.mcp_tokens (
   prefix       text NOT NULL UNIQUE,                          -- 8 ký tự đầu, hiện trên màn hình để nhận ra
   token_hash   text NOT NULL UNIQUE,                          -- sha256 hex; không lưu mã gốc
   agent_id     uuid REFERENCES agent.agents(id) ON DELETE CASCADE,   -- NULL = mã của người; có giá trị = mã của worker agent hệ thống
-  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft','project','runner','ingest']::text[] AND cardinality(scopes) > 0),
+  scopes       text[] NOT NULL CHECK (scopes <@ ARRAY['read','write','drive','hr_self','kb','delegate','draft','project','runner','ingest','task_create']::text[] AND cardinality(scopes) > 0),
   expires_at   timestamptz NOT NULL,
   last_used_at timestamptz,
   last_ip      inet,
@@ -253,7 +254,7 @@ CREATE TABLE agent.mcp_tokens (
   CHECK (expires_at <= created_at + interval '366 days'),
   -- mã của agent hệ thống chỉ đọc (chia việc nếu được phép, soạn dự thảo nếu là văn thư); mã của người không có quyền chia việc hay soạn dự thảo
   -- `draft` (soạn dự thảo văn bản) chỉ dành cho agent hệ thống
-  CHECK (CASE WHEN agent_id IS NULL THEN NOT (scopes && ARRAY['delegate','draft','project','runner','ingest']::text[]) ELSE scopes <@ ARRAY['read','kb','delegate','draft','project','runner','ingest']::text[] END)
+  CHECK (CASE WHEN agent_id IS NULL THEN NOT (scopes && ARRAY['delegate','draft','project','runner','ingest','task_create']::text[]) ELSE scopes <@ ARRAY['read','kb','delegate','draft','project','runner','ingest','task_create']::text[] END)
 );
 CREATE INDEX mcp_tokens_user_idx ON agent.mcp_tokens (user_id) WHERE revoked_at IS NULL;
 
@@ -1148,7 +1149,9 @@ CREATE FUNCTION agent._web_me() RETURNS core.users
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, core, public AS $$
 DECLARE u core.users;
 BEGIN
-  SELECT * INTO u FROM core.users WHERE id = core.current_user_id() AND active AND kind = 'person';
+  -- Người dùng thật; ngoại lệ DUY NHẤT: tài khoản agent được cấp phạm vi task_create (Mai), chỉ qua các hàm mcp_* có kiểm tra thêm (mcp_task_save chặn sửa/đổi trạng thái/giao agent)
+  SELECT * INTO u FROM core.users x WHERE x.id = core.current_user_id() AND x.active
+     AND (x.kind = 'person' OR (x.kind = 'agent' AND EXISTS (SELECT 1 FROM agent.agents g WHERE g.user_id = x.id AND g.active AND 'task_create' = ANY(g.token_scopes))));
   IF u.id IS NULL THEN RAISE EXCEPTION 'Chưa đăng nhập hoặc tài khoản bị khóa' USING ERRCODE = '42501'; END IF;
   RETURN u;
 END $$;
