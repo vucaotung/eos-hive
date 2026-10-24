@@ -516,6 +516,30 @@ try {
     assert.equal((await sql("SELECT state FROM agent.drive_uploads WHERE filename = 'treo.md'"))[0].state, 'pending', 'sweep trong giao dịch thử đã hoàn tác');
     await me.close();
   });
+  await step('dọn bảng tạm: xóa dòng cũ > 1 ngày, giữ failed/orphan/done của kho; chỉ quản trị hệ thống; bảng đếm tốc độ trong bộ nhớ tự dọn', async () => {
+    await sql("INSERT INTO agent.task_create_keys (dkey, company_id, created_by, task_id, created_at) SELECT 'k-old', company_id, created_by, id, now() - interval '2 days' FROM work.tasks WHERE id = 501");
+    await sql("INSERT INTO agent.drive_uploads (company_id, task_id, user_id, filename, state, created_at) SELECT company_id, 501, 'cccccccc-0000-0000-0000-000000000001', 'cu-xong.md', 'done', now() - interval '2 days' FROM work.tasks WHERE id = 501");
+    await sql("INSERT INTO agent.drive_uploads (company_id, task_id, user_id, filename, state, drive_id, created_at) SELECT company_id, 501, 'cccccccc-0000-0000-0000-000000000001', 'cu-mo-coi.md', 'orphan', 'DRIVEORPHAN02', now() - interval '3 days' FROM work.tasks WHERE id = 501");
+    const c = adm;
+    await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-000000000001\"}', true)");
+    await assert.rejects(() => c.query('SELECT agent.housekeeping_prune(1)'), /Chỉ quản trị hệ thống/); await c.query('ROLLBACK');
+    await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-0000000000ad\"}', true)");
+    const r = (await c.query('SELECT agent.housekeeping_prune(1) AS r')).rows[0].r;
+    assert.ok(r.task_create_keys >= 1 && r.drive_uploads_done >= 1, JSON.stringify(r));
+    await assert.rejects(() => c.query('SELECT agent.housekeeping_prune(0)'), /tối thiểu 1/); await c.query('ROLLBACK');
+    await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-0000000000ad\"}', true)");
+    await c.query('SELECT agent.housekeeping_prune(1)'); await c.query('COMMIT');
+    assert.equal((await sql("SELECT count(*)::int n FROM agent.task_create_keys WHERE dkey = 'k-old'"))[0].n, 0);
+    assert.equal((await sql("SELECT count(*)::int n FROM agent.drive_uploads WHERE filename = 'cu-xong.md'"))[0].n, 0);
+    assert.equal((await sql("SELECT count(*)::int n FROM agent.drive_uploads WHERE filename = 'cu-mo-coi.md'"))[0].n, 1, 'orphan được giữ lại');
+    assert.ok((await sql("SELECT count(*)::int n FROM agent.kb_ingest_claims WHERE state = 'done'"))[0].n >= 1, 'bản ghi đã nạp được giữ lại');
+    // bộ đếm trong bộ nhớ: makeAuthGuard dọn khi quá hạn và giới hạn số khóa
+    const { makeAuthGuard } = await import('../src/server.mjs');
+    const g = makeAuthGuard({ max: 2, windowMs: 50, maxKeys: 3 });
+    for (const k of ['a', 'b', 'c', 'd', 'e']) g.fail(k);
+    assert.ok(g.size() <= 3, 'không phình quá maxKeys');
+    await new Promise((r2) => setTimeout(r2, 80)); g.prune(); assert.equal(g.size(), 0, 'prune xóa khóa hết hạn');
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
