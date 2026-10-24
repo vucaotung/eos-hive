@@ -434,6 +434,21 @@ try {
     assert.equal((await sql("SELECT count(*)::int n FROM work.tasks WHERE title = 'Mai tạo việc trùng thử'"))[0].n, 1);
     await watcher.close(); await owner.close(); await mai.close();
   });
+  await step('mã sai: 20 lần/IP trong cửa sổ → lần 21 trở đi 429 (kể cả mã đúng, không chạm CSDL); hết cửa sổ mã đúng dùng lại được; IP khác không bị ảnh hưởng', async () => {
+    const guarded = await new Promise((ok) => { const s = buildApp({ authFailMax: 20, authFailWindowMs: 1500 }).listen(0, '127.0.0.1', () => ok(s)); });
+    const url = `http://127.0.0.1:${guarded.address().port}/mcp`;
+    const post = (token, ip) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${token}`, 'x-forwarded-for': ip },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
+    const bad = 'eos_' + 'a'.repeat(48);
+    const codes = []; for (let i = 0; i < 25; i++) codes.push((await post(bad, '203.0.113.7')).status);
+    assert.deepEqual(codes.slice(0, 20), Array(20).fill(401)); assert.deepEqual(codes.slice(20), Array(5).fill(429));
+    assert.equal((await post(bad, '203.0.113.7')).headers.get('retry-after'), '300');
+    assert.equal((await post(process.env.TOKEN_FULL, '203.0.113.7')).status, 429, 'đang bị chặn thì mã đúng cũng 429');
+    assert.equal((await post(process.env.TOKEN_FULL, '198.51.100.9')).status, 200, 'IP khác không bị chặn');
+    await new Promise((r) => setTimeout(r, 1700));
+    assert.equal((await post(process.env.TOKEN_FULL, '203.0.113.7')).status, 200, 'hết cửa sổ thì mã đúng dùng lại được');
+    guarded.close();
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
