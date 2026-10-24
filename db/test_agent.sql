@@ -760,4 +760,36 @@ DO $$ DECLARE bad text; bridge text; BEGIN
 END $$;
 
 SELECT 'test_agent: tất cả kiểm thử đều đạt' AS ket_qua;
+-- Mã gắn công ty: chỉ quản trị công ty (quyền core.member.manage phạm vi company) hoặc quản trị hệ thống mới cấp được
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; raw text; own constant uuid := 'eeeeeeee-0000-0000-0000-0000000000a1'; plain constant uuid := 'eeeeeeee-0000-0000-0000-0000000000a2'; BEGIN
+  INSERT INTO core.users (id, google_sub, email, name, kind, is_system_admin) VALUES (own, 'gs-own-co', 'chu.cty@demo.vn', 'Chủ công ty (không phải quản trị hệ thống)', 'person', false);
+  INSERT INTO core.memberships (user_id, company_id) VALUES (own, c);
+  INSERT INTO core.user_roles (company_id, user_id, role_id) VALUES (c, own, agent._sys_role('owner'));
+  INSERT INTO core.users (id, google_sub, email, name, kind) VALUES (plain, 'gs-plain-co', 'tv.thuong@demo.vn', 'Thành viên không vai trò đặc biệt', 'person');
+  INSERT INTO core.memberships (user_id, company_id) VALUES (plain, c);
+  -- thành viên thường: bị từ chối
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', plain, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.mcp_token_issue('Gắn công ty', 'other', ARRAY['read'], 30, c); ASSERT false, 'thành viên thường không cấp mã gắn công ty';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- trưởng phòng (không có quyền quản trị thành viên): bị từ chối
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000011","via":"web"}', true);
+  BEGIN PERFORM agent.mcp_token_issue('Gắn công ty', 'other', ARRAY['read'], 30, c); ASSERT false, 'trưởng phòng không cấp mã gắn công ty';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- người ngoài công ty: bị từ chối
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000003","via":"web"}', true);
+  BEGIN PERFORM agent.mcp_token_issue('Gắn công ty', 'other', ARRAY['read'], 30, c); ASSERT false, 'người ngoài không cấp mã gắn công ty';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- công ty không tồn tại
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.mcp_token_issue('Gắn công ty', 'other', ARRAY['read'], 30, gen_random_uuid()); ASSERT false, 'công ty không tồn tại';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- chủ công ty (không phải quản trị hệ thống): được cấp
+  raw := agent.mcp_token_issue('Gắn công ty', 'other', ARRAY['read'], 30, c);
+  ASSERT raw ~ '^eos_[0-9a-f]{48}$' AND (SELECT company_id FROM agent.mcp_tokens WHERE prefix = substr(raw, 5, 8)) = c, 'chủ công ty cấp được mã gắn công ty';
+  -- không truyền công ty: hành vi cũ giữ nguyên (thành viên thường cấp được mã không gắn công ty)
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', plain, 'via', 'web')::text, true);
+  ASSERT agent.mcp_token_issue('Không gắn', 'other', ARRAY['read'], 30) ~ '^eos_[0-9a-f]{48}$', 'mã không gắn công ty vẫn cấp được';
+  RAISE NOTICE 'Mã gắn công ty: kiểm quyền ok';
+END $$;
+
 ROLLBACK;

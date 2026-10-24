@@ -1,4 +1,14 @@
-# Thêm vào khối work.enterpriseos.bond trong Caddyfile của VPS 169
-handle /mcp* {
-	reverse_proxy 127.0.0.1:8790
-}
+# Mẫu cấu hình Caddy cho /mcp (KHÔNG áp tự động; ghép tay vào khối work.enterpriseos.bond sau khi xem).
+# Phần Node (mcp/src/server.mjs) đã chặn: 20 lần mã sai trong 5 phút theo IP → 429 trước khi truy vấn CSDL (MCP_AUTHFAIL_MAX, MCP_AUTHFAIL_WINDOW_MS).
+# Phần Caddy làm lớp ngoài, rẻ hơn Node: chặn thân yêu cầu quá lớn và thiếu tiêu đề Authorization trước khi chạm tiến trình Node.
+# Giới hạn tốc độ theo IP ở Caddy cần plugin (caddy-ratelimit); bản Caddy cài từ gói không có sẵn, nên KHÔNG đưa vào mẫu.
+# Caddy phải chuyển IP thật: reverse_proxy mặc định thêm X-Forwarded-For; Node tin proxy loopback (app.set('trust proxy', 'loopback')).
+	@mcp path /mcp
+	handle @mcp {
+		@noauth not header Authorization "Bearer eos_*"
+		respond @noauth `{"jsonrpc":"2.0","error":{"code":-32001,"message":"Thiếu mã MCP"},"id":null}` 401
+		request_body {
+			max_size 16MB
+		}
+		reverse_proxy 127.0.0.1:8790
+	}

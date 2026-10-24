@@ -312,6 +312,65 @@ BEGIN
     'loaded_drive_ids', coalesce((SELECT jsonb_agg(f.drive_id) FROM kb.sources s JOIN core.files f ON f.id = s.file_id WHERE s.base_id = b.id AND s.state = 'loaded'), '[]'));
 END $$;
 
+-- ---------- Nạp kho song song: giữ chỗ từng tài liệu (agent.kb_ingest_claims) ----------
+-- Hai lần eos_kb_ingest cùng lúc cho một tài liệu: chỉ lần giữ chỗ trước được nạp, lần sau nhận "busy". Khóa theo (kho, tài liệu); kho thuộc đúng một công ty (company_id lưu kèm).
+-- Giữ chỗ treo quá 30 phút (tiến trình chết giữa chừng) được lấy lại. Dòng đặc biệt '__create__' giữ chỗ việc TẠO kho tri thức để hai lần gọi không tạo hai kho.
+CREATE TABLE IF NOT EXISTS agent.kb_ingest_claims (
+  base_id     uuid NOT NULL REFERENCES kb.bases(id) ON DELETE CASCADE,
+  drive_id    text NOT NULL,
+  company_id  uuid NOT NULL REFERENCES core.companies(id) ON DELETE CASCADE,
+  task_id     bigint REFERENCES work.tasks(id) ON DELETE SET NULL,
+  state       text NOT NULL DEFAULT 'claiming' CHECK (state IN ('claiming','done')),
+  claimed_at  timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz,
+  PRIMARY KEY (base_id, drive_id)
+);
+REVOKE ALL ON agent.kb_ingest_claims FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION agent.mcp_kb_ingest_claim(p_task bigint, p_drive_ids jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
+DECLARE a agent.agents := agent._agent_for_task(p_task); r agent.workflow_runs := agent._kb_ingest_ctx(p_task); b kb.bases; fid text; got text;
+        claimed text[] := '{}'; busy jsonb := '[]'; create_kb boolean := false;
+BEGIN
+  SELECT * INTO b FROM kb.bases WHERE id = r.kb_base_id;
+  IF jsonb_typeof(coalesce(p_drive_ids, '[]')) <> 'array' OR jsonb_array_length(coalesce(p_drive_ids, '[]')) > 20 THEN RAISE EXCEPTION 'Tối đa 20 tài liệu mỗi lần'; END IF;
+  IF b.weknora_kb_id LIKE 'pending:%' THEN   -- kho chưa tạo: chỉ một lần gọi được tạo
+    INSERT INTO agent.kb_ingest_claims (base_id, drive_id, company_id, task_id) VALUES (b.id, '__create__', r.company_id, p_task)
+    ON CONFLICT (base_id, drive_id) DO UPDATE SET task_id = p_task, claimed_at = now(), state = 'claiming'
+      WHERE agent.kb_ingest_claims.claimed_at < now() - interval '30 minutes'
+    RETURNING drive_id INTO got;
+    create_kb := got IS NOT NULL;
+  END IF;
+  FOR fid IN SELECT jsonb_array_elements_text(coalesce(p_drive_ids, '[]')) LOOP
+    IF fid !~ '^[A-Za-z0-9_-]{10,}$' THEN RAISE EXCEPTION 'file_id không hợp lệ'; END IF;
+    IF EXISTS (SELECT 1 FROM kb.sources s JOIN core.files f ON f.id = s.file_id WHERE s.base_id = b.id AND s.state = 'loaded' AND f.drive_id = fid) THEN
+      busy := busy || jsonb_build_object('file_id', fid, 'reason', 'đã nạp trước đó'); CONTINUE;
+    END IF;
+    got := NULL;
+    INSERT INTO agent.kb_ingest_claims (base_id, drive_id, company_id, task_id) VALUES (b.id, fid, r.company_id, p_task)
+    ON CONFLICT (base_id, drive_id) DO UPDATE SET task_id = p_task, claimed_at = now(), state = 'claiming', finished_at = NULL
+      WHERE agent.kb_ingest_claims.state = 'done' OR agent.kb_ingest_claims.claimed_at < now() - interval '30 minutes'   -- 'done' mà nguồn đã bị xóa khỏi kho: cho nạp lại
+    RETURNING drive_id INTO got;
+    IF got IS NULL THEN busy := busy || jsonb_build_object('file_id', fid, 'reason', 'đang được nạp bởi lần gọi khác');
+    ELSE claimed := claimed || fid; END IF;
+  END LOOP;
+  RETURN jsonb_build_object('claimed', to_jsonb(claimed), 'busy', busy, 'create_kb', create_kb, 'kb_ready', b.weknora_kb_id NOT LIKE 'pending:%');
+END $$;
+
+-- Kết thúc: done = đã nạp xong (giữ dòng để lần sau báo "đã nạp"); release = bỏ giữ chỗ (lỗi, tệp bỏ qua, hoặc đã tạo xong kho) để lần sau nạp lại được
+CREATE OR REPLACE FUNCTION agent.mcp_kb_ingest_finish(p_task bigint, p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
+DECLARE a agent.agents := agent._agent_for_task(p_task); r agent.workflow_runs := agent._kb_ingest_ctx(p_task); n_done int; n_rel int;
+BEGIN
+  UPDATE agent.kb_ingest_claims SET state = 'done', finished_at = now()
+   WHERE base_id = r.kb_base_id AND task_id = p_task AND state = 'claiming' AND drive_id IN (SELECT jsonb_array_elements_text(coalesce(p->'done', '[]')));
+  GET DIAGNOSTICS n_done = ROW_COUNT;
+  DELETE FROM agent.kb_ingest_claims
+   WHERE base_id = r.kb_base_id AND task_id = p_task AND state = 'claiming' AND drive_id IN (SELECT jsonb_array_elements_text(coalesce(p->'release', '[]')));
+  GET DIAGNOSTICS n_rel = ROW_COUNT;
+  RETURN jsonb_build_object('done', n_done, 'released', n_rel);
+END $$;
+
 CREATE OR REPLACE FUNCTION agent.mcp_kb_ingest_commit(p_task bigint, p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
 DECLARE a agent.agents := agent._agent_for_task(p_task); r agent.workflow_runs := agent._kb_ingest_ctx(p_task); b kb.bases; f jsonb; fid bigint; n int := 0;
@@ -421,9 +480,21 @@ BEGIN
 END $$;
 
 -- Tạo hoặc sửa việc qua MCP (agent cá nhân, Mai): nhận email người phụ trách, mã/tên dự án, mã agent, "approval": true = phải duyệt (quy trình "Người giao duyệt").
+-- Khóa chống tạo trùng của bot (mcp_task_save); dọn bằng agent.housekeeping_prune
+CREATE TABLE IF NOT EXISTS agent.task_create_keys (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  dkey        text NOT NULL,
+  company_id  uuid NOT NULL REFERENCES core.companies(id) ON DELETE CASCADE,
+  created_by  uuid NOT NULL REFERENCES core.users(id),
+  task_id     bigint NOT NULL REFERENCES work.tasks(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS task_create_keys_idx ON agent.task_create_keys (dkey, created_at DESC);
+REVOKE ALL ON agent.task_create_keys FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION agent.mcp_task_save(p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
-DECLARE me core.users := agent._web_me(); cid uuid; q jsonb := p - 'assignee_email' - 'project' - 'agent' - 'approval'; t work.tasks; uid uuid; pid uuid; fid uuid; r jsonb;
+DECLARE me core.users := agent._web_me(); cid uuid; q jsonb := p - 'assignee_email' - 'project' - 'agent' - 'approval' - 'source_ref'; t work.tasks; uid uuid; pid uuid; fid uuid; r jsonb; v_dkey text; dup bigint;
 BEGIN
   IF me.kind = 'agent' AND ((p->>'id') IS NOT NULL OR p ? 'status' OR coalesce(p->>'agent', '') <> '') THEN
     RAISE EXCEPTION 'Tài khoản agent chỉ được tạo việc mới cho người, không sửa việc, không đổi trạng thái, không giao cho agent' USING ERRCODE = '42501';
@@ -437,13 +508,17 @@ BEGIN
     q := q || jsonb_build_object('company_id', cid);
   END IF;
   PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
-  -- (2) Bot (Zalo hay gửi lại tin) có thể tạo trùng: cùng người tạo + cùng tên + cùng người phụ trách trong 15 phút thì trả lại việc cũ
+  -- (2) Bot (Zalo hay gửi lại tin) có thể tạo trùng. Khóa chống trùng = (công ty, tên chuẩn hóa, người phụ trách, nguồn tin nếu có `source_ref`), trong 15 phút:
+  --     cùng tên nhưng khác người phụ trách (hoặc khác nguồn) là hai việc khác nhau. Khóa tư vấn (advisory) giữ hai lần gọi đồng thời không cùng lọt qua.
   IF me.kind = 'agent' AND (p->>'id') IS NULL THEN
-    SELECT id INTO t.id FROM work.tasks
-     WHERE created_by = me.id AND company_id = cid AND created_at > now() - interval '15 minutes' AND lower(btrim(title)) = lower(btrim(coalesce(p->>'title', '')))
-       AND assignee_id IS NOT DISTINCT FROM (SELECT u2.id FROM core.users u2 WHERE lower(u2.email) = lower(btrim(coalesce(p->>'assignee_email', ''))) AND u2.kind = 'person')
-     ORDER BY id DESC LIMIT 1;
-    IF t.id IS NOT NULL THEN RETURN jsonb_build_object('id', 'T-' || t.id, 'url', 'https://work.enterpriseos.bond/app/#/tasks', 'duplicate', true); END IF;
+    SELECT id INTO uid FROM core.users u2 WHERE lower(u2.email) = lower(btrim(coalesce(p->>'assignee_email', ''))) AND u2.kind = 'person';
+    v_dkey := md5(cid::text || '|' || core.norm(coalesce(p->>'title', '')) || '|' || coalesce(uid::text, '') || '|' || coalesce(nullif(btrim(p->>'source_ref'), ''), ''));
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_dkey, 0));
+    SELECT k.task_id INTO dup FROM agent.task_create_keys k WHERE k.dkey = v_dkey AND k.created_at > now() - interval '15 minutes' ORDER BY k.created_at DESC LIMIT 1;
+    IF dup IS NOT NULL THEN
+      RETURN jsonb_build_object('id', 'T-' || dup, 'url', 'https://work.enterpriseos.bond/app/#/tasks', 'duplicate', true,
+                                'reason', 'Đã có việc cùng tên, cùng người phụ trách' || CASE WHEN nullif(btrim(p->>'source_ref'), '') IS NOT NULL THEN ', cùng nguồn tin' ELSE '' END || ' tạo trong 15 phút qua');
+    END IF;
   END IF;
   IF p ? 'assignee_email' THEN
     SELECT u.id INTO uid FROM core.users u JOIN core.memberships m ON m.user_id = u.id AND m.company_id = cid AND m.active WHERE lower(u.email) = lower(btrim(p->>'assignee_email')) AND u.kind = 'person';
@@ -465,6 +540,7 @@ BEGIN
     ELSE q := q || jsonb_build_object('approval_flow_id', ''); END IF;
   END IF;
   r := agent.app_task_save(q);
+  IF v_dkey IS NOT NULL THEN INSERT INTO agent.task_create_keys (dkey, company_id, created_by, task_id) VALUES (v_dkey, cid, me.id, (r->>'id')::bigint); END IF;
   RETURN jsonb_build_object('id', 'T-' || (r->>'id'), 'url', 'https://work.enterpriseos.bond/app/#/tasks');
 END $$;
 
@@ -514,6 +590,91 @@ BEGIN
   RETURN raw;
 END $$;
 
+-- ---------- Theo dõi tải tệp lên Drive (tránh tệp mồ côi) ----------
+-- Luồng: begin (pending) → tải lên → ghi drive_id (uploaded) → đăng ký vào việc → done. Hỏng giữa chừng: failed (chưa có tệp) hoặc orphan (tệp đã lên Drive nhưng chưa gắn vào việc).
+-- KHÔNG BAO GIỜ tự xóa tệp trên Drive: agent.upload_sweep chỉ đổi trạng thái và trả danh sách tệp mồ côi để người quyết.
+CREATE TABLE IF NOT EXISTS agent.drive_uploads (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  company_id  uuid NOT NULL REFERENCES core.companies(id) ON DELETE CASCADE,
+  task_id     bigint NOT NULL REFERENCES work.tasks(id) ON DELETE CASCADE,
+  user_id     uuid NOT NULL REFERENCES core.users(id),                 -- danh tính đang gọi (người, hoặc tài khoản agent)
+  filename    text NOT NULL,
+  state       text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','uploaded','done','failed','orphan')),
+  drive_id    text,
+  error       text,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS drive_uploads_state_idx ON agent.drive_uploads (state, created_at);
+REVOKE ALL ON agent.drive_uploads FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION agent.mcp_upload_begin(p_task bigint, p_filename text) RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me uuid := core.current_user_id(); t work.tasks; new_id bigint;
+BEGIN
+  IF me IS NULL THEN RAISE EXCEPTION 'Chưa đăng nhập' USING ERRCODE = '42501'; END IF;
+  IF (agent.current_agent()).id IS NOT NULL THEN PERFORM agent._agent_for_task(p_task);   -- agent: phải có thẻ đang chạy cho việc này
+  ELSIF NOT work.can_view_task(me, p_task) THEN RAISE EXCEPTION 'Không có quyền với T-%', p_task USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO t FROM work.tasks WHERE id = p_task;
+  INSERT INTO agent.drive_uploads (company_id, task_id, user_id, filename) VALUES (t.company_id, p_task, me, left(coalesce(p_filename, ''), 200)) RETURNING id INTO new_id;
+  RETURN new_id;
+END $$;
+
+CREATE OR REPLACE FUNCTION agent.mcp_upload_finish(p_id bigint, p_state text, p_drive_id text DEFAULT NULL, p_error text DEFAULT NULL) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
+DECLARE me uuid := core.current_user_id();
+BEGIN
+  IF p_state NOT IN ('uploaded','done','failed','orphan') THEN RAISE EXCEPTION 'Trạng thái không hợp lệ'; END IF;
+  UPDATE agent.drive_uploads SET state = p_state, drive_id = coalesce(p_drive_id, drive_id), error = left(p_error, 500),
+         finished_at = CASE WHEN p_state = 'uploaded' THEN NULL ELSE now() END
+   WHERE id = p_id AND user_id = me AND state IN ('pending','uploaded');
+  IF NOT FOUND THEN RAISE EXCEPTION 'Không có lượt tải này đang mở' USING ERRCODE = '42501'; END IF;
+END $$;
+
+-- Dọn (chạy theo lịch, xem docs/16): lượt `pending` quá p_hours giờ → failed; lượt `uploaded` quá p_hours giờ (tệp đã lên Drive, chưa gắn) → orphan.
+-- Trả danh sách tệp mồ côi (drive_id) cho người xem và quyết; KHÔNG xóa tệp. Chỉ quản trị hệ thống.
+CREATE OR REPLACE FUNCTION agent.upload_sweep(p_hours int DEFAULT 1) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
+DECLARE n_fail int; n_orph int;
+BEGIN
+  IF NOT coalesce((SELECT is_system_admin FROM core.users WHERE id = core.current_user_id()), false) THEN
+    RAISE EXCEPTION 'Chỉ quản trị hệ thống chạy dọn tải tệp' USING ERRCODE = '42501';
+  END IF;
+  UPDATE agent.drive_uploads SET state = 'failed', error = coalesce(error, 'treo quá ' || p_hours || ' giờ, chưa tải xong'), finished_at = now()
+   WHERE state = 'pending' AND created_at < now() - make_interval(hours => p_hours);
+  GET DIAGNOSTICS n_fail = ROW_COUNT;
+  UPDATE agent.drive_uploads SET state = 'orphan', error = coalesce(error, 'tệp đã lên Drive nhưng chưa gắn vào việc'), finished_at = now()
+   WHERE state = 'uploaded' AND created_at < now() - make_interval(hours => p_hours);
+  GET DIAGNOSTICS n_orph = ROW_COUNT;
+  RETURN jsonb_build_object('marked_failed', n_fail, 'marked_orphan', n_orph,
+    'orphans', coalesce((SELECT jsonb_agg(jsonb_build_object('upload', u.id, 'task', 'T-' || u.task_id, 'file', u.filename, 'drive_id', u.drive_id,
+                                  'url', 'https://drive.google.com/file/d/' || u.drive_id || '/view', 'at', u.created_at, 'error', u.error) ORDER BY u.id)
+                           FROM agent.drive_uploads u WHERE u.state = 'orphan' AND u.drive_id IS NOT NULL), '[]'));
+END $$;
+
+-- ---------- Dọn bảng tạm của lớp MCP (chạy theo lịch, xem docs/16) ----------
+-- Xóa dòng cũ hơn p_days ngày (mặc định 1) ở: agent.task_create_keys (khóa chống trùng chỉ cần 15 phút), agent.drive_uploads (trạng thái done),
+-- agent.kb_ingest_claims (giữ chỗ 'claiming' bị bỏ quên). KHÔNG đụng: drive_uploads failed/orphan (để người xem), kb_ingest_claims done (ghi nhận đã nạp), mcp_calls (nhật ký kiểm toán).
+-- Bảng đếm tốc độ của máy chủ MCP nằm trong bộ nhớ tiến trình Node (tự dọn mỗi phút), không có bảng CSDL. Chỉ quản trị hệ thống.
+CREATE OR REPLACE FUNCTION agent.housekeeping_prune(p_days int DEFAULT 1) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
+DECLARE a int; b int; c int; cutoff timestamptz;
+BEGIN
+  IF NOT coalesce((SELECT is_system_admin FROM core.users WHERE id = core.current_user_id()), false) THEN
+    RAISE EXCEPTION 'Chỉ quản trị hệ thống chạy dọn' USING ERRCODE = '42501';
+  END IF;
+  IF p_days IS NULL OR p_days < 1 THEN RAISE EXCEPTION 'p_days tối thiểu 1'; END IF;
+  cutoff := now() - make_interval(days => p_days);
+  DELETE FROM agent.task_create_keys WHERE created_at < cutoff;
+  GET DIAGNOSTICS a = ROW_COUNT;
+  DELETE FROM agent.drive_uploads WHERE state = 'done' AND created_at < cutoff;
+  GET DIAGNOSTICS b = ROW_COUNT;
+  DELETE FROM agent.kb_ingest_claims WHERE state = 'claiming' AND claimed_at < cutoff;
+  GET DIAGNOSTICS c = ROW_COUNT;
+  RETURN jsonb_build_object('task_create_keys', a, 'drive_uploads_done', b, 'kb_claims_stale', c, 'older_than_days', p_days);
+END $$;
+
 -- ---------- Rà soát logic MCP (24/10/2026) ----------
 -- (1) eos_comment kind=answer qua MCP chỉ cần xem được việc, trong khi web (app_answer) đòi: agent đang chờ + người phụ trách/người giao/người sửa được.
 --     Người chỉ theo dõi hoặc xem theo phòng không được "trả lời" thay để cho agent chạy lại. Nay MCP áp đúng luật của web.
@@ -552,5 +713,7 @@ ON CONFLICT (role_id, permission) DO NOTHING;
 -- ---------- Quyền ----------
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION agent.app_workflow_start(jsonb), agent.app_workflow_runs(jsonb), agent.app_project_results(jsonb) TO web_svc;
+GRANT EXECUTE ON FUNCTION agent.mcp_upload_begin(bigint, text), agent.mcp_upload_finish(bigint, text, text, text) TO mcp_svc;
+GRANT EXECUTE ON FUNCTION agent.mcp_kb_ingest_claim(bigint, jsonb), agent.mcp_kb_ingest_finish(bigint, jsonb) TO mcp_svc;
 GRANT EXECUTE ON FUNCTION agent.mcp_list_members(jsonb), agent.mcp_company_digest(jsonb), agent.mcp_task_save(jsonb), agent.mcp_kb_ingest_target(bigint), agent.mcp_kb_ingest_commit(bigint, jsonb), agent.mcp_project_scope(bigint), agent.mcp_catalog_upsert(bigint, jsonb), agent.mcp_runner_claim(), agent.mcp_runner_report(text, text, text, jsonb),
   agent.mcp_runner_setup(bigint, jsonb) TO mcp_svc;
