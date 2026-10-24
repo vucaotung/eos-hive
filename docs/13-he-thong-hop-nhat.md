@@ -48,7 +48,8 @@ Ngoài Hermes: **runner Z2** (agent `runner`, nhận việc qua MCP), **cầu n�
 Mã bản tin (`EOS_REPORT_TOKEN`, phạm vi `read`) hết hạn sau 90 ngày kể từ lúc cấp (vào lịch cấp lại bằng `scripts/issue_user_token.sh`).
 
 ## 5. Mai và ks-kinh-te-xd dùng Enterprise OS thế nào
-Đã sẵn: skill `enterprise-os-guide` (hướng dẫn người dùng + quy tắc gọi `eos_*`), persona/SOUL đã trỏ sang Enterprise OS. **Chưa nối công cụ**: để gọi `eos_task_save` cần một mã MCP trong `.env` của profile. Mã của người mang danh tính chủ sở hữu (mọi việc bot tạo hiện là của Tùng) nên cần chủ sở hữu quyết (phương án ở cuối báo cáo `docs/14`). Cho đến lúc đó Mai/ks chỉ hướng dẫn và dùng kanban giao `team_admin` / hộp việc trên web.
+**Mai (team_admin)** có danh tính riêng: agent `mai` ("Mai - Trợ lý AI", `mai@agent.enterpriseos.bond`), vai trò mẫu `tro_ly_ai`, mã MCP phạm vi `read + task_create` (hết hạn 90 ngày từ 24/10/2026, ghi ở `team_admin/.env` biến `EOS_MCP_TOKEN`). Mai chỉ thấy 11 công cụ: tạo việc mới cho người (`eos_task_save`, không sửa, không đổi trạng thái, không giao agent), bình luận ghi chú, xem việc mình tạo/được giao, danh sách thành viên, bản tin "Việc của tôi". Việc Mai tạo mang tên Mai; người yêu cầu thật ghi trong mô tả. Cấu hình `enterprise-os` đã thêm vào `team_admin/config.yaml`; **hiệu lực sau khi khởi động lại `hermes-gateway`** (chờ chủ sở hữu duyệt).
+**ks-kinh-te-xd**: đã có skill `enterprise-os-guide` và SOUL trỏ sang Enterprise OS; **chưa có mã MCP** (dùng kanban giao `team_admin`/hộp việc web). Nếu cần, tạo agent riêng tương tự Mai thay vì dùng mã của người.
 
 ## 6. Luồng làm việc chuẩn (thay luồng Ever Teams)
 1. **Vào việc**: người dùng giao trên web (Giao việc: người/agent, hạn, ưu tiên, dự án, *Không cần duyệt / Phải duyệt*); hoặc nhắn Mai/ks → bot xác nhận → `eos_task_save`; hoặc cả dự án: **Dự án → Nạp hồ sơ dự án** (docs/12).
