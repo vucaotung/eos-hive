@@ -1,7 +1,7 @@
 {
-  "name": "Dẹo Work",
-  "short_name": "Dẹo Work",
-  "description": "Giao việc, theo dõi và duyệt cho các phòng ban",
+  "name": "Enterprise OS | AI agent and Human collab platform",
+  "short_name": "Enterprise OS",
+  "description": "Nền tảng cộng tác giữa AI agent và con người: giao việc, theo dõi, duyệt, hồ sơ và kho tri thức",
   "lang": "vi",
   "start_url": "/app/#/today",
   "scope": "/app/",

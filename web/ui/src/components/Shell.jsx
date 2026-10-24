@@ -6,6 +6,7 @@ import { rpc } from "../lib/api.js";
 import { ROLE } from "../lib/format.js";
 import { Person } from "./ui.jsx";
 import TaskForm from "./TaskForm.jsx";
+import Logo from "./Logo.jsx";
 
 const NAV = [
   { id: "today", label: "Hôm nay", icon: Calendar },
@@ -16,15 +17,6 @@ const NAV = [
   { id: "admin", label: "Quản trị", icon: Gear, adminOnly: true },
   { id: "me", label: "Tài khoản", icon: PersonIcon },
 ];
-
-function Mark() {
-  return (
-    <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden="true">
-      <rect x="3" y="3" width="26" height="26" rx="7" fill="var(--seal)" />
-      <path d="M10 16.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function CompanySwitcher() {
   const { memberships, membership, switchCompany } = useApp();
@@ -63,7 +55,7 @@ export default function Shell({ children }) {
     <div className="min-h-dvh lg:pl-64">
       {/* Sidebar desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col gap-6 bg-background px-3 py-5 lg:flex">
-        <div className="flex items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight"><Mark />Dẹo Work</div>
+        <div className="flex items-center gap-2.5 px-2"><Logo className="size-11" /><span className="flex flex-col leading-tight"><span className="text-lg font-extrabold tracking-tight">Enterprise OS</span><span className="text-[11px] font-semibold text-muted">AI agent and Human collab platform</span></span></div>
         <div className="px-1"><CompanySwitcher /></div>
         <Button className="mx-1 justify-center" onPress={() => setCreating(true)}><Plus className="size-4" />Giao việc</Button>
         <nav aria-label="Điều hướng chính" className="flex flex-col gap-0.5">
@@ -87,7 +79,7 @@ export default function Shell({ children }) {
       {/* Thanh trên mobile */}
       <header className="safe-t sticky top-0 z-20 bg-background lg:hidden">
         <div className="flex h-14 items-center gap-2 px-4">
-          <Mark /><span className="font-extrabold tracking-tight">Dẹo Work</span>
+          <Logo className="size-9" /><span className="font-extrabold tracking-tight">Enterprise OS</span>
           <div className="ml-2 min-w-0 flex-1"><CompanySwitcher /></div>
         </div>
       </header>

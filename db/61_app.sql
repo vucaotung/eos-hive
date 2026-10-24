@@ -10,6 +10,19 @@
 
 ALTER TABLE core.invites ADD COLUMN IF NOT EXISTS dept_head boolean NOT NULL DEFAULT false;   -- mã mời vào làm trưởng phòng
 
+-- Trạng thái duyệt của việc: none (không cần duyệt) · pending (chờ duyệt) · approved (đã duyệt) · rejected (bị trả lại).
+-- Việc gắn quy trình duyệt chỉ được chuyển sang Xong khi approval_status = 'approved' (trigger bên dưới), kể cả khi ai đó cập nhật trực tiếp.
+ALTER TABLE work.tasks ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'none' CHECK (approval_status IN ('none','pending','approved','rejected'));
+CREATE OR REPLACE FUNCTION work.tasks_need_approval_trg() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status = 'done' AND OLD.status <> 'done' AND NEW.approval_flow_id IS NOT NULL AND NEW.approval_status <> 'approved' THEN
+    RAISE EXCEPTION 'Việc T-% phải được duyệt xong mới hoàn thành (trạng thái duyệt: %)', NEW.id, NEW.approval_status USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS tasks_need_approval ON work.tasks;
+CREATE TRIGGER tasks_need_approval BEFORE UPDATE OF status ON work.tasks FOR EACH ROW EXECUTE FUNCTION work.tasks_need_approval_trg();
+
 -- ---------- Vai trò mẫu và quyền ----------
 INSERT INTO core.roles (company_id, code, name, description, builtin)
 SELECT NULL, v.code, v.name, v.d, true
@@ -89,7 +102,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = agent, work, core, public
     'id', t.id, 'company_id', t.company_id, 'title', t.title, 'description', t.description, 'status', t.status, 'priority', t.priority,
     'assignee_id', t.assignee_id, 'department_id', t.department_id, 'project_id', t.project_id, 'parent_id', t.parent_id,
     'due_date', t.due_date, 'created_by', t.created_by, 'created_by_agent', t.created_by_agent, 'waiting_on_human', t.waiting_on_human,
-    'agent_role', (SELECT g.code FROM agent.agents g WHERE g.id = t.agent_id), 'attempts', t.attempts, 'approval_flow_id', t.approval_flow_id,
+    'agent_role', (SELECT g.code FROM agent.agents g WHERE g.id = t.agent_id), 'attempts', t.attempts, 'approval_flow_id', t.approval_flow_id, 'approval_status', t.approval_status,
     'claimed_by', t.claimed_by, 'progress', t.progress, 'result', t.result, 'completed_at', t.completed_at, 'created_at', t.created_at, 'updated_at', t.updated_at,
     'current_step', (SELECT r.current_step FROM core.approval_requests r WHERE r.entity_type = 'task' AND r.entity_id = t.id AND r.state = 'pending' ORDER BY r.id DESC LIMIT 1))
 $$;
@@ -97,10 +110,21 @@ $$;
 -- Người này có duyệt được bước hiện tại của yêu cầu không (ngữ nghĩa của Dẹo Work cũ)
 CREATE OR REPLACE FUNCTION agent._can_approve_step(p_user uuid, r core.approval_requests, s core.approval_steps) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
-DECLARE rl text := agent._role_of(p_user, r.company_id); has_head boolean; sr text; pm uuid;
+DECLARE rl text := agent._role_of(p_user, r.company_id); has_head boolean; sr text; pm uuid; tc uuid;
 BEGIN
   IF rl IS NULL THEN RETURN false; END IF;
   IF s.approver_kind = 'user' THEN RETURN s.approver_user = p_user; END IF;
+  IF s.approver_kind = 'creator' THEN
+    SELECT created_by INTO tc FROM work.tasks WHERE id = r.entity_id;
+    -- người giao duyệt; người nộp không tự duyệt việc của mình: khi người giao cũng là người nộp thì trưởng phòng (hoặc quản trị nếu phòng chưa có trưởng phòng) duyệt thay
+    IF tc IS NOT NULL AND tc IS DISTINCT FROM r.requested_by THEN RETURN p_user = tc; END IF;
+    IF p_user IS NOT DISTINCT FROM r.requested_by THEN RETURN false; END IF;
+    SELECT EXISTS (SELECT 1 FROM core.memberships m WHERE m.company_id = r.company_id AND m.department_id = r.department_id AND m.is_dept_head AND m.active) INTO has_head;
+    IF has_head THEN
+      RETURN EXISTS (SELECT 1 FROM core.memberships m WHERE m.user_id = p_user AND m.company_id = r.company_id AND m.department_id = r.department_id AND m.is_dept_head AND m.active);
+    END IF;
+    RETURN rl IN ('owner', 'admin');
+  END IF;
   IF s.approver_kind = 'dept_head' THEN
     SELECT EXISTS (SELECT 1 FROM core.memberships m WHERE m.company_id = r.company_id AND m.department_id = r.department_id AND m.is_dept_head AND m.active) INTO has_head;
     IF has_head THEN
@@ -162,7 +186,8 @@ BEGIN
   SELECT * INTO t FROM work.tasks WHERE id = p_task FOR UPDATE;
   SELECT * INTO f FROM core.approval_flows WHERE id = t.approval_flow_id AND active;
   IF f.id IS NULL OR NOT EXISTS (SELECT 1 FROM core.approval_steps WHERE flow_id = f.id) THEN
-    UPDATE work.tasks SET status = 'done', completed_at = now(), progress = 100, waiting_on_human = false, updated_at = now() WHERE id = t.id;
+    -- quy trình đã bị ngừng/xóa: việc không còn cần duyệt
+    UPDATE work.tasks SET approval_flow_id = NULL, approval_status = 'none', status = 'done', completed_at = now(), progress = 100, waiting_on_human = false, updated_at = now() WHERE id = t.id;
     RETURN 'done';
   END IF;
   IF EXISTS (SELECT 1 FROM core.approval_requests WHERE entity_type = 'task' AND entity_id = t.id AND state = 'pending') THEN
@@ -173,7 +198,7 @@ BEGIN
   RETURNING * INTO r;
   INSERT INTO core.approval_decisions (request_id, round, step_no, step_name, decision, approver_user)
   SELECT r.id, r.round, s.step_no, s.name, 'pending', s.approver_user FROM core.approval_steps s WHERE s.flow_id = f.id;
-  UPDATE work.tasks SET status = 'in_review', progress = 100, waiting_on_human = false, updated_at = now() WHERE id = t.id;
+  UPDATE work.tasks SET status = 'in_review', approval_status = 'pending', progress = 100, waiting_on_human = false, updated_at = now() WHERE id = t.id;
   RETURN 'in_review';
 END $$;
 
@@ -237,6 +262,18 @@ BEGIN
   RETURN jsonb_build_object('ok', true, 'user_id', u.id, 'name', u.name, 'email', u.email);
 END $$;
 
+-- Quy trình duyệt dựng sẵn cho mỗi công ty (để "Phải duyệt" có lựa chọn ngay, không cần quản trị tạo trước). Chỉ tạo khi chưa từng có (kể cả đã ngừng).
+CREATE OR REPLACE FUNCTION agent._ensure_default_flows(p_company uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
+DECLARE v record; fid uuid;
+BEGIN
+  FOR v IN SELECT * FROM (VALUES ('Người giao duyệt', 'Người giao duyệt', 'creator', NULL::text), ('Trưởng phòng duyệt', 'Trưởng phòng duyệt', 'dept_head', NULL), ('Quản trị công ty duyệt', 'Quản trị công ty duyệt', 'role', 'admin')) x(flow_name, step_name, kind, rolecode) LOOP
+    IF NOT EXISTS (SELECT 1 FROM core.approval_flows WHERE company_id = p_company AND name = v.flow_name AND applies_to = 'task') THEN
+      INSERT INTO core.approval_flows (company_id, applies_to, name) VALUES (p_company, 'task', v.flow_name) RETURNING id INTO fid;
+      INSERT INTO core.approval_steps (flow_id, step_no, name, approver_kind, approver_role) VALUES (fid, 1, v.step_name, v.kind, CASE WHEN v.rolecode IS NULL THEN NULL ELSE agent._sys_role(v.rolecode) END);
+    END IF;
+  END LOOP;
+END $$;
+
 -- ---------- Người dùng hiện tại và tổ chức ----------
 CREATE OR REPLACE FUNCTION agent.app_me(p jsonb DEFAULT '{}') RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
@@ -261,6 +298,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS
 DECLARE me core.users := agent._web_me(); cid uuid := agent._uuid(p, 'company_id');
 BEGIN
   PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
+  PERFORM agent._ensure_default_flows(cid);
   RETURN jsonb_build_object(
     'departments', coalesce((SELECT jsonb_agg(jsonb_build_object('id', d.id, 'code', d.code, 'name', d.name, 'active', d.active, 'parent_id', d.parent_id) ORDER BY d.code)
                                FROM core.departments d WHERE d.company_id = cid), '[]'),
@@ -276,7 +314,7 @@ BEGIN
                   FROM core.project_members x JOIN core.projects pr ON pr.id = x.project_id WHERE pr.company_id = cid), '[]'),
     'flows', coalesce((SELECT jsonb_agg(jsonb_build_object('id', f.id, 'name', f.name, 'department_id', f.department_id, 'active', f.active,
                        'steps', coalesce((SELECT jsonb_agg(jsonb_build_object('step_no', s.step_no, 'name', s.name, 'approver_user', s.approver_user,
-                                 'approver_role', CASE s.approver_kind WHEN 'dept_head' THEN 'manager' WHEN 'project_manager' THEN 'project_manager'
+                                 'approver_role', CASE s.approver_kind WHEN 'dept_head' THEN 'manager' WHEN 'creator' THEN 'creator' WHEN 'project_manager' THEN 'project_manager'
                                                   WHEN 'role' THEN (SELECT r.code FROM core.roles r WHERE r.id = s.approver_role) END) ORDER BY s.step_no)
                                     FROM core.approval_steps s WHERE s.flow_id = f.id), '[]')) ORDER BY f.name)
                   FROM core.approval_flows f WHERE f.company_id = cid AND f.active AND f.applies_to IN ('task','any')), '[]'));
@@ -316,11 +354,12 @@ BEGIN
     'approval_state', r.state,
     'can_approve', can_appr AND t.status = 'in_review',
     'can_edit', agent._can_edit(me.id, t),
-    'can_submit', t.status IN ('todo','in_progress','blocked') AND (t.assignee_id = me.id OR agent._can_edit(me.id, t)),
+    'can_submit', t.status IN ('todo','in_progress','blocked') AND t.agent_id IS NULL AND (t.assignee_id = me.id OR agent._can_edit(me.id, t)),   -- việc giao agent: agent nộp, người xem và chấp nhận
     'can_answer', t.waiting_on_human AND t.status NOT IN ('done','cancelled') AND (t.assignee_id = me.id OR t.created_by = me.id OR agent._can_edit(me.id, t)),
     'can_review', t.status = 'in_review' AND t.agent_id IS NOT NULL AND r.state IS DISTINCT FROM 'pending'
                   AND me.id IS NOT DISTINCT FROM coalesce(t.created_by, (SELECT default_reviewer FROM agent.company_settings WHERE company_id = t.company_id)),
     'flow_steps', (SELECT count(*) FROM core.approval_steps s WHERE s.flow_id = t.approval_flow_id),
+    'workflow', (SELECT jsonb_build_object('run_id', x.run_id, 'skill', x.skill, 'scope', x.scope, 'created_by', x.created_by) FROM agent.task_scopes x WHERE x.task_id = t.id),   -- phạm vi ghi bởi quy trình dự án (db/62)
     'reports', coalesce((SELECT jsonb_agg(jsonb_build_object('at', x.created_at, 'agent', (SELECT code FROM agent.agents WHERE id = x.agent_id), 'summary', x.summary, 'outputs', x.outputs,
                           'sources', x.sources, 'checks', x.checks, 'confidence', x.confidence, 'residual_risk', x.residual_risk, 'next_actions', x.next_actions, 'verdict', x.verdict)
                           ORDER BY x.created_at DESC) FROM agent.reports x WHERE x.task_id = t.id), '[]'));
@@ -358,6 +397,7 @@ BEGIN
   IF v_flow IS NOT NULL AND NOT EXISTS (SELECT 1 FROM core.approval_flows WHERE id = v_flow AND company_id = cid AND active AND applies_to IN ('task','any')
                                           AND (department_id IS NULL OR department_id IS NOT DISTINCT FROM v_dept)) THEN RAISE EXCEPTION 'Quy trình duyệt không áp dụng cho việc này'; END IF;
   IF v_parent IS NOT NULL AND NOT EXISTS (SELECT 1 FROM work.tasks WHERE id = v_parent AND company_id = cid) THEN RAISE EXCEPTION 'Việc cha không thuộc công ty này'; END IF;
+  IF t.id IS NOT NULL AND v_flow IS DISTINCT FROM t.approval_flow_id AND t.status IN ('in_review','done') THEN RAISE EXCEPTION 'Việc đang chờ duyệt hoặc đã xong, không đổi quy trình duyệt được'; END IF;
   v_agent := t.agent_id;
   IF p ? 'agent_role' OR t.id IS NULL THEN
     ag_code := nullif(btrim(coalesce(p->>'agent_role', '')), '');
@@ -405,6 +445,10 @@ BEGIN
   IF t.id IS NULL OR NOT agent._can_see(me.id, t) THEN RAISE EXCEPTION 'Không tìm thấy việc' USING ERRCODE = '42501'; END IF;
   IF NOT (t.assignee_id = me.id OR agent._can_edit(me.id, t)) THEN RAISE EXCEPTION 'Chỉ người phụ trách hoặc người có quyền sửa mới nộp được' USING ERRCODE = '42501'; END IF;
   IF t.status NOT IN ('todo','in_progress','blocked') THEN RAISE EXCEPTION 'Việc đang % nên không nộp được', t.status; END IF;
+  IF t.agent_id IS NOT NULL THEN RAISE EXCEPTION 'Việc đang giao cho agent: trả lời câu hỏi của agent hoặc chờ agent nộp kết quả. Muốn tự làm thì vào Sửa và bỏ giao agent.'; END IF;
+  IF note IS NULL AND NOT EXISTS (SELECT 1 FROM work.task_links WHERE task_id = t.id) AND NOT EXISTS (SELECT 1 FROM core.attachments WHERE entity_type = 'task' AND entity_id = t.id::text) THEN
+    RAISE EXCEPTION 'Ghi kết quả (tóm tắt) hoặc gắn link tài liệu trước khi nộp';
+  END IF;
   IF note IS NOT NULL THEN UPDATE work.tasks SET result = left(note, 4000) WHERE id = t.id; END IF;
   INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (t.id, me.id, 'user:' || me.id, 'submit', left(coalesce(note, 'Nộp kết quả'), 8000));
   res := agent._approval_start(t.id, me.id);
@@ -437,18 +481,19 @@ BEGIN
     END IF;
     UPDATE core.approval_requests SET state = 'approved', closed_at = now() WHERE id = r.id;
     UPDATE agent.reports SET verdict = 'accepted' WHERE task_id = t.id AND verdict = 'pending';
-    UPDATE work.tasks SET status = 'done', completed_at = now(), progress = 100, updated_at = now() WHERE id = t.id;
+    UPDATE work.tasks SET approval_status = 'approved', status = 'done', completed_at = now(), progress = 100, updated_at = now() WHERE id = t.id;
     PERFORM agent._audit(t.company_id, me.id, 'approve', 'task', t.id::text, 'Duyệt xong T-' || t.id);
     RETURN jsonb_build_object('status', 'done');
   END IF;
   UPDATE core.approval_requests SET state = 'rejected', closed_at = now() WHERE id = r.id;
   UPDATE core.approval_decisions SET decision = 'skipped' WHERE request_id = r.id AND round = r.round AND decision = 'pending';
+  UPDATE work.tasks SET approval_status = 'rejected' WHERE id = t.id;
   IF t.agent_id IS NOT NULL THEN
     -- việc của agent: bình luận 'reject' kích hoạt vòng làm lại (agent.comments_relay_trg), hoặc trả về người khi quá số lần
     INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (t.id, me.id, 'user:' || me.id, 'reject', left('Trả lại ở bước ' || s.step_no || ': ' || nt, 8000));
   ELSE
     INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (t.id, me.id, 'user:' || me.id, 'reject', left('Trả lại ở bước ' || s.step_no || ': ' || nt, 8000));
-    UPDATE work.tasks SET status = 'in_progress', attempts = attempts + 1, updated_at = now() WHERE id = t.id;
+    UPDATE work.tasks SET status = 'in_progress', approval_status = 'rejected', attempts = attempts + 1, updated_at = now() WHERE id = t.id;
   END IF;
   PERFORM agent._audit(t.company_id, me.id, 'reject', 'task', t.id::text, 'Trả lại T-' || t.id);
   RETURN jsonb_build_object('status', (SELECT status FROM work.tasks WHERE id = t.id));
@@ -685,6 +730,8 @@ BEGIN
       k := coalesce(s->>'approver_role', '');
       IF k = 'manager' THEN
         INSERT INTO core.approval_steps (flow_id, step_no, name, approver_kind) VALUES (fid, i + 1, left(coalesce(nullif(btrim(s->>'name'), ''), 'Bước ' || (i + 1)), 80), 'dept_head');
+      ELSIF k = 'creator' THEN
+        INSERT INTO core.approval_steps (flow_id, step_no, name, approver_kind) VALUES (fid, i + 1, left(coalesce(nullif(btrim(s->>'name'), ''), 'Bước ' || (i + 1)), 80), 'creator');
       ELSIF k IN ('admin','owner') THEN
         INSERT INTO core.approval_steps (flow_id, step_no, name, approver_kind, approver_role) VALUES (fid, i + 1, left(coalesce(nullif(btrim(s->>'name'), ''), 'Bước ' || (i + 1)), 80), 'role', agent._sys_role(k));
       ELSE RAISE EXCEPTION 'Bước % thiếu người duyệt', i + 1;

@@ -112,10 +112,10 @@ export function TextAreaInput({ label, value, onChange, placeholder, rows = 3, d
 }
 
 const NONE = "__none";
-export function SelectField({ label, value, onChange, options, placeholder = "Chọn", allowEmpty, emptyLabel = "Không chọn", className = "w-full", isRequired }) {
+export function SelectField({ label, value, onChange, options, placeholder = "Chọn", allowEmpty, emptyLabel = "Không chọn", className = "w-full", isRequired, isDisabled }) {
   const items = allowEmpty ? [{ value: NONE, label: emptyLabel }, ...options] : options;
   return (
-    <Select className={className} placeholder={placeholder} isRequired={isRequired}
+    <Select className={className} placeholder={placeholder} isRequired={isRequired} isDisabled={isDisabled}
       value={value == null || value === "" ? (allowEmpty ? NONE : null) : value}
       onChange={(v) => onChange(v === NONE ? null : v)}>
       <Label>{label}</Label>

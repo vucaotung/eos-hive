@@ -70,5 +70,11 @@ Vai trò: owner/admin cả công ty · trưởng phòng và thành viên theo ph
 | Giao diện cũ sau khi triển khai | Ctrl+F5; kiểm `web/public/index.html` trỏ tới `assets/index-….js` có thật |
 | CI đỏ ở "Giao diện dựng khớp" | quên `make ui` trước khi commit |
 
+## Nạp hồ sơ dự án (docs/12)
+- Bắt đầu: Dự án → **Nạp hồ sơ dự án** (link Drive + người theo dõi). Điều phối chia việc; runner Z2 xử lý; Văn thư lập danh mục; Pháp chế rà soát; `quan-tri-du-lieu` nạp WeKnora bằng `eos_kb_ingest` (khóa ở `mcp/.env` trên vps169, biến `WEKNORA_BASE_URL`, `WEKNORA_API_KEY`).
+- Runner Z2: `systemctl --user status eos-z2-runner`; `journalctl --user -u eos-z2-runner -f`; thử một lần `python3 runner/eos_z2_runner.py --once`; cấp lại mã `scripts/issue_runner_token.sh vps169`.
+- Phạm vi của việc: ngăn chi tiết việc, hoặc `SELECT task_id, skill, scope FROM agent.task_scopes WHERE run_id = …`.
+- Cài skill: `scripts/install_skill.sh vps173 eos-van-thu ho-so-danh-muc`.
+
 ## Việc còn mở
 Kiểm tra thư mục Drive của người dùng; thông báo đẩy; tải tệp; việc lặp lại; L2 có cấu trúc trên giao diện; RLS; đổi mật khẩu root/SSH khóa; UFW vps169; giới hạn tốc độ ở Caddy; thông số Valnex cho Văn thư AI (chờ tài liệu KB); định nghĩa agent `phap-che`.

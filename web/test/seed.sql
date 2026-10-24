@@ -24,10 +24,12 @@ INSERT INTO core.memberships (user_id, company_id, department_id, is_dept_head) 
 INSERT INTO core.user_roles (company_id, user_id, role_id)
 SELECT m.company_id, m.user_id, agent._sys_role(CASE WHEN u.id = 'cccccccc-0000-0000-0000-000000000002' THEN 'owner' ELSE 'member' END)
   FROM core.memberships m JOIN core.users u ON u.id = m.user_id;
+INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000a3','dieu-phoi@agent','Điều phối AI','agent');
+INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, can_delegate) VALUES ('a2222222-0000-0000-0000-000000000003','cccccccc-0000-0000-0000-0000000000a3','dieu-phoi','Điều phối AI','orchestrator','work','eos-dieu-phoi',true);
 INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, description) VALUES
  ('a2222222-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-0000000000a2','van-thu','Văn thư AI','module','doc','eos-van-thu','Soạn dự thảo công văn');
 INSERT INTO agent.company_settings (company_id, enabled, kanban_board) VALUES ('33333333-3333-3333-3333-333333333333', true, 'eos-demo');
-INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000002');
+INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000002'), ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000003');
 
 -- 601, 602: agent đã nộp kết quả (chờ duyệt) · 603: agent đang hỏi · 604: việc thường quá hạn · 605: việc của công ty khác
 INSERT INTO work.tasks (id, company_id, department_id, title, description, assignee_id, agent_id, created_by) OVERRIDING SYSTEM VALUE VALUES

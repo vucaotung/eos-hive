@@ -1,6 +1,6 @@
-# 10 · Dẹo Work — giao diện web (`/app`)
+# 10 · Enterprise OS — giao diện web (`/app`)
 
-Ứng dụng quản lý dự án và công việc tại `https://work.enterpriseos.bond/app`, thiết kế theo bản Dẹo Work (HeroUI + Tailwind, chế độ tối, dùng được trên điện thoại), chạy trên lược đồ 108 bảng của Tổ Ong và có sẵn agent AI.
+Ứng dụng quản lý dự án và công việc tại `https://work.enterpriseos.bond/app`, thiết kế theo bản Dẹo Work gốc (HeroUI + Tailwind, chế độ tối, dùng được trên điện thoại), chạy trên lược đồ 108 bảng của Tổ Ong và có sẵn agent AI.
 
 | Màn hình | Làm gì |
 | --- | --- |
@@ -36,6 +36,8 @@
 | Đổi vai trò/khóa thành viên | owner/admin; không tự hạ hoặc tự khóa mình; công ty luôn còn ít nhất một owner; admin không đụng owner |
 
 ## Duyệt nhiều bước
+Giao việc chọn **Phải duyệt** (hoặc không). Công ty có sẵn 3 quy trình một bước: *Người giao duyệt*, *Trưởng phòng duyệt*, *Quản trị công ty duyệt*; quản trị tạo thêm quy trình nhiều bước ở Quản trị → Quy trình duyệt. Trạng thái duyệt của việc: `approval_status` = chưa nộp (`none`) → chờ duyệt (`pending`) → đã duyệt (`approved`) hoặc bị trả lại (`rejected`); **việc có quy trình chỉ Xong khi đã duyệt** (CSDL chặn mọi đường khác).
+
 Việc gắn một **quy trình duyệt** (1–6 bước). Nộp việc mở một yêu cầu duyệt (`core.approval_requests`, vòng = số lần nộp, một dòng quyết định mỗi bước); mỗi bước duyệt xong thì sang bước kế, bước cuối duyệt xong thì việc **Xong**. Trả lại (bắt buộc ghi lý do) đóng yêu cầu, việc về **Đang làm** (hoặc cho agent làm lại), lần nộp sau là vòng mới. Việc không gắn quy trình thì Xong ngay khi nộp. Quy trình đang có việc chờ duyệt thì không sửa được bước (tạo quy trình mới rồi ngừng quy trình cũ).
 
 Việc của **agent** có quy trình: agent nộp → người giao xem kết quả (chấp nhận hoặc trả lại) → chấp nhận thì mở yêu cầu duyệt các bước → người duyệt trả lại thì agent làm lại (theo `agent.company_settings.max_rework`).

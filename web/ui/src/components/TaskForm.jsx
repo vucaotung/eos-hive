@@ -27,6 +27,8 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
   const people = useMemo(() => org.members.filter((m) => m.active && m.user?.active !== false).map((m) => ({
     value: m.user.id, label: `${m.user.name}${m.department_id && lookups.dept[m.department_id] ? ` · ${lookups.dept[m.department_id].code}` : ""}` })), [org.members, lookups.dept]);
   const flows = org.flows.filter((fl) => !fl.department_id || fl.department_id === f.department_id);
+  const defaultFlow = flows.find((fl) => fl.name === "Người giao duyệt") || flows[0];
+  const locked = !!task && (task.status === "in_review" || task.status === "done");   // đang chờ duyệt hoặc đã xong: không đổi quy trình
 
   async function save() {
     if (f.title.trim().length < 2) { setError(new Error("Nhập tên việc (ít nhất 2 ký tự)")); return; }
@@ -66,11 +68,18 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
               <SelectField label="Ưu tiên" value={f.priority} onChange={set("priority")} options={Object.entries(PRIORITY).map(([value, label]) => ({ value, label }))} />
               <SelectField label="Dự án" value={f.project_id} onChange={set("project_id")} allowEmpty emptyLabel="Không thuộc dự án"
                 options={org.projects.filter((p) => p.active).map((p) => ({ value: p.id, label: p.name }))} />
-              <SelectField label="Quy trình duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} allowEmpty emptyLabel="Không cần duyệt"
-                options={flows.map((fl) => ({ value: fl.id, label: `${fl.name} (${fl.steps?.length || 0} bước)` }))} />
+              <SelectField label="Duyệt kết quả" value={f.approval_flow_id ? "yes" : "no"} isDisabled={locked}
+                onChange={(v) => set("approval_flow_id")(v === "yes" ? (defaultFlow?.id || null) : null)}
+                options={[{ value: "no", label: "Không cần duyệt (nộp là xong)" }, { value: "yes", label: "Phải duyệt (chờ duyệt, được duyệt mới hoàn thành)" }]} />
+              {f.approval_flow_id && (
+                <SelectField label="Ai duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} isDisabled={locked}
+                  options={flows.map((fl) => ({ value: fl.id, label: `${fl.name}${fl.steps?.length > 1 ? ` (${fl.steps.length} bước)` : ""}` }))} />
+              )}
               <div className="sm:col-span-2">
                 <SelectField label="Giao cho agent AI" value={f.agent_role} onChange={set("agent_role")} allowEmpty emptyLabel="Không, người làm"
                   options={(me?.agents || []).map((a) => ({ value: a.code, label: a.name }))} />
+                {f.agent_role && (() => { const who = f.assignee_id ? lookups.person[f.assignee_id] : lookups.person[me?.user?.id]; return who && who.drive_status !== "ok" && (
+                  <p className="mt-1 text-sm font-semibold text-warning">{who.name} chưa thiết lập thư mục Drive (Tài khoản → Thư mục Drive). Agent soạn xong vẫn không lưu được tệp .docx cho đến khi có thư mục này.</p>); })()}
                 <p className="mt-1 text-sm text-muted">Agent nhận việc ở lượt quét kế tiếp, hỏi lại khi thiếu thông tin và nộp kết quả để người phụ trách duyệt.</p>
               </div>
               <button type="submit" hidden />

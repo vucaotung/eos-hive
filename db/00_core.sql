@@ -241,7 +241,7 @@ CREATE TABLE core.approval_steps (
   flow_id        uuid NOT NULL REFERENCES core.approval_flows(id) ON DELETE CASCADE,
   step_no        int  NOT NULL CHECK (step_no BETWEEN 1 AND 6),
   name           text NOT NULL,                     -- Trưởng phòng duyệt
-  approver_kind  text NOT NULL CHECK (approver_kind IN ('dept_head','role','user','project_manager')),
+  approver_kind  text NOT NULL CHECK (approver_kind IN ('dept_head','role','user','project_manager','creator')),
   approver_role  uuid REFERENCES core.roles(id),
   approver_user  uuid REFERENCES core.users(id),
   PRIMARY KEY (flow_id, step_no),

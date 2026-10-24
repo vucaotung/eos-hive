@@ -84,6 +84,11 @@ live_person="$(sq "select count(*) from agent.mcp_tokens t join core.users u on 
 [ "$live_person" = 0 ] && ok "không còn mã MCP thử của người dùng" || warn "$live_person mã MCP của người dùng đang còn hạn (kiểm tra có phải mã thử bỏ quên không)"
 [ "$(sq "select count(*) from agent.company_agents where auto_done")" = 0 ] && ok "auto_done tắt cho mọi agent" || bad "có agent bật auto_done"
 
+[ "$(sq "select count(*) from agent.mcp_tokens t join agent.agents a on a.id=t.agent_id where a.executor='runner' and t.revoked_at is null and t.scopes <> '{runner}'")" = 0 ] && ok "mã của runner chỉ có phạm vi runner" || bad "mã runner có phạm vi thừa"
+[ "$(sq "select count(*) from agent.mcp_tokens where agent_id is null and scopes && array['project','runner','delegate','draft','ingest']")" = 0 ] && ok "mã của người không có phạm vi project/runner/delegate/draft/ingest" || bad "mã của người có phạm vi dành riêng cho agent"
+[ "$(sq "select coalesce(string_agg(a.code, ','), '') from agent.mcp_tokens t join agent.agents a on a.id=t.agent_id where t.revoked_at is null and 'ingest' = any(t.scopes) and a.module <> 'kb'")" = "" ] && ok "chỉ agent module kb có phạm vi ingest (nạp WeKnora)" || bad "agent ngoài module kb có phạm vi ingest"
+[ "$(rd 'grep -c "^WEKNORA_API_KEY=.\+" /opt/apps/enterprise-os/mcp/.env')" = 1 ] && [ "$(rd 'stat -c %a /opt/apps/enterprise-os/mcp/.env')" = 600 ] && ok "khóa WeKnora chỉ ở mcp/.env (600) trên vps169" || warn "chưa có khóa WeKnora ở mcp/.env"
+[ "$(rh 'grep -rl "^WEKNORA_API_KEY=" ~/.hermes/profiles/eos-*/.env 2>/dev/null | wc -l')" = 0 ] && ok "profile eos-* trên vps173 không giữ khóa WeKnora" || bad "profile eos-* giữ khóa WeKnora"
 echo; echo "7. Agent Hermes (profile eos-*)"
 res="$(rh "python3 - <<'PY'
 import glob, yaml
@@ -98,7 +103,7 @@ for f in sorted(glob.glob('/root/.hermes/profiles/eos-*/config.yaml')):
 print('; '.join(bad) if bad else 'OK')
 PY")"
 [ "$res" = OK ] && ok "4 profile eos-*: không terminal/file/web/chạy mã, approval manual, không nền tảng chat" || bad "profile eos-*: $res"
-[ "$(sq "select count(*) from agent.agents where hermes_profile not like 'eos-%'")" = 0 ] && ok "không agent nào ánh xạ vào profile ngoài eos-* (ví dụ ops-admin)" || bad "có agent ánh xạ vào profile không phải eos-*"
+[ "$(sq "select count(*) from agent.agents where executor = 'hermes' and hermes_profile not like 'eos-%'")" = 0 ] && ok "không agent Hermes nào ánh xạ vào profile ngoài eos-* (ví dụ ops-admin); runner Z2 không dùng Hermes" || bad "có agent ánh xạ vào profile không phải eos-*"
 
 echo; echo "8. Dữ liệu"
 yr="$(date +%Y)"; mo="$(date +%m)"

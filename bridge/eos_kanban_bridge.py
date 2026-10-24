@@ -136,6 +136,11 @@ class Bridge:
                 msg = f"[TRA-LOI] {p.get('by', 'người')}: {p['body']}"
             self.hermes("comment", card, msg, "--author", "eos-bridge", board=board)
             self.hermes("unblock", card, board=board)
+            k = self.cards.get(card)
+            if k is not None:   # agent sẽ chạy lại: sự kiện của lượt mới phải có khóa riêng (trước đây trùng khóa lượt trước nên bị bỏ, việc đứng yên)
+                k["epoch"] = k.get("epoch", 0) + 1
+                k["claimed"] = False
+                self.save()
             return None
         if o["kind"] == "cancel" and p.get("card_id"):
             self.hermes("archive", p["card_id"], board=p["board"])
@@ -175,6 +180,11 @@ class Bridge:
                        **{k: meta.get(k) for k in ("outputs", "sources", "checks", "confidence", "residual_risk", "next_actions") if meta.get(k) is not None}}
         return event, payload
 
+    @staticmethod
+    def _ep(known: dict) -> str:
+        e = known.get("epoch", 0)
+        return f":e{e}" if e else ""
+
     def push(self, card_id: str, hook: str | None, stamp: str) -> None:
         known = self.cards.get(card_id)
         if not known:
@@ -188,9 +198,9 @@ class Bridge:
             # Hook `claimed` bắn ở dispatcher (profile default, không có plugin) nên thường không tới; đối soát cũng có thể
             # lỡ thẻ chạy ngắn. Phát `claimed` ngầm một lần để việc luôn đi qua Đang làm (khóa riêng nên không trùng).
             self.rpc("ingest_event", p_board=known["board"], p_card=card_id, p_event="claimed",
-                     p_event_key=f"{known['board']}:{card_id}:claimed:implied", p_payload={})
+                     p_event_key=f"{known['board']}:{card_id}:claimed:implied{self._ep(known)}", p_payload={})
             known["claimed"] = True
-        key = f"{known['board']}:{card_id}:{event}:{stamp}"
+        key = f"{known['board']}:{card_id}:{event}:{stamp}{self._ep(known)}"
         res = self.rpc("ingest_event", p_board=known["board"], p_card=card_id, p_event=event, p_event_key=key, p_payload=payload)
         known["status"] = info.get("task", info).get("status", known.get("status"))
         if event == "claimed":

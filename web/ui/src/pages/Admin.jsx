@@ -139,7 +139,7 @@ function Flows() {
   const ed = useEditor({ id: null, name: "", department_id: null, steps: [blankStep()] });
   const setStep = (i, k, v) => ed.set("steps")(ed.f.steps.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
   const people = org.members.filter((m) => m.active && m.user).map((m) => ({ value: m.user.id, label: m.user.name }));
-  const describe = (s) => s.approver_user ? lookups.person[s.approver_user]?.name || "Một người" : s.approver_role === "manager" ? "Trưởng phòng của việc" : ROLE[s.approver_role];
+  const describe = (s) => s.approver_user ? lookups.person[s.approver_user]?.name || "Một người" : s.approver_role === "manager" ? "Trưởng phòng của việc" : s.approver_role === "creator" ? "Người giao việc" : ROLE[s.approver_role];
   return (
     <div className="flex flex-col gap-4">
       <div><Button onPress={() => ed.start({ id: null, name: "", department_id: null, steps: [blankStep()] })}><Plus className="size-4" />Tạo quy trình</Button></div>
@@ -173,7 +173,7 @@ function Flows() {
                 {ed.f.steps.length > 1 && <Button size="sm" variant="ghost" onPress={() => ed.set("steps")(ed.f.steps.filter((_, j) => j !== i))}>Bỏ bước</Button>}</div>
               <TextInput label="Tên bước" value={s.name} onChange={(v) => setStep(i, "name", v)} placeholder={i === 0 ? "Trưởng phòng duyệt" : "Giám đốc duyệt"} />
               <SelectField label="Người duyệt" value={s.kind} onChange={(v) => setStep(i, "kind", v)}
-                options={[{ value: "manager", label: "Trưởng phòng của việc" }, { value: "admin", label: "Quản trị công ty" }, { value: "owner", label: "Chủ sở hữu" }, { value: "user", label: "Một người cụ thể" }]} />
+                options={[{ value: "creator", label: "Người giao việc" }, { value: "manager", label: "Trưởng phòng của việc" }, { value: "admin", label: "Quản trị công ty" }, { value: "owner", label: "Chủ sở hữu" }, { value: "user", label: "Một người cụ thể" }]} />
               {s.kind === "user" && <SelectField label="Chọn người" value={s.user} onChange={(v) => setStep(i, "user", v)} options={people} />}
             </li>
           ))}
