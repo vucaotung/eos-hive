@@ -42,7 +42,7 @@ def render(d, weekly=False):
     head = f"📊 Enterprise OS · {'Tổng kết tuần' if weekly else 'Bản tin sáng'} {fmt_date(d['date'])} · {d['scope']}"
     per = 'trong tuần' if weekly else 'hôm qua'
     out = [head, '',
-           f"Đang mở {c['open']} · Quá hạn {c['overdue']} · Đến hạn hôm nay {c['due_today']} · 3 ngày tới {c['due_3d']}",
+           f"Công việc đang mở {c['open']} · Quá hạn {c['overdue']} · Đến hạn hôm nay {c['due_today']} · 3 ngày tới {c['due_3d']}",
            f"Chờ bạn {c['ask_human'] + c['in_review']} (agent hỏi {c['ask_human']}, chờ duyệt {c['in_review']}) · Vướng {c['blocked']}",
            f"Xong {per}: {c['done_period']} · Mới tạo {per}: {c['created_period']}"]
     if d['overdue']:
@@ -54,11 +54,11 @@ def render(d, weekly=False):
     if d['done_period']:
         out += ['', f'✅ Đã xong {per}:'] + lines(d['done_period'], lambda i: f"{i['id']} {i['title']}" + (f" ({i['who']})" if i.get('who') else ''), 6 if not weekly else 10)
     if d['by_dept']:
-        out += ['', '🏢 Theo phòng: ' + ' · '.join(f"{x['dept']} {x['open']} mở/{x['overdue']} quá hạn" for x in d['by_dept'])]
+        out += ['', '🏢 Theo phòng: ' + ' · '.join(f"{x['dept']} {x['open']} công việc mở, {x['overdue']} quá hạn" for x in d['by_dept'])]
     if weekly and d['by_person']:
-        out += ['', '👥 Theo người: ' + ' · '.join(f"{x['who']} {x['open']} mở/{x['overdue']} quá hạn" for x in d['by_person'][:6])]
+        out += ['', '👥 Theo người: ' + ' · '.join(f"{x['who']} {x['open']} công việc mở, {x['overdue']} quá hạn" for x in d['by_person'][:6])]
     if d['projects']:
-        out += ['', '📁 Dự án: ' + ' · '.join(f"{x['name']} {x['open']} mở" + (f"/{x['overdue']} quá hạn" if x['overdue'] else '') + (' (đang nạp hồ sơ)' if x.get('run') == 'running' else '') for x in d['projects'][:6])]
+        out += ['', '📁 Dự án: ' + ' · '.join(f"{x['name']} {x['open']} công việc mở" + (f", {x['overdue']} quá hạn" if x['overdue'] else '') + (' (đang nạp hồ sơ)' if x.get('run') == 'running' else '') for x in d['projects'][:6])]
     a = d.get('agents')
     if a:
         flag = ' ⚠' if a['stuck_2h'] or a['blocked'] else ''
