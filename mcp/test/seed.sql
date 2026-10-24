@@ -69,3 +69,5 @@ INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile)
  ('a2222222-0000-0000-0000-000000000004','cccccccc-0000-0000-0000-0000000000a4','quan-tri-du-lieu','Quản trị dữ liệu AI','module','kb','eos-quan-tri-du-lieu');
 INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000004');
 SELECT 'TOKEN_KB=' || agent.mcp_token_issue_agent('quan-tri-du-lieu', 30);
+SELECT set_config('request.jwt.claims','{"sub":"cccccccc-0000-0000-0000-0000000000ad"}', false) \g /dev/null
+SELECT 'TOKEN_ADMIN=' || agent.mcp_token_issue('Quản trị đọc ghi','claude','{read,write}',30);

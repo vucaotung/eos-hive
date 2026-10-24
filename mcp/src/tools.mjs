@@ -126,6 +126,23 @@ export function registerTools(server, ident) {
   }, async ({ query }) => ({ result: await call('SELECT agent.mcp_search($1) AS r', [query]) }),
   (a) => ({ query: a.query }));
 
+  tool('eos_company_digest', 'read', {
+    title: 'Bản tin công việc (hằng ngày/tuần)',
+    description: 'Tổng hợp theo phạm vi của bạn: chủ sở hữu/quản trị = cả công ty, trưởng phòng = phòng mình, thành viên = việc của mình. Có: số việc mở, quá hạn, đến hạn hôm nay, chờ bạn (agent hỏi, chờ duyệt), đã xong trong kỳ, theo phòng/người/dự án, tình trạng agent. days = số ngày của kỳ báo cáo (1 = hằng ngày, 7 = tuần). Dùng cho bản tin sáng và tổng kết tuần.',
+    inputSchema: { days: z.number().int().min(1).max(31).default(1), company_id: z.string().uuid().optional() },
+    annotations: { readOnlyHint: true },
+  }, async ({ days, company_id }) => ({ result: await call('SELECT agent.mcp_company_digest($1::jsonb) AS r', [JSON.stringify({ days, company_id })]), entity: { type: 'digest', id: String(days) } }), (a) => ({ days: a.days }));
+
+  tool('eos_task_save', 'write', {
+    title: 'Tạo hoặc sửa việc',
+    description: 'Tạo việc mới (không truyền id) hoặc sửa việc có sẵn (id = "T-123"). Trường: title, description, assignee_email (email người phụ trách), project (mã hoặc tên dự án), due_date (YYYY-MM-DD), priority (low|medium|high|urgent), agent (mã agent AI làm việc này: dieu-phoi, van-thu, nhan-su, quan-tri-du-lieu...), approval (true = PHẢI DUYỆT: nộp xong chờ người giao duyệt mới hoàn thành; false = nộp là xong), status (todo|in_progress|blocked|cancelled khi sửa). Việc tạo mang danh tính chủ mã. Xác nhận lại với người ra lệnh trước khi tạo việc giao cho người khác.',
+    inputSchema: { id: z.string().regex(/^(T-)?\d{1,12}$/i).optional(), title: z.string().min(2).max(300).optional(), description: z.string().max(8000).optional(),
+      assignee_email: z.string().email().optional(), project: z.string().max(120).optional(), due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
+      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(), agent: z.string().regex(/^[a-z][a-z-]{1,31}$/).or(z.literal('')).optional(), approval: z.boolean().optional(),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'cancelled']).optional() },
+  }, async (args) => ({ result: await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(args)]), entity: { type: 'task', id: String(args.id || 'new') } }),
+  (a) => ({ id: a.id || null, title: String(a.title || '').slice(0, 80), agent: a.agent || null, approval: a.approval }));
+
   tool('eos_list_kbs', 'kb', {
     title: 'Kho dữ liệu được hỏi',
     description: 'Các kho trong Kho dữ liệu chung mà người dùng được hỏi.',

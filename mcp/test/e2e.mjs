@@ -91,8 +91,8 @@ try {
   const c = await connect(process.env.TOKEN_FULL);
   await step('liệt kê công cụ, tài nguyên, lời nhắc', async () => {
     const tools = (await c.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_approvals_pending', 'eos_attach_drive_file', 'eos_comment', 'eos_get_task', 'eos_guide', 'eos_incoming_list',
-      'eos_list_kbs', 'eos_list_tasks', 'eos_my_day', 'eos_my_hr', 'eos_save_to_drive', 'eos_search', 'eos_submit_result', 'eos_update_progress', 'eos_whoami']);
+    assert.deepEqual(tools, ['eos_approvals_pending', 'eos_attach_drive_file', 'eos_comment', 'eos_company_digest', 'eos_get_task', 'eos_guide', 'eos_incoming_list',
+      'eos_list_kbs', 'eos_list_tasks', 'eos_my_day', 'eos_my_hr', 'eos_save_to_drive', 'eos_search', 'eos_submit_result', 'eos_task_save', 'eos_update_progress', 'eos_whoami']);
     assert.equal((await c.listResources()).resources.length, 6);
     assert.equal((await c.listPrompts()).prompts.length, 2);
     const p = await c.getPrompt({ name: 'lam_va_nop_viec', arguments: { task: 'T-501' } });
@@ -357,6 +357,35 @@ try {
     const again = json(await call({ file_ids: ['MDFILE0000001', 'MDFILE0000003'] }));
     assert.equal(again.ingested, 0); assert.equal(again.skipped.length, 2); assert.equal(wkCalls.filter((c) => c[0] === 'doc').length, 2, 'không nạp trùng'); assert.equal(wkCalls.filter((c) => c[0] === 'kb').length, 1, 'không tạo KB lần hai');
     await kb.close();
+  });
+  await step('bản tin: phạm vi theo vai trò; tạo/sửa việc qua MCP với email, dự án, agent, phải duyệt', async () => {
+    const ad = await connect(process.env.TOKEN_ADMIN), me = await connect(process.env.TOKEN_FULL);
+    const dg = json(await ad.callTool({ name: 'eos_company_digest', arguments: { days: 7 } }));
+    assert.equal(dg.scope, 'Toàn công ty'); for (const k of ['open', 'overdue', 'due_today', 'blocked', 'ask_human', 'in_review', 'done_period']) assert.equal(typeof dg.counts[k], 'number', k);
+    assert.ok(Array.isArray(dg.by_dept) && Array.isArray(dg.overdue) && dg.agents && typeof dg.agents.running === 'number');
+    assert.ok(dg.projects.some((p) => p.name === 'Dự án thử nạp hồ sơ'));
+    const mine = json(await me.callTool({ name: 'eos_company_digest', arguments: { days: 1 } }));
+    assert.equal(mine.scope, 'Việc của tôi'); assert.equal(mine.agents, null); assert.deepEqual(mine.by_dept, []);
+    assert.ok(mine.counts.open >= 1 && mine.counts.open < dg.counts.open + 1, 'thành viên chỉ thấy việc của mình');
+    // tạo việc
+    const t = json(await ad.callTool({ name: 'eos_task_save', arguments: { title: 'Soạn báo cáo tuần cho phòng', description: 'Mai tạo qua MCP', assignee_email: 'minh@demo.vn', project: 'du-an-thu-nap-ho-so', due_date: '2030-02-01', priority: 'high', approval: true } }));
+    assert.match(t.id, /^T-\d+$/);
+    const row = (await sql('SELECT assignee_id, priority, project_id IS NOT NULL p, approval_flow_id IS NOT NULL f, created_by FROM work.tasks WHERE id = $1', [Number(t.id.slice(2))]))[0];
+    assert.equal(row.assignee_id, 'cccccccc-0000-0000-0000-000000000001'); assert.equal(row.priority, 'high'); assert.equal(row.p, true); assert.equal(row.f, true); assert.equal(row.created_by, 'cccccccc-0000-0000-0000-0000000000ad');
+    assert.equal((await sql('SELECT approval_status FROM work.tasks WHERE id = $1', [Number(t.id.slice(2))]))[0].approval_status, 'none');
+    // sửa việc: đổi hạn, bỏ yêu cầu duyệt; việc của người khác không sửa được
+    const e = json(await ad.callTool({ name: 'eos_task_save', arguments: { id: t.id, due_date: '2030-03-01', approval: false, status: 'in_progress' } }));
+    assert.equal(e.id, t.id);
+    const r2 = (await sql('SELECT due_date::text d, approval_flow_id, status FROM work.tasks WHERE id = $1', [Number(t.id.slice(2))]))[0];
+    assert.equal(r2.d, '2030-03-01'); assert.equal(r2.approval_flow_id, null); assert.equal(r2.status, 'in_progress');
+    for (const [args, re] of [[{ title: 'Việc lạ', assignee_email: 'khong-co@demo.vn' }, /Không có thành viên/], [{ title: 'Việc lạ', project: 'khong-co' }, /Không có dự án/], [{ title: 'a' }, /2 đến 300|Too small/]]) {
+      const x = await ad.callTool({ name: 'eos_task_save', arguments: args }); assert.equal(x.isError, true); assert.match(text(x), re);
+    }
+    const other = await connect(process.env.TOKEN_OTHER);
+    const deny = await other.callTool({ name: 'eos_task_save', arguments: { id: t.id, title: 'chiếm quyền' } }); assert.equal(deny.isError, true);
+    const ro = await (await connect(process.env.TOKEN_READ)).callTool({ name: 'eos_task_save', arguments: { title: 'chỉ đọc không tạo được' } });
+    assert.equal(ro.isError, true); assert.match(text(ro), /phạm vi "write"/);
+    await ad.close(); await me.close(); await other.close();
   });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
