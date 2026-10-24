@@ -470,6 +470,40 @@ try {
     assert.equal((await post(process.env.TOKEN_FULL, '203.0.113.7')).status, 200, 'hết cửa sổ thì mã đúng dùng lại được');
     guarded.close();
   });
+  await step('tải Drive có theo dõi: thành công → done; đăng ký lỗi → orphan có drive_id; sweep đánh dấu lượt treo và liệt kê tệp mồ côi, không xóa tệp', async () => {
+    const me = await connect(process.env.TOKEN_FULL);
+    const before = (await sql("SELECT count(*)::int n FROM agent.drive_uploads WHERE state = 'done'"))[0].n;
+    const okSave = json(await me.callTool({ name: 'eos_save_to_drive', arguments: { task: 'T-501', filename: 'theo-doi-ok.md', content: 'nội dung ổn' } }));
+    assert.ok(okSave.url);
+    assert.equal((await sql("SELECT count(*)::int n FROM agent.drive_uploads WHERE state = 'done'"))[0].n, before + 1);
+    // ép bước đăng ký lỗi: trigger tạm trên core.attachments
+    await sql("CREATE FUNCTION public.test_block_attach() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'lỗi giả lập khi ghi CSDL'; END $$");
+    await sql('CREATE TRIGGER test_block_attach BEFORE INSERT ON core.attachments FOR EACH ROW EXECUTE FUNCTION public.test_block_attach()');
+    try {
+      const bad = await me.callTool({ name: 'eos_save_to_drive', arguments: { task: 'T-501', filename: 'theo-doi-hong.md', content: 'sẽ mồ côi' } });
+      assert.equal(bad.isError, true);
+    } finally { await sql('DROP TRIGGER test_block_attach ON core.attachments'); await sql('DROP FUNCTION public.test_block_attach()'); }
+    const orph = (await sql("SELECT state, drive_id, error FROM agent.drive_uploads WHERE filename = 'theo-doi-hong.md'"))[0];
+    assert.equal(orph.state, 'orphan'); assert.ok(orph.drive_id); assert.match(orph.error, /lỗi giả lập/);
+    // tệp vẫn còn trên Drive giả lập (code không xóa)
+    assert.ok(files.has(orph.drive_id), 'không tự xóa tệp trên Drive');
+    // lượt treo: pending cũ 2 giờ, và uploaded cũ 2 giờ
+    await sql("INSERT INTO agent.drive_uploads (company_id, task_id, user_id, filename, state, created_at) SELECT company_id, 501, 'cccccccc-0000-0000-0000-000000000001', 'treo.md', 'pending', now() - interval '2 hours' FROM work.tasks WHERE id = 501");
+    await sql("INSERT INTO agent.drive_uploads (company_id, task_id, user_id, filename, state, drive_id, created_at) SELECT company_id, 501, 'cccccccc-0000-0000-0000-000000000001', 'len-roi.md', 'uploaded', 'DRIVEORPHAN01', now() - interval '2 hours' FROM work.tasks WHERE id = 501");
+    const c = adm;
+    {
+      await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-0000000000ad\"}', true)");
+      const sw = (await c.query('SELECT agent.upload_sweep(1) AS r')).rows[0].r;
+      assert.equal(sw.marked_failed, 1); assert.equal(sw.marked_orphan, 1);
+      assert.ok(sw.orphans.some((o) => o.drive_id === 'DRIVEORPHAN01') && sw.orphans.some((o) => o.drive_id === orph.drive_id));
+      await c.query('ROLLBACK');
+      // không phải quản trị hệ thống thì bị từ chối
+      await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-000000000001\"}', true)");
+      await assert.rejects(() => c.query('SELECT agent.upload_sweep(1)'), /Chỉ quản trị hệ thống/); await c.query('ROLLBACK');
+    }
+    assert.equal((await sql("SELECT state FROM agent.drive_uploads WHERE filename = 'treo.md'"))[0].state, 'pending', 'sweep trong giao dịch thử đã hoàn tác');
+    await me.close();
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],

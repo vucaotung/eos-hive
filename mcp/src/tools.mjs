@@ -52,6 +52,18 @@ export function registerTools(server, ident) {
     });
   };
   const call = (sql, params) => asUser(ident, async (c) => (await c.query(sql, params)).rows[0]?.r);
+  // Tải tệp lên Drive có theo dõi: begin (pending) → tải → uploaded(drive_id) → đăng ký → done. Hỏng giữa chừng thì ghi failed/orphan (docs/16); không bao giờ tự xóa tệp trên Drive.
+  const tracked = async (taskId, filename, doUpload, doRegister) => {
+    const upId = await call('SELECT agent.mcp_upload_begin($1,$2) AS r', [taskId, filename]);
+    const mark = (state, driveId, err) => call('SELECT agent.mcp_upload_finish($1,$2,$3,$4) AS r', [upId, state, driveId || null, err ? String(err.message || err).slice(0, 500) : null]).catch(() => {});
+    let f;
+    try { f = await doUpload(); } catch (e) { await mark('failed', null, e); throw e; }
+    await mark('uploaded', f.driveId);
+    let out;
+    try { out = await doRegister(f); } catch (e) { await mark('orphan', f.driveId, e); throw e; }
+    await mark('done', f.driveId);
+    return out;
+  };
 
   tool('eos_guide', 'read', {
     title: 'Hướng dẫn Enterprise OS',
@@ -60,7 +72,7 @@ export function registerTools(server, ident) {
     annotations: { readOnlyHint: true },
   }, async ({ topic }) => ({ result: GUIDE[topic || 'overview'] }));
 
-  if (ident.agentId && !ident.scopes.includes('task_create')) { registerAgentTools(server, ident, tool, call); registerGuides(server); return; }
+  if (ident.agentId && !ident.scopes.includes('task_create')) { registerAgentTools(server, ident, tool, call, tracked); registerGuides(server); return; }
 
   // ---------- Đọc hiểu hệ thống ----------
   tool('eos_whoami', 'read', {
@@ -210,9 +222,9 @@ export function registerTools(server, ident) {
     if (!pre?.drive_folder_id || driveUnusable(pre.drive_state)) {
       throw new DbError('Thư mục Drive của bạn chưa thiết lập xong (trang Tài khoản → Thư mục Drive).', 'P0001');
     }
-    const f = await upload({ userFolderId: pre.drive_folder_id, taskId: id, filename, mime, bytes });
     const sha = (await import('node:crypto')).createHash('sha256').update(bytes).digest('hex');
-    await call('SELECT agent.mcp_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, sha]);
+    const f = await tracked(id, filename, () => upload({ userFolderId: pre.drive_folder_id, taskId: id, filename, mime, bytes }),
+      async (u) => { await call('SELECT agent.mcp_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, u.driveId, u.name, u.mime, u.url, u.size, u.folder, sha]); return u; });
     return { result: { saved: f.name, folder: f.folder, url: f.url, bytes: f.size }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), filename: a.filename, encoding: a.encoding, chars: a.content?.length }));
 
@@ -283,7 +295,7 @@ function registerGuides(server) {
 }
 
 // ---------- Worker agent hệ thống: chỉ đọc việc có thẻ đang chạy, và chia việc nếu được phép ----------
-function registerAgentTools(server, ident, tool, call) {
+function registerAgentTools(server, ident, tool, call, tracked) {
   tool('eos_get_task', 'read', {
     title: 'Chi tiết việc (agent)',
     description: 'Đọc việc mà agent đang có thẻ chạy, hoặc việc cha / việc con của nó. Đọc bằng quyền của người phụ trách việc.',
@@ -382,8 +394,8 @@ function registerAgentTools(server, ident, tool, call) {
     const bytes = Buffer.from(content, 'utf8');
     if (bytes.length > MAX_BYTES) throw new DbError(`Tệp quá ${MAX_BYTES / 1048576} MB`, 'P0001');
     const name = /\.md$/i.test(filename) ? filename : `${filename}.md`;
-    const f = await upload({ userFolderId: target.drive_folder_id, taskId: id, filename: name, mime: 'text/markdown', bytes });
-    await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, createHash('sha256').update(bytes).digest('hex')]);
+    const f = await tracked(id, name, () => upload({ userFolderId: target.drive_folder_id, taskId: id, filename: name, mime: 'text/markdown', bytes }),
+      async (u) => { await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, u.driveId, u.name, u.mime, u.url, u.size, u.folder, createHash('sha256').update(bytes).digest('hex')]); return u; });
     return { result: { saved: f.name, drive_id: f.driveId, name: f.name, url: f.url, folder: f.folder, bytes: f.size }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), filename: a.filename, chars: a.content?.length }));
 
@@ -461,9 +473,9 @@ function registerAgentTools(server, ident, tool, call) {
     catch (e) { throw new DbError(`Dữ liệu văn bản chưa hợp lệ: ${(e.issues || []).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') || e.message}`, 'P0001'); }
     const { buffer, filename } = rendered;
     if (buffer.length > MAX_BYTES) throw new DbError(`Tệp quá ${MAX_BYTES / 1048576} MB`, 'P0001');
-    const f = await upload({ userFolderId: target.drive_folder_id, taskId: id, filename, mime: DOCX_MIME, bytes: buffer });
     const sha = createHash('sha256').update(buffer).digest('hex');
-    await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, sha]);
+    const f = await tracked(id, filename, () => upload({ userFolderId: target.drive_folder_id, taskId: id, filename, mime: DOCX_MIME, bytes: buffer }),
+      async (u) => { await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, u.driveId, u.name, u.mime, u.url, u.size, u.folder, sha]); return u; });
     return {
       result: { drafted: f.name, drive_id: f.driveId, name: f.name, url: f.url, folder: f.folder, bytes: f.size,
                 note: 'Dự thảo chưa cấp số, chưa ký. Đưa {drive_id, name, url} vào metadata.outputs khi kanban_complete.' },
