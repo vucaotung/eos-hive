@@ -16,6 +16,7 @@ const files = new Map([['FOLDER_MINH', { id: 'FOLDER_MINH', name: 'DEO - Demo - 
                        ['MDFILE0000002', { id: 'MDFILE0000002', name: 'QD-02.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '# Quyết định 02\nPhê duyệt dự án.' }],
                        ['MDIDX0000001', { id: 'MDIDX0000001', name: '00_MUC_LUC.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Mục lục\nbảng mục lục dài hơn hai mươi ký tự' }],
                        ['MDFILE0000003', { id: 'MDFILE0000003', name: 'FM.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '---\nsha256: abc123\nsource_path: A/B/gốc.pdf\npages: 7\n---\n\nNội dung thật của văn bản, đủ dài để nạp vào kho.' }],
+                       ['MDFILE0000005', { id: 'MDFILE0000005', name: 'SONGSONG.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Tài liệu nạp song song\nNội dung đủ dài để nạp vào kho tri thức.' }],
                        ['OUTMD00000001', { id: 'OUTMD00000001', name: 'ngoai.md', mimeType: 'text/markdown', parents: ['SOMEONE_ELSE'], content: 'bí mật ngoài phạm vi' }]]);
 let seq = 0;
 const drive = express();
@@ -356,6 +357,17 @@ try {
     assert.equal(rows[0].weknora_kb_id, 'wkkb-new-0001'); assert.equal(rows[0].n, 2);
     const again = json(await call({ file_ids: ['MDFILE0000001', 'MDFILE0000003'] }));
     assert.equal(again.ingested, 0); assert.equal(again.skipped.length, 2); assert.equal(wkCalls.filter((c) => c[0] === 'doc').length, 2, 'không nạp trùng'); assert.equal(wkCalls.filter((c) => c[0] === 'kb').length, 1, 'không tạo KB lần hai');
+    // song song: hai lần gọi cùng lúc cho cùng một tài liệu → chỉ một lần nạp (giữ chỗ trong CSDL)
+    const docsBefore = wkCalls.filter((c) => c[0] === 'doc').length;
+    const [p1, p2] = (await Promise.all([call({ file_ids: ['MDFILE0000005'] }), call({ file_ids: ['MDFILE0000005'] })])).map(json);
+    assert.equal(p1.ingested + p2.ingested, 1, JSON.stringify([p1, p2]));
+    assert.equal(wkCalls.filter((c) => c[0] === 'doc').length, docsBefore + 1, 'WeKnora chỉ nhận một lần');
+    const loser = p1.ingested ? p2 : p1; assert.match(JSON.stringify(loser.skipped), /đang được nạp bởi lần gọi khác|đã nạp trước đó/);
+    assert.equal((await sql("SELECT state FROM agent.kb_ingest_claims WHERE drive_id = 'MDFILE0000005'"))[0].state, 'done');
+    // lỗi giữa chừng thì nhả giữ chỗ để lần sau nạp lại; giữ chỗ treo > 30 phút thì lấy lại được
+    await sql("DELETE FROM kb.sources WHERE file_id = (SELECT id FROM core.files WHERE drive_id = 'MDFILE0000005')");
+    await sql("UPDATE agent.kb_ingest_claims SET state = 'claiming', claimed_at = now() - interval '31 minutes' WHERE drive_id = 'MDFILE0000005'");
+    const re = json(await call({ file_ids: ['MDFILE0000005'] })); assert.equal(re.ingested, 1, 'giữ chỗ treo được lấy lại');
     await kb.close();
   });
   await step('bản tin: phạm vi theo vai trò; tạo/sửa việc qua MCP với email, dự án, agent, phải duyệt', async () => {

@@ -407,28 +407,41 @@ function registerAgentTools(server, ident, tool, call, tracked) {
     const id = toId(task);
     if (!weknora.configured()) throw new DbError('Máy chủ MCP chưa cấu hình WeKnora (WEKNORA_BASE_URL, WEKNORA_API_KEY). Dùng kanban_block để báo người quản trị.', 'P0001');
     const tg = await call('SELECT agent.mcp_kb_ingest_target($1) AS r', [id]);
-    let kbId = tg.weknora_kb_id, created = false;
-    if (!tg.kb_ready) {
-      try { ({ id: kbId, created } = await weknora.ensureKb(tg.kb_name, tg.description)); }
-      catch (e) { throw new DbError(`Không tạo được kho tri thức: ${e.message}`, 'P0001'); }
-      await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ weknora_kb_id: kbId })]);
-    }
     const loaded = new Set(tg.loaded_drive_ids || []);
     const done = [], skipped = [], failed = [];
-    for (const fid of file_ids) {
-      if (loaded.has(fid)) { skipped.push({ file_id: fid, reason: 'đã nạp trước đó' }); continue; }
-      try { await insideMd(fid, tg.md_folder_id); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
-      let f;
-      try { f = await readText(fid); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
-      if (/^00_/.test(f.name) || f.name.startsWith('_')) { skipped.push({ file_id: fid, name: f.name, reason: 'mục lục hoặc tệp nội bộ' }); continue; }
-      if (f.text.trim().length < 20) { skipped.push({ file_id: fid, name: f.name, reason: 'tệp rỗng' }); continue; }
-      try {
-        const p = weknora.prepare(f.name, f.text);
-        const docId = await weknora.addMarkdown(kbId, p.title, p.content);
-        done.push({ weknora_doc_id: docId, title: p.title, drive_id: fid, pages: p.pages });
-      } catch (e) { failed.push({ file_id: fid, name: f.name, error: e.message }); }
+    // Giữ chỗ trước khi làm gì: hai lần gọi song song cho cùng tài liệu (hoặc cùng tạo kho) chỉ một lần được chạy
+    const claim = await call('SELECT agent.mcp_kb_ingest_claim($1,$2::jsonb) AS r', [id, JSON.stringify(file_ids.filter((f) => !loaded.has(f)))]);
+    const mine = new Set(claim.claimed);
+    for (const b of claim.busy) skipped.push(b);
+    for (const f of file_ids) if (loaded.has(f)) skipped.push({ file_id: f, reason: 'đã nạp trước đó' });
+    const release = new Set(mine);   // bỏ giữ chỗ những gì không nạp được
+    let kbId = tg.weknora_kb_id, created = false;
+    try {
+      if (!tg.kb_ready) {
+        if (!claim.create_kb) throw new DbError('Kho tri thức đang được tạo bởi lần gọi khác, thử lại sau ít giây.', 'P0001');
+        try { ({ id: kbId, created } = await weknora.ensureKb(tg.kb_name, tg.description)); }
+        catch (e) { throw new DbError(`Không tạo được kho tri thức: ${e.message}`, 'P0001'); }
+        await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ weknora_kb_id: kbId })]);
+        release.add('__create__');
+      }
+      for (const fid of file_ids) {
+        if (!mine.has(fid)) continue;
+        try { await insideMd(fid, tg.md_folder_id); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
+        let f;
+        try { f = await readText(fid); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
+        if (/^00_/.test(f.name) || f.name.startsWith('_')) { skipped.push({ file_id: fid, name: f.name, reason: 'mục lục hoặc tệp nội bộ' }); continue; }
+        if (f.text.trim().length < 20) { skipped.push({ file_id: fid, name: f.name, reason: 'tệp rỗng' }); continue; }
+        try {
+          const p = weknora.prepare(f.name, f.text);
+          const docId = await weknora.addMarkdown(kbId, p.title, p.content);
+          done.push({ weknora_doc_id: docId, title: p.title, drive_id: fid, pages: p.pages });
+          release.delete(fid);
+        } catch (e) { failed.push({ file_id: fid, name: f.name, error: e.message }); }
+      }
+      if (done.length) await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ sources: done })]);
+    } finally {
+      if (mine.size || release.size) await call('SELECT agent.mcp_kb_ingest_finish($1,$2::jsonb) AS r', [id, JSON.stringify({ done: done.map((d) => d.drive_id), release: [...release] })]).catch(() => {});
     }
-    if (done.length) await call('SELECT agent.mcp_kb_ingest_commit($1,$2::jsonb) AS r', [id, JSON.stringify({ sources: done })]);
     return { result: { kb: tg.kb_name, weknora_kb_id: kbId, kb_created: created, ingested: done.length, skipped, failed }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), files: a.file_ids?.length }));
 
