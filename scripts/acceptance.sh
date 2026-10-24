@@ -161,7 +161,7 @@ s_A1() {
 }
 s_A2() {
   say ""; say "A2 · Quyền truy cập MCP"
-  check "mã đúng: 17 công cụ"                                [ "$(mcp --list)" = 17 ]
+  check "mã đúng: 18 công cụ"                                [ "$(mcp --list)" = 18 ]
   check "mã sai bị từ chối (kết nối)"                        wrong_token_rejected
   check "thiếu phạm vi hr_self → eos_my_hr bị từ chối"       hr_denied
   check "việc không tồn tại → lỗi, không lộ dữ liệu"         missing_task_err

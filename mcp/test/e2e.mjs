@@ -92,7 +92,7 @@ try {
   await step('liệt kê công cụ, tài nguyên, lời nhắc', async () => {
     const tools = (await c.listTools()).tools.map((t) => t.name).sort();
     assert.deepEqual(tools, ['eos_approvals_pending', 'eos_attach_drive_file', 'eos_comment', 'eos_company_digest', 'eos_get_task', 'eos_guide', 'eos_incoming_list',
-      'eos_list_kbs', 'eos_list_tasks', 'eos_my_day', 'eos_my_hr', 'eos_save_to_drive', 'eos_search', 'eos_submit_result', 'eos_task_save', 'eos_update_progress', 'eos_whoami']);
+      'eos_list_kbs', 'eos_list_members', 'eos_list_tasks', 'eos_my_day', 'eos_my_hr', 'eos_save_to_drive', 'eos_search', 'eos_submit_result', 'eos_task_save', 'eos_update_progress', 'eos_whoami']);
     assert.equal((await c.listResources()).resources.length, 6);
     assert.equal((await c.listPrompts()).prompts.length, 2);
     const p = await c.getPrompt({ name: 'lam_va_nop_viec', arguments: { task: 'T-501' } });
@@ -367,6 +367,8 @@ try {
     const mine = json(await me.callTool({ name: 'eos_company_digest', arguments: { days: 1 } }));
     assert.equal(mine.scope, 'Việc của tôi'); assert.equal(mine.agents, null); assert.deepEqual(mine.by_dept, []);
     assert.ok(mine.counts.open >= 1 && mine.counts.open < dg.counts.open + 1, 'thành viên chỉ thấy việc của mình');
+    const mem = json(await me.callTool({ name: 'eos_list_members', arguments: {} }));
+    assert.ok(mem.some((m) => m.email === 'minh@demo.vn' && m.role === 'member') && mem.every((m) => m.name && m.email), JSON.stringify(mem).slice(0, 200));
     // tạo việc
     const t = json(await ad.callTool({ name: 'eos_task_save', arguments: { title: 'Soạn báo cáo tuần cho phòng', description: 'Mai tạo qua MCP', assignee_email: 'minh@demo.vn', project: 'du-an-thu-nap-ho-so', due_date: '2030-02-01', priority: 'high', approval: true } }));
     assert.match(t.id, /^T-\d+$/);

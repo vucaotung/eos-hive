@@ -133,6 +133,12 @@ export function registerTools(server, ident) {
     annotations: { readOnlyHint: true },
   }, async ({ days, company_id }) => ({ result: await call('SELECT agent.mcp_company_digest($1::jsonb) AS r', [JSON.stringify({ days, company_id })]), entity: { type: 'digest', id: String(days) } }), (a) => ({ days: a.days }));
 
+  tool('eos_list_members', 'read', {
+    title: 'Danh sách thành viên công ty',
+    description: 'Tên, email, phòng, vai trò, chức danh của thành viên đang làm việc. Dùng để đổi tên người ("giao cho chị Lan") thành email trước khi gọi eos_task_save (assignee_email). Nếu nhiều người trùng tên thì hỏi lại người ra lệnh.',
+    inputSchema: { company_id: z.string().uuid().optional() }, annotations: { readOnlyHint: true },
+  }, async ({ company_id }) => ({ result: await call('SELECT agent.mcp_list_members($1::jsonb) AS r', [JSON.stringify({ company_id })]), entity: { type: 'members', id: 'list' } }), () => ({}));
+
   tool('eos_task_save', 'write', {
     title: 'Tạo hoặc sửa việc',
     description: 'Tạo việc mới (không truyền id) hoặc sửa việc có sẵn (id = "T-123"). Trường: title, description, assignee_email (email người phụ trách), project (mã hoặc tên dự án), due_date (YYYY-MM-DD), priority (low|medium|high|urgent), agent (mã agent AI làm việc này: dieu-phoi, van-thu, nhan-su, quan-tri-du-lieu...), approval (true = PHẢI DUYỆT: nộp xong chờ người giao duyệt mới hoàn thành; false = nộp là xong), status (todo|in_progress|blocked|cancelled khi sửa). Việc tạo mang danh tính chủ mã. Xác nhận lại với người ra lệnh trước khi tạo việc giao cho người khác.',

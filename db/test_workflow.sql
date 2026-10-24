@@ -156,6 +156,10 @@ DO $$ DECLARE c constant uuid := '77777777-7777-7777-7777-777777777777'; own con
   ASSERT (SELECT status = 'cancelled' FROM agent.cards WHERE task_id = 9801) AND NOT EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = 9801), 'hủy việc → thẻ hủy, không có lệnh hủy gửi cầu nối';
   PERFORM pg_temp.as_agent('ho-so-runner');
   ASSERT (agent.mcp_runner_claim())->>'idle' = 'true', 'runner không nhận việc đã hủy';
+  -- việc gốc xong/hủy thì lần chạy khép lại (trước đây mãi "đang chạy")
+  PERFORM pg_temp.as_user(sup);
+  PERFORM agent.app_task_save(jsonb_build_object('id', root, 'status', 'cancelled'));
+  ASSERT (SELECT state = 'cancelled' FROM agent.workflow_runs WHERE id = run), 'hủy việc gốc → lần chạy cancelled';
   RAISE NOTICE 'Quy trình dự án ok';
 END $$;
 

@@ -457,6 +457,28 @@ BEGIN
   RETURN jsonb_build_object('id', 'T-' || (r->>'id'), 'url', 'https://work.enterpriseos.bond/app/#/tasks');
 END $$;
 
+-- Danh sách thành viên (để Mai/agent cá nhân đổi tên người thành email khi giao việc bằng eos_task_save)
+CREATE OR REPLACE FUNCTION agent.mcp_list_members(p jsonb DEFAULT '{}') RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
+DECLARE me core.users := agent._web_me(); cid uuid := coalesce(agent._uuid(p, 'company_id'), (SELECT company_id FROM core.memberships WHERE user_id = me.id AND active ORDER BY joined_at LIMIT 1));
+BEGIN
+  PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
+  RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('name', u.name, 'email', u.email, 'department', d.code, 'role', agent._role_of(u.id, cid), 'title', m.title) ORDER BY u.name)
+                     FROM core.memberships m JOIN core.users u ON u.id = m.user_id AND u.kind = 'person' AND u.active LEFT JOIN core.departments d ON d.id = m.department_id
+                    WHERE m.company_id = cid AND m.active), '[]');
+END $$;
+
+-- Việc gốc của một lần chạy nạp hồ sơ xong (hoặc bị hủy) thì lần chạy cũng xong
+CREATE OR REPLACE FUNCTION agent.workflow_run_close_trg() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, public AS $$
+BEGIN
+  IF NEW.status IN ('done','cancelled') AND OLD.status IS DISTINCT FROM NEW.status THEN
+    UPDATE agent.workflow_runs SET state = CASE WHEN NEW.status = 'done' THEN 'done' ELSE 'cancelled' END WHERE root_task = NEW.id AND state = 'running';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS workflow_run_close ON work.tasks;
+CREATE TRIGGER workflow_run_close AFTER UPDATE OF status ON work.tasks FOR EACH ROW EXECUTE FUNCTION agent.workflow_run_close_trg();
+
 -- ---------- Cấp mã agent: thêm phạm vi project / runner / ingest ----------
 CREATE OR REPLACE FUNCTION agent.mcp_token_issue_agent(p_agent text, p_days int DEFAULT 90) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, core, public AS $$
@@ -483,5 +505,5 @@ END $$;
 -- ---------- Quyền ----------
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION agent.app_workflow_start(jsonb), agent.app_workflow_runs(jsonb), agent.app_project_results(jsonb) TO web_svc;
-GRANT EXECUTE ON FUNCTION agent.mcp_company_digest(jsonb), agent.mcp_task_save(jsonb), agent.mcp_kb_ingest_target(bigint), agent.mcp_kb_ingest_commit(bigint, jsonb), agent.mcp_project_scope(bigint), agent.mcp_catalog_upsert(bigint, jsonb), agent.mcp_runner_claim(), agent.mcp_runner_report(text, text, text, jsonb),
+GRANT EXECUTE ON FUNCTION agent.mcp_list_members(jsonb), agent.mcp_company_digest(jsonb), agent.mcp_task_save(jsonb), agent.mcp_kb_ingest_target(bigint), agent.mcp_kb_ingest_commit(bigint, jsonb), agent.mcp_project_scope(bigint), agent.mcp_catalog_upsert(bigint, jsonb), agent.mcp_runner_claim(), agent.mcp_runner_report(text, text, text, jsonb),
   agent.mcp_runner_setup(bigint, jsonb) TO mcp_svc;
