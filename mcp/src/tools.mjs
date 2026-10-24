@@ -151,7 +151,8 @@ export function registerTools(server, ident) {
     inputSchema: { id: z.string().regex(/^(T-)?\d{1,12}$/i).optional(), title: z.string().min(2).max(300).optional(), description: z.string().max(8000).optional(),
       assignee_email: z.string().email().optional(), project: z.string().max(120).optional(), due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(), agent: z.string().regex(/^[a-z][a-z-]{1,31}$/).or(z.literal('')).optional(), approval: z.boolean().optional(),
-      status: z.enum(['todo', 'in_progress', 'blocked', 'cancelled']).optional() },
+      status: z.enum(['todo', 'in_progress', 'blocked', 'cancelled']).optional(),
+      source_ref: z.string().max(120).optional().describe('Mã tin nhắn/nguồn yêu cầu (vd. id tin Zalo). Chỉ dùng để chống tạo trùng: cùng tên + cùng người phụ trách + cùng nguồn trong 15 phút trả lại việc cũ.') },
   }, async (args) => {
     if (createOnly() && (args.id || args.status)) throw new DbError('Mã này chỉ được tạo việc mới, không sửa việc có sẵn', '42501');
     return { result: await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(args)]), entity: { type: 'task', id: String(args.id || 'new') } };

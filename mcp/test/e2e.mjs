@@ -430,8 +430,29 @@ try {
     const mai = await connect(process.env.TOKEN_MAI);
     const args = { title: 'Mai tạo việc trùng thử', assignee_email: 'minh@demo.vn' };
     const a = json(await mai.callTool({ name: 'eos_task_save', arguments: args })), b = json(await mai.callTool({ name: 'eos_task_save', arguments: args }));
-    assert.equal(b.id, a.id); assert.equal(b.duplicate, true);
+    assert.equal(b.id, a.id); assert.equal(b.duplicate, true); assert.match(b.reason, /cùng tên, cùng người phụ trách/);
     assert.equal((await sql("SELECT count(*)::int n FROM work.tasks WHERE title = 'Mai tạo việc trùng thử'"))[0].n, 1);
+    // khóa: cùng tên nhưng KHÁC người phụ trách → hai việc; khác chữ hoa/dấu cách vẫn là cùng tên
+    const c2 = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: '  MAI tạo việc trùng thử ', assignee_email: 'lan@demo.vn' } }));
+    assert.notEqual(c2.id, a.id); assert.ok(!c2.duplicate);
+    const d2 = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: 'mai tạo việc trùng thử', assignee_email: 'minh@demo.vn' } })); assert.equal(d2.id, a.id, 'chuẩn hóa tên (hoa/thường, khoảng trắng)');
+    // nguồn tin: cùng tên + cùng người + cùng source_ref → trùng; khác source_ref → việc mới
+    const s1 = { title: 'Gọi lại nhà cung cấp', assignee_email: 'minh@demo.vn', source_ref: 'zalo:msg-1001' };
+    const e1 = json(await mai.callTool({ name: 'eos_task_save', arguments: s1 })), e2 = json(await mai.callTool({ name: 'eos_task_save', arguments: s1 }));
+    assert.equal(e2.id, e1.id); assert.equal(e2.duplicate, true); assert.match(e2.reason, /cùng nguồn tin/);
+    const e3 = json(await mai.callTool({ name: 'eos_task_save', arguments: { ...s1, source_ref: 'zalo:msg-1002' } })); assert.notEqual(e3.id, e1.id);
+    const e4 = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: s1.title, assignee_email: s1.assignee_email } })); assert.notEqual(e4.id, e1.id, 'không source_ref khác với có source_ref');
+    // quá 15 phút → cho tạo lại
+    await sql("UPDATE agent.task_create_keys SET created_at = now() - interval '16 minutes' WHERE task_id = $1", [Number(e1.id.slice(2))]);
+    const e5 = json(await mai.callTool({ name: 'eos_task_save', arguments: s1 })); assert.notEqual(e5.id, e1.id); assert.ok(!e5.duplicate);
+    // đồng thời: hai lần gọi cùng lúc chỉ tạo một việc
+    const par = { title: 'Việc gọi song song', assignee_email: 'minh@demo.vn', source_ref: 'zalo:msg-2001' };
+    const [q1, q2] = (await Promise.all([mai.callTool({ name: 'eos_task_save', arguments: par }), mai.callTool({ name: 'eos_task_save', arguments: par })])).map(json);
+    assert.equal(q1.id, q2.id); assert.equal([q1, q2].filter((x) => x.duplicate).length, 1);
+    // người thật (không phải agent) không bị chặn trùng
+    const human = await connect(process.env.TOKEN_ADMIN);
+    const h1 = json(await human.callTool({ name: 'eos_task_save', arguments: { title: 'Người tạo hai lần', assignee_email: 'minh@demo.vn' } })), h2 = json(await human.callTool({ name: 'eos_task_save', arguments: { title: 'Người tạo hai lần', assignee_email: 'minh@demo.vn' } }));
+    assert.notEqual(h1.id, h2.id); await human.close();
     await watcher.close(); await owner.close(); await mai.close();
   });
   await step('mã sai: 20 lần/IP trong cửa sổ → lần 21 trở đi 429 (kể cả mã đúng, không chạm CSDL); hết cửa sổ mã đúng dùng lại được; IP khác không bị ảnh hưởng', async () => {

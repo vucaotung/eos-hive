@@ -421,9 +421,21 @@ BEGIN
 END $$;
 
 -- Tạo hoặc sửa việc qua MCP (agent cá nhân, Mai): nhận email người phụ trách, mã/tên dự án, mã agent, "approval": true = phải duyệt (quy trình "Người giao duyệt").
+-- Khóa chống tạo trùng của bot (mcp_task_save); dọn bằng agent.housekeeping_prune
+CREATE TABLE IF NOT EXISTS agent.task_create_keys (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  dkey        text NOT NULL,
+  company_id  uuid NOT NULL REFERENCES core.companies(id) ON DELETE CASCADE,
+  created_by  uuid NOT NULL REFERENCES core.users(id),
+  task_id     bigint NOT NULL REFERENCES work.tasks(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS task_create_keys_idx ON agent.task_create_keys (dkey, created_at DESC);
+REVOKE ALL ON agent.task_create_keys FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION agent.mcp_task_save(p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
-DECLARE me core.users := agent._web_me(); cid uuid; q jsonb := p - 'assignee_email' - 'project' - 'agent' - 'approval'; t work.tasks; uid uuid; pid uuid; fid uuid; r jsonb;
+DECLARE me core.users := agent._web_me(); cid uuid; q jsonb := p - 'assignee_email' - 'project' - 'agent' - 'approval' - 'source_ref'; t work.tasks; uid uuid; pid uuid; fid uuid; r jsonb; v_dkey text; dup bigint;
 BEGIN
   IF me.kind = 'agent' AND ((p->>'id') IS NOT NULL OR p ? 'status' OR coalesce(p->>'agent', '') <> '') THEN
     RAISE EXCEPTION 'Tài khoản agent chỉ được tạo việc mới cho người, không sửa việc, không đổi trạng thái, không giao cho agent' USING ERRCODE = '42501';
@@ -437,13 +449,17 @@ BEGIN
     q := q || jsonb_build_object('company_id', cid);
   END IF;
   PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
-  -- (2) Bot (Zalo hay gửi lại tin) có thể tạo trùng: cùng người tạo + cùng tên + cùng người phụ trách trong 15 phút thì trả lại việc cũ
+  -- (2) Bot (Zalo hay gửi lại tin) có thể tạo trùng. Khóa chống trùng = (công ty, tên chuẩn hóa, người phụ trách, nguồn tin nếu có `source_ref`), trong 15 phút:
+  --     cùng tên nhưng khác người phụ trách (hoặc khác nguồn) là hai việc khác nhau. Khóa tư vấn (advisory) giữ hai lần gọi đồng thời không cùng lọt qua.
   IF me.kind = 'agent' AND (p->>'id') IS NULL THEN
-    SELECT id INTO t.id FROM work.tasks
-     WHERE created_by = me.id AND company_id = cid AND created_at > now() - interval '15 minutes' AND lower(btrim(title)) = lower(btrim(coalesce(p->>'title', '')))
-       AND assignee_id IS NOT DISTINCT FROM (SELECT u2.id FROM core.users u2 WHERE lower(u2.email) = lower(btrim(coalesce(p->>'assignee_email', ''))) AND u2.kind = 'person')
-     ORDER BY id DESC LIMIT 1;
-    IF t.id IS NOT NULL THEN RETURN jsonb_build_object('id', 'T-' || t.id, 'url', 'https://work.enterpriseos.bond/app/#/tasks', 'duplicate', true); END IF;
+    SELECT id INTO uid FROM core.users u2 WHERE lower(u2.email) = lower(btrim(coalesce(p->>'assignee_email', ''))) AND u2.kind = 'person';
+    v_dkey := md5(cid::text || '|' || core.norm(coalesce(p->>'title', '')) || '|' || coalesce(uid::text, '') || '|' || coalesce(nullif(btrim(p->>'source_ref'), ''), ''));
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_dkey, 0));
+    SELECT k.task_id INTO dup FROM agent.task_create_keys k WHERE k.dkey = v_dkey AND k.created_at > now() - interval '15 minutes' ORDER BY k.created_at DESC LIMIT 1;
+    IF dup IS NOT NULL THEN
+      RETURN jsonb_build_object('id', 'T-' || dup, 'url', 'https://work.enterpriseos.bond/app/#/tasks', 'duplicate', true,
+                                'reason', 'Đã có việc cùng tên, cùng người phụ trách' || CASE WHEN nullif(btrim(p->>'source_ref'), '') IS NOT NULL THEN ', cùng nguồn tin' ELSE '' END || ' tạo trong 15 phút qua');
+    END IF;
   END IF;
   IF p ? 'assignee_email' THEN
     SELECT u.id INTO uid FROM core.users u JOIN core.memberships m ON m.user_id = u.id AND m.company_id = cid AND m.active WHERE lower(u.email) = lower(btrim(p->>'assignee_email')) AND u.kind = 'person';
@@ -465,6 +481,7 @@ BEGIN
     ELSE q := q || jsonb_build_object('approval_flow_id', ''); END IF;
   END IF;
   r := agent.app_task_save(q);
+  IF v_dkey IS NOT NULL THEN INSERT INTO agent.task_create_keys (dkey, company_id, created_by, task_id) VALUES (v_dkey, cid, me.id, (r->>'id')::bigint); END IF;
   RETURN jsonb_build_object('id', 'T-' || (r->>'id'), 'url', 'https://work.enterpriseos.bond/app/#/tasks');
 END $$;
 
