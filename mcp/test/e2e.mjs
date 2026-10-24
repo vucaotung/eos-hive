@@ -25,6 +25,7 @@ drive.post('/token', express.urlencoded({ extended: false }), (req, res) => {
 });
 drive.use((req, res, next) => (req.get('authorization') === 'Bearer fake-access' ? next() : res.status(401).end()));
 drive.get('/drive/v3/files', (req, res) => {
+  if (req.query.q.includes("'FOLDER_DENIED' in parents")) return res.status(403).json({ error: 'forbidden' });
   const lst = req.query.q.match(/^'([^']+)' in parents and trashed = false$/);
   if (lst) return res.json({ files: [...files.values()].filter((f) => f.parents.includes(lst[1])).map((f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, size: String((f.content || '').length), modifiedTime: '2026-10-20T00:00:00Z' })) });
   const m = req.query.q.match(/'([^']+)' in parents and name = '([^']+)'/);
@@ -364,6 +365,20 @@ try {
     const ok = JSON.parse((await py("print(json.dumps(R.Mcp(sys.argv[1], sys.argv[2]).call('eos_runner_claim')))", url.href, process.env.TOKEN_RUNNER)).stdout);
     assert.equal(ok.idle, true);
     await assert.rejects(py("R.Mcp(sys.argv[1], sys.argv[2]).call('eos_runner_claim')", url.href, 'eos_' + '0'.repeat(48)), (e) => /McpError.*401/.test(e.stderr), 'mã sai bị từ chối');
+  });
+  await step('thư mục Drive ở trạng thái pending vẫn lưu được; thư mục agent không có quyền ghi → báo rõ cách khắc phục', async () => {
+    const full = await connect(process.env.TOKEN_FULL);
+    await sql("UPDATE core.users SET drive_state = 'pending' WHERE id = 'cccccccc-0000-0000-0000-000000000001'");
+    const ok = await full.callTool({ name: 'eos_save_to_drive', arguments: { task: 501, filename: 'pending.md', content: 'Nội dung thử đủ dài' } });
+    assert.ok(!ok.isError, text(ok));
+    await sql("UPDATE core.users SET drive_folder_id = 'FOLDER_DENIED' WHERE id = 'cccccccc-0000-0000-0000-000000000001'");
+    const bad = await full.callTool({ name: 'eos_save_to_drive', arguments: { task: 501, filename: 'denied.md', content: 'Nội dung thử đủ dài' } });
+    assert.equal(bad.isError, true); assert.match(text(bad), /Người chỉnh sửa/);
+    await sql("UPDATE core.users SET drive_state = 'none' WHERE id = 'cccccccc-0000-0000-0000-000000000001'");
+    const none = await full.callTool({ name: 'eos_save_to_drive', arguments: { task: 501, filename: 'none.md', content: 'Nội dung thử đủ dài' } });
+    assert.equal(none.isError, true); assert.match(text(none), /chưa thiết lập/);
+    await sql("UPDATE core.users SET drive_state = 'ok', drive_folder_id = 'FOLDER_MINH' WHERE id = 'cccccccc-0000-0000-0000-000000000001'");
+    await full.close();
   });
   await dp.close(); await vt.close(); await rn.close(); await adm.end();
 

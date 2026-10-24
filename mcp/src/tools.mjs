@@ -14,6 +14,15 @@ const toId = (v) => Number(String(v).replace(/^T-/i, ''));
 const ok = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] });
 const fail = (msg) => ({ isError: true, content: [{ type: 'text', text: msg }] });
 
+// Thư mục Drive đã khai báo nhưng chưa có tiến trình kiểm tra (trạng thái pending) vẫn dùng được: lỗi quyền được báo rõ khi tải lên. Chỉ 'none' và 'error' bị chặn.
+const driveUnusable = (st) => !['ok', 'pending'].includes(st);
+const upload = async (args) => {
+  try { return await uploadResult(args); }
+  catch (e) {
+    if ([403, 404].includes(e.status)) throw new DbError('Tài khoản agent không ghi được vào thư mục Drive này. Người phụ trách cần chia sẻ thư mục quyền "Người chỉnh sửa" cho tài khoản agent của công ty (xem Tài khoản → Thư mục Drive), rồi thử lại.', 'P0001');
+    throw e;
+  }
+};
 const TEXT_MIME = { md: 'text/markdown', txt: 'text/plain', csv: 'text/csv', html: 'text/html', json: 'application/json' };
 
 export function registerTools(server, ident) {
@@ -164,10 +173,10 @@ export function registerTools(server, ident) {
       await c.query('SELECT agent.mcp_task($1)', [id]);
       return (await c.query('SELECT drive_folder_id, drive_state FROM core.users WHERE id = core.current_user_id()')).rows[0];
     });
-    if (!pre?.drive_folder_id || pre.drive_state !== 'ok') {
+    if (!pre?.drive_folder_id || driveUnusable(pre.drive_state)) {
       throw new DbError('Thư mục Drive của bạn chưa thiết lập xong (trang Tài khoản → Thư mục Drive).', 'P0001');
     }
-    const f = await uploadResult({ userFolderId: pre.drive_folder_id, taskId: id, filename, mime, bytes });
+    const f = await upload({ userFolderId: pre.drive_folder_id, taskId: id, filename, mime, bytes });
     const sha = (await import('node:crypto')).createHash('sha256').update(bytes).digest('hex');
     await call('SELECT agent.mcp_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, sha]);
     return { result: { saved: f.name, folder: f.folder, url: f.url, bytes: f.size }, entity: { type: 'task', id: String(id) } };
@@ -335,11 +344,11 @@ function registerAgentTools(server, ident, tool, call) {
   }, async ({ task, filename, content }) => {
     const id = toId(task);
     const target = await call('SELECT agent.mcp_agent_drive_target($1) AS r', [id]);
-    if (!target?.drive_folder_id || target.drive_state !== 'ok') throw new DbError('Người theo dõi chưa thiết lập thư mục Drive (Tài khoản → Thư mục Drive). Dùng kanban_block để báo.', 'P0001');
+    if (!target?.drive_folder_id || driveUnusable(target.drive_state)) throw new DbError('Người theo dõi chưa thiết lập thư mục Drive (Tài khoản → Thư mục Drive). Dùng kanban_block để báo.', 'P0001');
     const bytes = Buffer.from(content, 'utf8');
     if (bytes.length > MAX_BYTES) throw new DbError(`Tệp quá ${MAX_BYTES / 1048576} MB`, 'P0001');
     const name = /\.md$/i.test(filename) ? filename : `${filename}.md`;
-    const f = await uploadResult({ userFolderId: target.drive_folder_id, taskId: id, filename: name, mime: 'text/markdown', bytes });
+    const f = await upload({ userFolderId: target.drive_folder_id, taskId: id, filename: name, mime: 'text/markdown', bytes });
     await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, createHash('sha256').update(bytes).digest('hex')]);
     return { result: { saved: f.name, drive_id: f.driveId, name: f.name, url: f.url, folder: f.folder, bytes: f.size }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), filename: a.filename, chars: a.content?.length }));
@@ -410,7 +419,7 @@ function registerAgentTools(server, ident, tool, call) {
   }, async ({ task, ...spec }) => {
     const id = toId(task);
     const target = await call('SELECT agent.mcp_agent_drive_target($1) AS r', [id]);   // kiểm thẻ đang chạy + lấy thư mục Drive của người phụ trách
-    if (!target?.drive_folder_id || target.drive_state !== 'ok') {
+    if (!target?.drive_folder_id || driveUnusable(target.drive_state)) {
       throw new DbError('Người phụ trách việc chưa thiết lập thư mục Drive (trang Tài khoản → Thư mục Drive). Dùng kanban_block để báo.', 'P0001');
     }
     let rendered;
@@ -418,7 +427,7 @@ function registerAgentTools(server, ident, tool, call) {
     catch (e) { throw new DbError(`Dữ liệu văn bản chưa hợp lệ: ${(e.issues || []).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') || e.message}`, 'P0001'); }
     const { buffer, filename } = rendered;
     if (buffer.length > MAX_BYTES) throw new DbError(`Tệp quá ${MAX_BYTES / 1048576} MB`, 'P0001');
-    const f = await uploadResult({ userFolderId: target.drive_folder_id, taskId: id, filename, mime: DOCX_MIME, bytes: buffer });
+    const f = await upload({ userFolderId: target.drive_folder_id, taskId: id, filename, mime: DOCX_MIME, bytes: buffer });
     const sha = createHash('sha256').update(buffer).digest('hex');
     await call('SELECT agent.mcp_agent_register_file($1,$2,$3,$4,$5,$6,$7,$8) AS r', [id, f.driveId, f.name, f.mime, f.url, f.size, f.folder, sha]);
     return {
