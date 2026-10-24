@@ -3,6 +3,13 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.2 — 2026-10-24 · Hợp nhất Ever Teams → Enterprise OS
+- Gỡ Ever Teams: dừng 14 container (giữ volume), Caddy `teams.*` chuyển hướng về Enterprise OS, gỡ MCP/plugin/skill/persona Ever khỏi `team_admin`, `ks-kinh-te-xd`, `ops-admin` (`ops/hermes_remove_everteams.py`, có sao lưu); nhập 21 việc Ever vào EOS.
+- Bản tin ngày/tuần từ EOS (`eos_company_digest`, `ops/eos_report.py`) thay cron Ever; cron Ever tạm dừng.
+- Công cụ MCP mới: `eos_list_members`, `eos_task_save`, `eos_company_digest` (18 công cụ). Migration 0014, 0015 (đóng lượt chạy workflow khi việc xong).
+- Skill `enterprise-os-guide` cho Mai/ks; `scripts/issue_user_token.sh`.
+- Tài liệu: `docs/13` (kiểm kê, luồng chuẩn), `docs/14` (so sánh kế hoạch, đề xuất), `prompts/50` (prompt tổng hợp báo cáo); cập nhật `prompts/00-MASTER.md`.
+
 ## [0.2.1] — 2026-10-23
 
 ### Đổi
