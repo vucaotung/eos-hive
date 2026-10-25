@@ -3,6 +3,13 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.6 — Thành viên gồm người và AI agent
+- Tab Quản trị → Thành viên: danh sách chung người + AI agent, lọc, tìm kiếm, ngăn chi tiết agent (vai trò, được/không được làm, người phụ trách, bật/tắt nhận việc). Cột kỹ thuật chỉ chủ sở hữu/quản trị thấy.
+- CSDL (0023): `company_agents.owner_user_id/department_id/title/updated_at`, `agent.app_members`, `agent.app_agent_set`, trigger kiểm người phụ trách. Agent vẫn không có membership; `app_org` vẫn chỉ trả người.
+- `deploy/setup_agent_profiles.sql`: bảng phân vai 7 agent (không chạy tự động).
+- `/mcp`: khóa mã sai theo (IP, tiền tố mã) 20 lần/5 phút + tổng theo IP 200 lần; `MCP_AUTHFAIL_ALLOW` miễn ngưỡng tổng. Bot cùng IP vps173 không khóa lẫn nhau.
+- Skill `enterprise-os-guide` 1.1.0 (`source_ref`, `duplicate`, hàng đợi thông tin bổ sung), `deploy/logrotate.eos-housekeeping`. Chi tiết: docs/17.
+
 ## 0.2.5 — Giới hạn và sửa lỗi lớp MCP (nhánh feat/hardening-0.2.5, chưa triển khai)
 - `/mcp`: 20 mã sai/5 phút theo IP → 429 trước khi chạm CSDL; mẫu Caddy `deploy/Caddyfile.mcp.snippet`.
 - `mcp_token_issue`: tham số công ty phải do quản trị công ty cấp (0018).

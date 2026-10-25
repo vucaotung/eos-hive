@@ -6,6 +6,7 @@ import { rpc } from "../lib/api.js";
 import { ROLE, DRIVE, ddmmyyyy, ago } from "../lib/format.js";
 import { CopyButton, Empty, ErrorBox, PageHeader, Person, SelectField, TextInput } from "../components/ui.jsx";
 import AgentAdmin from "../components/AgentAdmin.jsx";
+import AgentDrawer, { AGENT_STATUS } from "../components/AgentDrawer.jsx";
 import { Dialog, useEditor } from "../components/Dialog.jsx";
 
 const rowCls = "flex flex-wrap items-center gap-x-4 gap-y-1 bg-surface px-4 py-3";
@@ -39,31 +40,72 @@ function Departments() {
   );
 }
 
-function Members() {
+function Members({ goTab }) {
   const { companyId, org, lookups, loadOrg, userId, role } = useApp();
   const ed = useEditor({});
   const [showOff, setShowOff] = useState(false);
-  const list = org.members.filter((m) => showOff || m.active);
+  const [kind, setKind] = useState("all");
+  const [q, setQ] = useState("");
+  const [tick, setTick] = useState(0);
+  const [sel, setSel] = useState(null);
+  const { data, error, loading } = useLoad(() => rpc("app_members", { company_id: companyId }), [companyId, tick]);
+  const tech = !!data?.tech;
   const roles = Object.entries(ROLE).filter(([k]) => role === "owner" || k !== "owner").map(([value, label]) => ({ value, label }));
+  const needle = q.trim().toLowerCase();
+  const match = (...xs) => !needle || xs.some((x) => String(x || "").toLowerCase().includes(needle));
+  const people = (data?.people || []).filter((m) => (showOff || m.active) && match(m.user?.name, m.user?.email, m.title));
+  const agents = (data?.agents || []).filter((a) => match(a.name, a.title, a.code, a.owner?.name));
+  const selected = (data?.agents || []).find((a) => a.code === sel) || null;
+  const deptLabel = (id) => (lookups.dept[id]?.code ? `${lookups.dept[id].code} · ` : "");
   return (
     <div className="flex flex-col gap-4">
-      <Switch isSelected={showOff} onChange={setShowOff}><Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control>Hiện cả người đã khóa</Switch.Content></Switch>
-      <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
-        {list.map((m) => (
-          <div key={m.user_id} className={rowCls}>
-            <span className="min-w-0 flex-1"><Person user={m.user} /></span>
-            <span className="w-40 truncate text-sm text-muted">{m.user?.email}</span>
-            <span className="w-28 text-sm">{lookups.dept[m.department_id]?.code ? `${lookups.dept[m.department_id].code} · ` : ""}{ROLE[m.role]}</span>
-            <span className={`w-36 text-sm ${m.user?.drive_status === "ok" ? "text-success" : m.user?.drive_status === "error" ? "text-danger" : "text-muted"}`}>Drive: {DRIVE[m.user?.drive_status || "none"]}</span>
-            {!m.active && <span className="text-sm font-semibold text-warning">Đã khóa</span>}
-            {m.user_id !== userId && (role !== "admin" || m.role !== "owner") && (
-              <Button size="sm" variant="ghost" onPress={() => ed.start({ user_id: m.user_id, name: m.user?.name, role: m.role, department_id: m.department_id, title: m.title || "", active: m.active })}><Pencil className="size-4" />Sửa</Button>
-            )}
-          </div>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1" role="group" aria-label="Lọc">
+          {[["all", "Tất cả"], ["person", "Người"], ["agent", "AI agent"]].map(([k, l]) => (
+            <Button key={k} size="sm" variant={kind === k ? "primary" : "secondary"} onPress={() => setKind(k)}>{l}</Button>))}
+        </div>
+        <div className="min-w-48 flex-1"><TextInput label="Tìm kiếm" value={q} onChange={setQ} placeholder="Tên, email, chức danh, người phụ trách" /></div>
+        {kind !== "agent" && <Switch isSelected={showOff} onChange={setShowOff}><Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control>Hiện cả người đã khóa</Switch.Content></Switch>}
       </div>
+      <ErrorBox error={error} />
+      {loading && !data && <div className="h-40 animate-pulse rounded-xl bg-surface" />}
+      {data && kind !== "agent" && (
+        <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
+          {people.map((m) => (
+            <div key={m.user_id} className={rowCls}>
+              <span className="min-w-0 flex-1"><Person user={m.user} /></span>
+              <span className="w-40 truncate text-sm text-muted">{m.user?.email}</span>
+              <span className="w-28 text-sm">{deptLabel(m.department_id)}{ROLE[m.role]}</span>
+              <span className={`w-36 text-sm ${m.user?.drive_status === "ok" ? "text-success" : m.user?.drive_status === "error" ? "text-danger" : "text-muted"}`}>Drive: {DRIVE[m.user?.drive_status || "none"]}</span>
+              {!m.active && <span className="text-sm font-semibold text-warning">Đã khóa</span>}
+              {role !== "manager" && m.user_id !== userId && (role !== "admin" || m.role !== "owner") && (
+                <Button size="sm" variant="ghost" onPress={() => ed.start({ user_id: m.user_id, name: m.user?.name, role: m.role, department_id: m.department_id, title: m.title || "", active: m.active })}><Pencil className="size-4" />Sửa</Button>
+              )}
+            </div>
+          ))}
+          {!people.length && <Empty>Không có người phù hợp.</Empty>}
+        </div>
+      )}
+      {data && kind !== "person" && (
+        <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl" data-testid="agent-list">
+          {agents.map((a) => { const [label, tone] = AGENT_STATUS[a.status] || ["", ""]; return (
+            <button key={a.code} type="button" onClick={() => setSel(a.code)} className={`${rowCls} w-full cursor-pointer text-left hover:bg-surface-secondary`}>
+              <span className="min-w-0 flex-1">
+                <span className="mr-2 rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-extrabold text-accent">AI</span><b>{a.name}</b>
+                {a.title && <span className="ml-2 text-sm text-muted">{a.title}</span>}
+              </span>
+              <span className="w-28 truncate text-sm text-muted">{a.department_id ? deptLabel(a.department_id).replace(" · ", "") : "Chung"}</span>
+              <span className="w-36 truncate text-sm">Phụ trách: {a.owner?.name || "Chưa có"}</span>
+              <span className={`w-32 text-sm font-semibold ${tone}`}>{label}</span>
+              {tech && <span className="w-28 text-sm text-muted">{a.last_active ? ago(a.last_active) : "Chưa hoạt động"}</span>}
+              {tech && <span className="w-24 text-sm text-muted">{a.running} đang làm</span>}
+            </button>); })}
+          {!agents.length && <Empty>Công ty chưa bật AI agent nào.</Empty>}
+        </div>
+      )}
+      <AgentDrawer agent={selected} tech={tech} onClose={() => setSel(null)} onSaved={() => setTick((x) => x + 1)} goAgents={() => { setSel(null); goTab?.("agents"); }} />
       <Dialog title={`Sửa ${ed.f.name || ""}`} isOpen={ed.open} onClose={ed.close} busy={ed.busy} error={ed.error}
-        onSave={() => ed.run(async () => { await rpc("app_member_set", { company_id: companyId, user_id: ed.f.user_id, role: ed.f.role, department_id: ed.f.department_id, title: ed.f.title, active: ed.f.active }); await loadOrg(); }, "Đã cập nhật thành viên")}>
+        onSave={() => ed.run(async () => { await rpc("app_member_set", { company_id: companyId, user_id: ed.f.user_id, role: ed.f.role, department_id: ed.f.department_id, title: ed.f.title, active: ed.f.active }); await loadOrg(); setTick((x) => x + 1); }, "Đã lưu thành viên")}>
         <SelectField label="Vai trò" value={ed.f.role} onChange={ed.set("role")} options={roles} />
         <SelectField label="Phòng ban" value={ed.f.department_id} onChange={ed.set("department_id")} allowEmpty emptyLabel="Chung công ty" options={org.departments.map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
         <TextInput label="Chức danh" value={ed.f.title} onChange={ed.set("title")} placeholder="Ví dụ: Chuyên viên pháp lý" />
@@ -187,7 +229,7 @@ function Flows() {
 export default function Admin() {
   const { isAdmin, isManager, isSystemAdmin, membership } = useApp();
   const tabs = [
-    isAdmin && ["members", "Thành viên", Members],
+    (isAdmin || isManager) && ["members", "Thành viên", Members],
     (isAdmin || isManager) && ["invites", "Mã mời", Invites],
     isAdmin && ["departments", "Phòng ban", Departments],
     isAdmin && ["flows", "Quy trình duyệt", Flows],
@@ -205,7 +247,7 @@ export default function Admin() {
             {tabs.map(([k, label]) => <Tabs.Tab key={k} id={k}>{label}<Tabs.Indicator /></Tabs.Tab>)}
           </Tabs.List>
         </Tabs.ListContainer>
-        {tabs.map(([k, , C]) => <Tabs.Panel key={k} id={k} className="pt-5"><C /></Tabs.Panel>)}
+        {tabs.map(([k, , C]) => <Tabs.Panel key={k} id={k} className="pt-5"><C goTab={setTab} /></Tabs.Panel>)}
       </Tabs>
     </div>
   );

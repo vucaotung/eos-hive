@@ -1,0 +1,10 @@
+# Cài vào /etc/logrotate.d/eos-housekeeping (docs/16 §6, docs/17). Xoay nhật ký dọn định kỳ của Enterprise OS: hằng tuần, giữ 8 bản, nén.
+/var/log/eos-housekeeping.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root adm
+}
