@@ -1,5 +1,7 @@
 # Cài vào /etc/logrotate.d/eos-housekeeping (docs/16 §6, docs/17). Xoay nhật ký dọn định kỳ của Enterprise OS: hằng tuần, giữ 8 bản, nén.
+# `su root syslog`: /var/log của Ubuntu thuộc nhóm syslog và nhóm được ghi, logrotate từ chối xoay nếu không khai báo su.
 /var/log/eos-housekeeping.log {
+    su root syslog
     weekly
     rotate 8
     compress
