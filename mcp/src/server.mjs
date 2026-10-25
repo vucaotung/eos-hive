@@ -11,22 +11,30 @@ const RATE = Number(process.env.MCP_RATE_PER_MIN || 120);
 const hits = new Map();   // tokenId → [mốc thời gian]
 const MINUTE = 60_000;
 
-// Bộ đếm xác thực THẤT BẠI theo IP (IP thật do Caddy chuyển qua X-Forwarded-For, app.set('trust proxy', 'loopback')). Chỉ đếm lần sai; lần đúng không xóa bộ đếm.
-// Vượt ngưỡng thì trả 429 TRƯỚC khi truy vấn CSDL (kể cả mã đúng) cho đến khi các lần sai cũ trượt khỏi cửa sổ. Hệ quả cần biết: nhiều máy dùng chung một IP (NAT) chung một hạn mức.
-// Giữ trong bộ nhớ của tiến trình (khởi động lại thì xóa); ngưỡng chỉnh bằng MCP_AUTHFAIL_MAX / MCP_AUTHFAIL_WINDOW_MS.
-export function makeAuthGuard({ max = 20, windowMs = 5 * MINUTE, maxKeys = 50_000 } = {}) {
-  const fails = new Map();   // ip → [mốc thời gian của các lần sai]
-  const live = (k, now) => { const a = (fails.get(k) || []).filter((t) => now - t < windowMs); if (a.length) fails.set(k, a); else fails.delete(k); return a; };
+// Bộ đếm xác thực THẤT BẠI. IP thật do Caddy chuyển qua X-Forwarded-For (app.set('trust proxy', 'loopback')).
+// Hai ngưỡng, cùng cửa sổ trượt (mặc định 5 phút):
+//  1. theo cặp (IP, 8 ký tự đầu của mã gửi lên; "none" nếu không có mã): 20 lần. Một mã hết hạn bị thử lại liên tục chỉ khóa chính nó,
+//     các mã đúng khác từ cùng IP (Mai, ks, cron bản tin, cầu nối cùng ở vps173) vẫn vào được;
+//  2. tổng theo IP: 200 lần, để kẻ dò không lách bằng cách đổi tiền tố. IP trong MCP_AUTHFAIL_ALLOW (danh sách, phân tách bằng dấu phẩy) được miễn ngưỡng tổng này
+//     nhưng VẪN chịu ngưỡng theo cặp.
+// Vượt ngưỡng thì trả 429 TRƯỚC khi truy vấn CSDL. Chỉ đếm lần sai (lần đúng không xóa bộ đếm); bị chặn rồi thì không kéo dài cửa sổ.
+// Giữ trong bộ nhớ tiến trình (khởi động lại thì xóa). Chỉnh bằng MCP_AUTHFAIL_MAX, MCP_AUTHFAIL_IP_MAX, MCP_AUTHFAIL_WINDOW_MS, MCP_AUTHFAIL_ALLOW.
+export const tokenKey = (raw) => (raw ? String(raw).slice(0, 8) : 'none');
+export function makeAuthGuard({ max = 20, ipMax = 200, windowMs = 5 * MINUTE, maxKeys = 50_000, allow = [] } = {}) {
+  const allowed = new Set((Array.isArray(allow) ? allow : String(allow || '').split(',')).map((x) => x.trim()).filter(Boolean));
+  const pairs = new Map(), ips = new Map();   // khóa → [mốc thời gian của các lần sai]
+  const live = (m, k, now) => { const a = (m.get(k) || []).filter((t) => now - t < windowMs); if (a.length) m.set(k, a); else m.delete(k); return a; };
+  const add = (m, k, cap, now) => {
+    const a = live(m, k, now);
+    if (a.length < cap) a.push(now);   // bị chặn rồi thì không kéo dài cửa sổ
+    m.set(k, a);
+    if (m.size > maxKeys) m.delete(m.keys().next().value);   // chặn phình bộ nhớ khi bị quét từ nhiều IP
+  };
   return {
-    blocked: (k) => live(k, Date.now()).length >= max,
-    fail: (k) => {
-      const now = Date.now(), a = live(k, now);
-      if (a.length < max) a.push(now);   // bị chặn rồi thì không kéo dài cửa sổ
-      fails.set(k, a);
-      if (fails.size > maxKeys) fails.delete(fails.keys().next().value);   // chặn phình bộ nhớ khi bị quét từ nhiều IP
-    },
-    prune: () => { const now = Date.now(); for (const k of [...fails.keys()]) live(k, now); },
-    size: () => fails.size,
+    blocked: (ip, tk) => { const now = Date.now(); return live(pairs, `${ip}|${tk}`, now).length >= max || (!allowed.has(ip) && live(ips, ip, now).length >= ipMax); },
+    fail: (ip, tk) => { const now = Date.now(); add(pairs, `${ip}|${tk}`, max, now); add(ips, ip, ipMax, now); },
+    prune: () => { const now = Date.now(); for (const k of [...pairs.keys()]) live(pairs, k, now); for (const k of [...ips.keys()]) live(ips, k, now); },
+    size: () => pairs.size + ips.size,
   };
 }
 
@@ -39,7 +47,8 @@ function rateLimited(tokenId) {
 }
 
 export function buildApp(opts = {}) {
-  const guard = makeAuthGuard({ max: Number(opts.authFailMax ?? process.env.MCP_AUTHFAIL_MAX ?? 20), windowMs: Number(opts.authFailWindowMs ?? process.env.MCP_AUTHFAIL_WINDOW_MS ?? 5 * MINUTE) });
+  const guard = makeAuthGuard({ max: Number(opts.authFailMax ?? process.env.MCP_AUTHFAIL_MAX ?? 20), ipMax: Number(opts.authFailIpMax ?? process.env.MCP_AUTHFAIL_IP_MAX ?? 200),
+    windowMs: Number(opts.authFailWindowMs ?? process.env.MCP_AUTHFAIL_WINDOW_MS ?? 5 * MINUTE), allow: opts.authFailAllow ?? process.env.MCP_AUTHFAIL_ALLOW ?? '' });
   // dọn bộ đếm cũ (cả bộ đếm theo mã): không để các bảng trong bộ nhớ lớn dần
   const sweep = setInterval(() => { guard.prune(); const now = Date.now(); for (const [k, arr] of hits) { const a = arr.filter((t) => now - t < MINUTE); if (a.length) hits.set(k, a); else hits.delete(k); } }, MINUTE);
   sweep.unref();
@@ -57,10 +66,11 @@ export function buildApp(opts = {}) {
   app.post('/mcp', async (req, res) => {
     const raw = (req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
     const ip = req.ip || 'unknown';
-    if (guard.blocked(ip)) return deny(res, 429, 'Sai mã quá nhiều lần, thử lại sau ít phút', { 'Retry-After': '300' });
+    const tk = tokenKey(raw);
+    if (guard.blocked(ip, tk)) return deny(res, 429, 'Sai mã quá nhiều lần, thử lại sau ít phút', { 'Retry-After': '300' });
     let ident;
     try { ident = await verifyToken(raw, req.ip); } catch (e) { console.error('verify', e); return deny(res, 503, 'Máy chủ tạm lỗi'); }
-    if (!ident) { guard.fail(ip); return deny(res, 401, 'Mã MCP sai, hết hạn hoặc đã thu hồi'); }
+    if (!ident) { guard.fail(ip, tk); return deny(res, 401, 'Mã MCP sai, hết hạn hoặc đã thu hồi'); }
     if (rateLimited(ident.tokenId)) return deny(res, 429, 'Gọi quá nhanh, chờ một phút');
 
     const server = new McpServer(
