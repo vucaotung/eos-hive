@@ -792,4 +792,78 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; raw tex
   RAISE NOTICE 'Mã gắn công ty: kiểm quyền ok';
 END $$;
 
+-- ===== Thành viên gồm người và agent (migration 0023) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb; ag jsonb; a1 constant uuid := 'eeeeeeee-0000-0000-0000-0000000000b1'; mai constant uuid := 'a0000000-0000-0000-0000-0000000000b1';
+              stranger constant uuid := 'eeeeeeee-0000-0000-0000-0000000000f0'; mem constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c1'; mgr constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c2'; k text; n int; lvl int; BEGIN
+  -- fixture: agent "mai" (tắt nhận thẻ), một mã agent sắp hết hạn cho van-thu, một người chưa thuộc công ty
+  INSERT INTO core.users (id, email, name, kind) VALUES (a1, 'mai@agent.test', 'Mai - Trợ lý AI', 'agent'), (stranger, 'la@demo.vn', 'Người lạ', 'person'), (mem, 'tv.c1@demo.vn', 'Thành viên Cơ bản', 'person'), (mgr, 'tp.c2@demo.vn', 'Trưởng phòng Cơ bản', 'person');
+  INSERT INTO core.memberships (user_id, company_id, department_id, is_dept_head) VALUES (mem, c, 'dddddddd-0000-0000-0000-000000000001', false), (mgr, c, 'dddddddd-0000-0000-0000-000000000001', true);
+  INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, max_level, description) VALUES (mai, a1, 'mai', 'Mai - Trợ lý AI', 'specialist', 'work', 'team_admin', 1, 'Bot tiếp nhận yêu cầu');
+  INSERT INTO agent.company_agents (company_id, agent_id, enabled) VALUES (c, mai, false);
+  INSERT INTO agent.mcp_tokens (user_id, agent_id, name, client, prefix, token_hash, scopes, expires_at)
+  VALUES ('bbbbbbbb-0000-0000-0000-0000000000a1', 'a0000000-0000-0000-0000-000000000001', 'Agent van-thu', 'hermes', 'zzzz0001', repeat('a', 64), '{read,kb,draft}', now() + interval '5 days'),
+         (a1, mai, 'Agent mai', 'hermes', 'zzzz0002', repeat('b', 64), '{read,task_create}', now() + interval '60 days');
+  -- thành viên thường: thấy danh sách + trạng thái, KHÔNG thấy cột kỹ thuật
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  r := agent.app_members(jsonb_build_object('company_id', c));
+  ASSERT NOT (r->>'tech')::boolean, 'member không phải tech';
+  ASSERT jsonb_array_length(r->'people') >= 3 AND (SELECT bool_and(x->>'kind' = 'person') FROM jsonb_array_elements(r->'people') x), 'people chỉ có người';
+  ag := (SELECT x FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'van-thu');
+  ASSERT ag->>'name' = 'Văn thư AI' AND ag->>'status' = 'expiring', format('trạng thái mã sắp hết hạn: %s', ag);
+  ASSERT (SELECT x->>'status' FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'mai') = 'on', 'mai tắt nhận thẻ nhưng có mã → on';
+  FOREACH k IN ARRAY ARRAY['hermes_profile','max_level','executor','skills','token_count','token_expires','token_scopes','can_delegate','last_active','running','module','agent_kind','accepts_cards','active'] LOOP
+    ASSERT NOT ag ? k, format('member không được thấy cột kỹ thuật %s', k);
+  END LOOP;
+  ASSERT r::text NOT LIKE '%zzzz000%' AND r::text NOT LIKE '%aaaaaaaa%', 'không lộ tiền tố hay băm mã';
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'enabled', true)); ASSERT false, 'member không sửa agent';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- trưởng phòng: cũng không phải tech, không sửa được
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mgr, 'via', 'web')::text, true);
+  ASSERT NOT (agent.app_members(jsonb_build_object('company_id', c))->>'tech')::boolean, 'manager không phải tech';
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'title', 'x')); ASSERT false, 'manager không sửa agent';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- người ngoài công ty: từ chối
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000003","via":"web"}', true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', stranger, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.app_members(jsonb_build_object('company_id', c)); ASSERT false, 'người ngoài không xem';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- chủ sở hữu/quản trị: thấy cột kỹ thuật, sửa được hồ sơ
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
+  r := agent.app_members(jsonb_build_object('company_id', c));
+  ASSERT (r->>'tech')::boolean, 'owner là tech';
+  ag := (SELECT x FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'van-thu');
+  ASSERT ag->>'hermes_profile' = 'eos-van-thu' AND (ag->>'max_level')::int = 1 AND (ag->>'token_count')::int >= 1 AND ag->'token_expires' IS NOT NULL AND ag->'token_scopes' @> '["draft"]', format('cột kỹ thuật: %s', ag);
+  ASSERT ag ? 'last_active' AND ag ? 'running' AND ag ? 'waiting_human', 'có hoạt động và số việc';
+  lvl := (SELECT max_level FROM agent.agents WHERE code = 'mai');
+  PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'enabled', true, 'owner_user_id', mem, 'title', 'Trợ lý tiếp nhận',
+            'department_id', 'dddddddd-0000-0000-0000-000000000001', 'max_level', 3, 'can_delegate', true, 'skills', '["x"]', 'hermes_profile', 'ops-admin'));
+  SELECT * INTO n, lvl FROM (SELECT 1, (SELECT max_level FROM agent.agents WHERE code = 'mai')) z;
+  ASSERT lvl = 1 AND NOT (SELECT can_delegate FROM agent.agents WHERE code = 'mai') AND (SELECT skills FROM agent.agents WHERE code = 'mai') = '{}' AND (SELECT hermes_profile FROM agent.agents WHERE code = 'mai') = 'team_admin',
+         'app_agent_set không sửa max_level/can_delegate/skills/hermes_profile';
+  r := agent.app_members(jsonb_build_object('company_id', c));
+  ag := (SELECT x FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'mai');
+  ASSERT (ag->>'accepts_cards')::boolean AND ag->>'title' = 'Trợ lý tiếp nhận' AND ag->'owner'->>'name' = 'Thành viên Cơ bản' AND ag->>'department_id' = 'dddddddd-0000-0000-0000-000000000001', format('hồ sơ đã lưu: %s', ag);
+  PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'enabled', false, 'owner_user_id', NULL));
+  ASSERT (SELECT NOT enabled AND owner_user_id IS NULL FROM agent.company_agents WHERE agent_id = mai), 'tắt và bỏ người phụ trách';
+  ASSERT (SELECT count(*) FROM core.audit_log WHERE action = 'agent_set' AND entity_id = 'mai') = 2, 'ghi nhật ký kiểm toán';
+  -- người phụ trách phải là người thuộc công ty
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'owner_user_id', stranger)); ASSERT false, 'người lạ không làm chủ agent';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'owner_user_id', a1)); ASSERT false, 'agent không làm chủ agent';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'khong-co', 'title', 'x')); ASSERT false, 'agent lạ';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- agent bị quản trị hệ thống tắt thì công ty không bật được
+  UPDATE agent.agents SET active = false WHERE id = mai;
+  BEGIN PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'enabled', true)); ASSERT false, 'không bật agent đã bị tắt hệ thống';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  ASSERT (SELECT x->>'status' FROM jsonb_array_elements(agent.app_members(jsonb_build_object('company_id', c))->'agents') x WHERE x->>'code' = 'mai') = 'off', 'agent tắt hệ thống → off';
+  UPDATE agent.agents SET active = true WHERE id = mai;
+  -- agent KHÔNG vào danh sách người: app_org chỉ có người, không có dòng memberships của agent
+  r := agent.app_org(jsonb_build_object('company_id', c));
+  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'members') m WHERE m->>'user_id' IN (a1::text, 'bbbbbbbb-0000-0000-0000-0000000000a1')), 'app_org không chứa agent';
+  ASSERT NOT EXISTS (SELECT 1 FROM core.memberships WHERE user_id IN (a1, 'bbbbbbbb-0000-0000-0000-0000000000a1')), 'agent không có membership';
+  RAISE NOTICE 'Thành viên người + agent ok';
+END $$;
+
 ROLLBACK;

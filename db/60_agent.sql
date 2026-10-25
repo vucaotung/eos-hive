@@ -81,6 +81,10 @@ CREATE TABLE agent.company_agents (
   auto_done     boolean NOT NULL DEFAULT false,               -- true: kết quả L0–L1 đóng việc luôn, không qua người xem
   max_running   smallint NOT NULL DEFAULT 3 CHECK (max_running BETWEEN 1 AND 20),
   config        jsonb NOT NULL DEFAULT '{}',
+  owner_user_id uuid REFERENCES core.users(id) ON DELETE SET NULL,   -- người phụ trách agent (phải là thành viên người của công ty; kiểm bằng trigger)
+  department_id uuid REFERENCES core.departments(id) ON DELETE SET NULL,
+  title         text CHECK (title IS NULL OR length(title) <= 80),   -- vd. "Trợ lý tiếp nhận"
+  updated_at    timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (company_id, agent_id)
 );
 
