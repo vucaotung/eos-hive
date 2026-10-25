@@ -3,6 +3,9 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## Chưa phát hành
+- `scripts/issue_agent_token.sh --revoke-old`: sau khi mã mới ghi vào `.env` thành công, thu hồi các mã cũ còn hiệu lực của cùng agent (không thu hồi nếu ghi lỗi; không in mã). Có test với ssh giả trong `scripts/test_mcp.sh`.
+
 ## 0.2.6 — Thành viên gồm người và AI agent
 - Tab Quản trị → Thành viên: danh sách chung người + AI agent, lọc, tìm kiếm, ngăn chi tiết agent (vai trò, được/không được làm, người phụ trách, bật/tắt nhận việc). Cột kỹ thuật chỉ chủ sở hữu/quản trị thấy.
 - CSDL (0023): `company_agents.owner_user_id/department_id/title/updated_at`, `agent.app_members`, `agent.app_agent_set`, trigger kiểm người phụ trách. Agent vẫn không có membership; `app_org` vẫn chỉ trả người.
