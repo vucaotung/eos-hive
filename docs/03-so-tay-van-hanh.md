@@ -80,6 +80,9 @@ Dịch vụ systemd *user* chỉ chạy khi đăng nhập trừ khi bật linger
 Tạo 4 agent, bật cho công ty, đặt board `eos-<slug>`. Rồi cấp mã MCP cho từng agent hệ thống (để worker đọc việc). Hàm chỉ cho **quản trị hệ thống** cấp, nên dùng script (nó đặt danh tính quản trị trong cùng giao dịch và đưa mã thẳng vào `.env` của profile Hermes, không hiện ra):
 
     scripts/issue_agent_token.sh vps169 vps173 quan-tri-du-lieu eos-quan-tri-du-lieu 90
+    # Lần cấp lại: thêm --revoke-old để thu hồi mọi mã cũ của agent SAU KHI mã mới đã ghi thành công vào .env (mã cũ không tích tụ):
+    scripts/issue_agent_token.sh --revoke-old vps169 vps173 quan-tri-du-lieu eos-quan-tri-du-lieu 90
+    # Chỉ dùng khi agent có MỘT nơi dùng mã (đúng profile này). Không cờ thì giữ nguyên mã cũ (hành vi trước đây). Chỉ in tiền tố mã, không in mã.
 
 Mã chỉ hiện đúng một lần và script không in nó; mất thì thu hồi (`agent.mcp_token_revoke`) và cấp lại. **Cấp lại không tự vô hiệu mã cũ** — thu hồi mã cũ ngay (mỗi tài khoản agent tối đa 5 mã còn hạn).
 
