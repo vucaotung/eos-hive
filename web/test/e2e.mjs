@@ -289,6 +289,33 @@ try {
     const me = await minh.me(); assert.equal(me.json.user.drive_status, 'pending'); assert.equal(me.json.user.drive_folder_url, 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlM');
     assert.match((await minh.ok('app_drive_names'))[0], /^DEO - demo - HC - /);
   });
+  await step('thành viên gồm người và AI agent: admin thấy cột kỹ thuật, thành viên thường không; tắt agent đổi trạng thái; agent không lọt vào ô chọn người', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const AGENT_USERS = ['cccccccc-0000-0000-0000-0000000000a2', 'cccccccc-0000-0000-0000-0000000000a3'];
+    const full = await adm.ok('app_members', { company_id: CO });
+    assert.equal(full.tech, true); assert.ok(full.people.length >= 3 && full.people.every((x) => x.kind === 'person'));
+    const vt = full.agents.find((a) => a.code === 'van-thu'), dp = full.agents.find((a) => a.code === 'dieu-phoi');
+    assert.ok(vt && dp, 'có cả hai agent'); assert.equal(vt.hermes_profile, 'eos-van-thu'); assert.equal(vt.status, 'no_token'); assert.equal(vt.token_count, 0);
+    // thành viên thường: thấy tên/mô tả/trạng thái, không thấy cột kỹ thuật, không lộ mã
+    const lite = await minh.ok('app_members', { company_id: CO });
+    assert.equal(lite.tech, false);
+    const lvt = lite.agents.find((a) => a.code === 'van-thu');
+    assert.ok(lvt.name && lvt.status);
+    for (const k of ['hermes_profile', 'max_level', 'executor', 'skills', 'token_count', 'token_expires', 'token_scopes', 'last_active', 'running', 'can_delegate', 'accepts_cards']) assert.ok(!(k in lvt), `thành viên không thấy ${k}`);
+    assert.ok(!/eos_[0-9a-f]{48}|token_hash/.test(JSON.stringify(lite)), 'không lộ mã');
+    assert.equal((await minh.rpc('app_agent_set', { company_id: CO, code: 'van-thu', enabled: false })).status, 403, 'thành viên thường không sửa agent');
+    // admin tắt agent + đặt người phụ trách: trạng thái đổi; max_level không đổi được
+    await adm.ok('app_agent_set', { company_id: CO, code: 'van-thu', enabled: false, owner_user_id: ID.minh, title: 'Soạn công văn', max_level: 3 });
+    const after = (await adm.ok('app_members', { company_id: CO })).agents.find((a) => a.code === 'van-thu');
+    assert.equal(after.status, 'off'); assert.equal(after.owner.id, ID.minh); assert.equal(after.title, 'Soạn công văn'); assert.ok(after.max_level < 3, 'max_level không sửa được từ giao diện');
+    assert.equal((await adm.rpc('app_agent_set', { company_id: CO, code: 'van-thu', owner_user_id: '99999999-9999-9999-9999-999999999999' })).status, 400, 'người phụ trách phải là thành viên');
+    await adm.ok('app_agent_set', { company_id: CO, code: 'van-thu', enabled: true });
+    // agent không vào danh sách người: app_org vẫn chỉ trả người, giao việc cho agent như một người bị từ chối
+    const org = await adm.ok('app_org', { company_id: CO });
+    assert.ok(!org.members.some((m) => AGENT_USERS.includes(m.user_id)), 'org.members không có agent');
+    const bad = await adm.rpc('app_task_save', { company_id: CO, title: 'Giao thử cho agent như người', assignee_id: AGENT_USERS[0] }); assert.equal(bad.status, 400);
+    assert.equal((await sql('SELECT count(*)::int n FROM core.memberships WHERE user_id = ANY($1::uuid[])', [AGENT_USERS]))[0].n, 0);
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });
