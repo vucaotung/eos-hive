@@ -717,7 +717,7 @@ BEGIN
                'skills', to_jsonb(g.skills), 'active', g.active, 'accepts_cards', ca.enabled, 'token_count', tk.n, 'token_expires', tk.first_exp, 'token_scopes', to_jsonb(tk.scopes),
                'last_active', greatest(act.mcp_at, act.ev_at), 'running', wk.running, 'waiting_human', wk.waiting) ELSE '{}'::jsonb END AS x
         FROM agent.company_agents ca JOIN agent.agents g ON g.id = ca.agent_id
-        CROSS JOIN LATERAL (SELECT count(*)::int n, min(k.expires_at) first_exp, coalesce(array_agg(DISTINCT sc) FILTER (WHERE sc IS NOT NULL), '{}') scopes
+        CROSS JOIN LATERAL (SELECT count(DISTINCT k.id)::int n, min(k.expires_at) first_exp, coalesce(array_agg(DISTINCT sc) FILTER (WHERE sc IS NOT NULL), '{}') scopes
                               FROM agent.mcp_tokens k LEFT JOIN LATERAL unnest(k.scopes) sc ON true
                              WHERE k.agent_id = g.id AND k.revoked_at IS NULL AND k.expires_at > now()) tk
         CROSS JOIN LATERAL (SELECT (SELECT max(c.at) FROM agent.mcp_calls c WHERE c.user_id = g.user_id) mcp_at,

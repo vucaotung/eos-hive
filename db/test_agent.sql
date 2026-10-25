@@ -832,8 +832,9 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb
   r := agent.app_members(jsonb_build_object('company_id', c));
   ASSERT (r->>'tech')::boolean, 'owner là tech';
   ag := (SELECT x FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'van-thu');
-  ASSERT ag->>'hermes_profile' = 'eos-van-thu' AND (ag->>'max_level')::int = 1 AND (ag->>'token_count')::int >= 1 AND ag->'token_expires' IS NOT NULL AND ag->'token_scopes' @> '["draft"]', format('cột kỹ thuật: %s', ag);
+  ASSERT ag->>'hermes_profile' = 'eos-van-thu' AND (ag->>'max_level')::int = 1 AND (ag->>'token_count')::int = (SELECT count(*) FROM agent.mcp_tokens k WHERE k.agent_id = 'a0000000-0000-0000-0000-000000000001' AND k.revoked_at IS NULL AND k.expires_at > now()) AND (ag->>'token_count')::int >= 1 AND ag->'token_expires' IS NOT NULL AND ag->'token_scopes' @> '["draft"]', format('cột kỹ thuật: %s', ag);
   ASSERT ag ? 'last_active' AND ag ? 'running' AND ag ? 'waiting_human', 'có hoạt động và số việc';
+  ASSERT ((SELECT x FROM jsonb_array_elements(r->'agents') x WHERE x->>'code' = 'mai')->>'token_count')::int = 1, 'mai có 1 mã (2 phạm vi) phải đếm là 1, không phải 2';
   lvl := (SELECT max_level FROM agent.agents WHERE code = 'mai');
   PERFORM agent.app_agent_set(jsonb_build_object('company_id', c, 'code', 'mai', 'enabled', true, 'owner_user_id', mem, 'title', 'Trợ lý tiếp nhận',
             'department_id', 'dddddddd-0000-0000-0000-000000000001', 'max_level', 3, 'can_delegate', true, 'skills', '["x"]', 'hermes_profile', 'ops-admin'));
