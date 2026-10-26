@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Dropdown, Label } from "@heroui/react";
 import { CaretDown, MagnifyingGlass, Plus, DotsThree, CalendarCheck, FolderSimple, ListChecks } from "@phosphor-icons/react";
 import { useApp, useLoad, go } from "../lib/store.jsx";
@@ -50,6 +50,14 @@ function GlobalSearch() {
 export default function Shell({ children }) {
   const { route, me, membership, isAdmin, isManager, companyId } = useApp();
   const [creating, setCreating] = useState(false);
+  useEffect(() => {   // phím N = giao việc (bỏ qua khi đang gõ hoặc có phím bổ trợ)
+    const onKey = (e) => {
+      if (e.key.toLowerCase() !== "n" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target; if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.closest("[role=dialog]"))) return;
+      e.preventDefault(); setCreating(true);
+    };
+    addEventListener("keydown", onKey); return () => removeEventListener("keydown", onKey);
+  }, []);
   const pending = useLoad(() => companyId ? rpc("app_my_approvals") : Promise.resolve({ items: [] }), [companyId]);
   const counts = { approvals: pending.data?.items?.length || 0 };
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((n) => !n.adminOnly || isAdmin || isManager) }));
@@ -97,7 +105,7 @@ export default function Shell({ children }) {
           <span className="flex items-center gap-2 lg:hidden"><Logo className="size-8" /></span>
           <div className="min-w-0 max-w-64"><CompanySwitcher /></div>
           <GlobalSearch />
-          <div className="ml-auto hidden lg:block"><Button onPress={() => setCreating(true)}><Plus size={16} weight="bold" />Giao việc</Button></div>
+          <div className="ml-auto hidden lg:block"><Button onPress={() => setCreating(true)}><Plus size={16} weight="bold" />Giao việc<kbd className="ml-1 rounded border border-border px-1 text-[10px] text-muted">N</kbd></Button></div>
           <a href="#/me" className="hidden size-8 lg:block" aria-label="Tài khoản"><Person user={me?.user} showName={false} /></a>
         </div>
       </header>

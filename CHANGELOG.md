@@ -3,6 +3,10 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.8 — Giao diện Nocturne giai đoạn 2a: chi tiết việc và form giao việc (chưa triển khai)
+- Panel chi tiết việc theo thiết kế (820px, chip, cột phải, trao đổi dạng chat có nhãn AI, việc con có tiến độ, đánh dấu bị chặn, hủy việc); việc mở đồng bộ URL (`?t=`), sao chép link.
+- Form giao việc: "Thêm chi tiết", Ctrl+Enter, phím N. Không đổi CSDL/API. Chi tiết và phần còn thiếu: docs/18.
+
 ## 0.2.7 — Giao diện Nocturne (giai đoạn 1, chưa triển khai)
 - Token Nocturne sáng/tối (mặc định tối), font Inter, hệ mã hoá trạng thái và ưu tiên, avatar AI vuông có nhãn "AI", dòng việc mới, sidebar 3 nhóm, topbar có tìm kiếm, tab dưới mobile 5 mục và màn Thêm. Không đổi CSDL.
 - `design/`: gói thiết kế tham chiếu (không phải mã production). Tiến độ và khoảng cách dữ liệu: docs/18.

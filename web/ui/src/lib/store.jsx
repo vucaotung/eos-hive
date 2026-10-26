@@ -27,7 +27,6 @@ export function AppProvider({ children }) {
   const [route, setRoute] = useState(readRoute());
   const [org, setOrg] = useState({ departments: [], members: [], projects: [], project_members: [], flows: [] });
   const [version, setVersion] = useState(0);            // tăng để các trang tải lại dữ liệu
-  const [openTaskId, setOpenTaskId] = useState(null);
   const [theme, setThemeState] = useState(() => { const v = store.get("deo.theme"); return v === "system" ? "" : (v || "dark"); });   // mặc định chế độ tối (Nocturne); "" = theo hệ thống
 
   useEffect(() => { const f = () => setRoute(readRoute()); addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
@@ -64,6 +63,13 @@ export function AppProvider({ children }) {
   useEffect(() => { loadOrg().catch(() => {}); }, [loadOrg, version]);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
+  // Việc đang mở nằm trên URL (#/trang?t=37): sao chép link là mở thẳng việc; nút Back đóng ngăn chi tiết.
+  const openTaskId = /^\d{1,12}$/.test(route.params.t || "") ? Number(route.params.t) : null;
+  const openTask = useCallback((id) => {
+    const r = readRoute(), params = { ...r.params };
+    if (id) params.t = String(id); else delete params.t;
+    go(r.page, Object.keys(params).length ? params : undefined);
+  }, []);
 
   const value = useMemo(() => {
     const role = membership?.role || null;
@@ -79,10 +85,10 @@ export function AppProvider({ children }) {
       memberships, membership, companyId: membership?.company_id || null, switchCompany,
       role, isAdmin: role === "owner" || role === "admin", isManager: role === "manager", isSystemAdmin: !!me?.user?.is_system_admin,
       org, lookups, loadOrg, version, refresh,
-      openTaskId, openTask: setOpenTaskId, theme, setTheme: setThemeState,
+      openTaskId, openTask, theme, setTheme: setThemeState,
       userId: me?.user?.id || null,
     };
-  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, openTaskId, theme]);
+  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, openTaskId, openTask, theme]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
