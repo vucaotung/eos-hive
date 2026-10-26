@@ -56,6 +56,8 @@ CREATE TABLE work.tasks (
   completed_at     timestamptz,
   result           text CHECK (length(result) <= 4000),       -- Kết quả
   -- KPI
+  important        boolean NOT NULL DEFAULT false,  -- ma trận Eisenhower: quan trọng
+  urgent           boolean NOT NULL DEFAULT false,  -- ma trận Eisenhower: khẩn cấp
   kpi_counted      boolean NOT NULL DEFAULT true,   -- có tính vào KPI tháng không
   kpi_weight       numeric(4,2) CHECK (kpi_weight BETWEEN 0 AND 10),   -- NULL = theo mức ưu tiên
   kpi_confirmed_by uuid REFERENCES core.users(id),  -- trưởng phòng xác nhận việc tự giao cho mình

@@ -316,6 +316,18 @@ try {
     const bad = await adm.rpc('app_task_save', { company_id: CO, title: 'Giao thử cho agent như người', assignee_id: AGENT_USERS[0] }); assert.equal(bad.status, 400);
     assert.equal((await sql('SELECT count(*)::int n FROM core.memberships WHERE user_id = ANY($1::uuid[])', [AGENT_USERS]))[0].n, 0);
   });
+  await step('cờ Eisenhower và ngày bắt đầu: tạo, đổi từng cờ (kéo thả), giữ khi sửa trường khác; hạn trước ngày bắt đầu bị từ chối; người không sửa được thì bị chặn', async () => {
+    const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
+    const made = await adm.ok('app_task_save', { company_id: CO, title: 'Việc Eisenhower', important: true, start_date: '2030-03-01', due_date: '2030-03-05', department_id: HC });
+    const row = async () => (await adm.ok('app_tasks', { company_id: CO, days: 1 })).find((x) => x.id === made.id);
+    let r = await row(); assert.equal(r.important, true); assert.equal(r.urgent, false); assert.equal(r.start_date, '2030-03-01');
+    await adm.ok('app_task_save', { id: made.id, urgent: true }); r = await row(); assert.equal(r.important, true); assert.equal(r.urgent, true);
+    await adm.ok('app_task_save', { id: made.id, important: false }); r = await row(); assert.equal(r.important, false); assert.equal(r.urgent, true);
+    await adm.ok('app_task_save', { id: made.id, title: 'Đổi tên' }); r = await row(); assert.equal(r.urgent, true); assert.equal(r.start_date, '2030-03-01');
+    assert.equal((await adm.rpc('app_task_save', { id: made.id, due_date: '2030-02-01' })).status, 400, 'hạn trước ngày bắt đầu');
+    const denied = await kt.rpc('app_task_save', { id: made.id, important: true }); assert.ok([400, 403].includes(denied.status), `người không sửa được: HTTP ${denied.status}`);
+    r = await row(); assert.equal(r.important, false, 'cờ không đổi khi bị chặn');
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });

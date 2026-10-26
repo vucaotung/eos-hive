@@ -1,4 +1,4 @@
-import { CalendarCheck, UserCircle, UserSwitch, ChatCircleDots, ListChecks, SealCheck, FolderSimple, ChartBar, Gear, Kanban, User } from "@phosphor-icons/react";
+import { CalendarCheck, UserCircle, UserSwitch, ChatCircleDots, ListChecks, SealCheck, FolderSimple, ChartBar, Gear, Kanban, User, GridFour, CalendarBlank, CalendarDots, ChartBarHorizontal } from "@phosphor-icons/react";
 
 // Ba nhóm giống sidebar thiết kế (design/README.md §Khung): Việc của tôi · Quản lý · Góc nhìn. Điểm đến là các màn đã có; màn mới (Eisenhower, Lịch, Nhân sự...) thêm sau khi dữ liệu đủ (docs/18).
 export const NAV_GROUPS = [
@@ -17,6 +17,10 @@ export const NAV_GROUPS = [
   ] },
   { title: "Góc nhìn", items: [
     { id: "kanban", page: "tasks", params: { v: "kanban" }, label: "Bảng Kanban", icon: Kanban },
+    { id: "eisenhower", page: "eisenhower", label: "Eisenhower", icon: GridFour },
+    { id: "cal-month", page: "calendar", params: { m: "month" }, label: "Lịch tháng", icon: CalendarBlank },
+    { id: "cal-week", page: "calendar", params: { m: "week" }, label: "Lịch tuần", icon: CalendarDots },
+    { id: "cal-timeline", page: "calendar", params: { m: "timeline" }, label: "Timeline", icon: ChartBarHorizontal },
   ] },
 ];
 export const ME_ITEM = { id: "me", page: "me", label: "Tài khoản", icon: User };
@@ -25,6 +29,7 @@ export const ME_ITEM = { id: "me", page: "me", label: "Tài khoản", icon: User
 export function isActive(item, route) {
   if (item.page !== route.page) return false;
   const want = item.params || {};
+  if (item.page === "calendar") return (route.params.m || "month") === want.m;
   const keys = Object.keys(want);
   if (keys.length) return keys.every((k) => route.params[k] === want[k]);
   return item.page !== "tasks" || (!route.params.f && !route.params.v);

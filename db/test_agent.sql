@@ -867,4 +867,32 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb
   RAISE NOTICE 'Thành viên người + agent ok';
 END $$;
 
+-- ===== Cờ Eisenhower + ngày bắt đầu (migration 0025) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb; tid bigint; j jsonb; BEGIN
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-000000000002","via":"web"}', true);
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc có cờ Eisenhower', 'important', true, 'start_date', '2030-03-01', 'due_date', '2030-03-05'));
+  tid := (r->>'id')::bigint;
+  j := agent._task_json((SELECT t FROM work.tasks t WHERE id = tid));
+  ASSERT (j->>'important')::boolean AND NOT (j->>'urgent')::boolean AND j->>'start_date' = '2030-03-01', format('cờ và ngày bắt đầu khi tạo: %s', j);
+  -- mặc định false khi không truyền
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc không cờ'));
+  ASSERT (SELECT NOT important AND NOT urgent AND start_date IS NULL FROM work.tasks WHERE id = (r->>'id')::bigint), 'mặc định không cờ';
+  -- đổi một cờ không đụng cờ kia (kéo thả ô Eisenhower)
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'urgent', true));
+  ASSERT (SELECT important AND urgent FROM work.tasks WHERE id = tid), 'đặt Khẩn cấp giữ nguyên Quan trọng';
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'important', false));
+  ASSERT (SELECT NOT important AND urgent FROM work.tasks WHERE id = tid), 'bỏ Quan trọng giữ nguyên Khẩn cấp';
+  -- sửa tên không đổi cờ
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'title', 'Đổi tên việc'));
+  ASSERT (SELECT NOT important AND urgent AND start_date = '2030-03-01' FROM work.tasks WHERE id = tid), 'sửa trường khác giữ cờ và ngày bắt đầu';
+  -- hạn trước ngày bắt đầu bị từ chối
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'due_date', '2030-02-01')); ASSERT false, 'hạn trước ngày bắt đầu';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM LIKE '%phải sau hoặc bằng ngày bắt đầu%' THEN NULL; ELSE RAISE; END IF; END;
+  -- người không sửa được việc thì không đặt được cờ
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000003","via":"web"}', true);
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'important', true)); ASSERT false, 'người ngoài không đặt cờ';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RAISE NOTICE 'Cờ Eisenhower ok';
+END $$;
+
 ROLLBACK;
