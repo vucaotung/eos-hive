@@ -3,9 +3,14 @@ import { Input, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { ListUl, LayoutColumns3, Magnifier } from "@gravity-ui/icons";
 import { useApp, useLoad, go } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
-import { STATUS, byPriority, isOverdue, isOpen } from "../lib/format.js";
+import { STATUS, byPriority, isOverdue, isOpen, due, ddmmyyyy } from "../lib/format.js";
+import { ClockCountdown, Infinity as InfinityIcon, CheckCircle, Tray } from "@phosphor-icons/react";
+import { fromIso, WEEKDAYS, startOfWeek } from "../lib/cal.js";
 import { ErrorBox, LoadingList, PageHeader, SelectField, StatusBadge, DueText } from "../components/ui.jsx";
 import { TaskList } from "../components/TaskRow.jsx";
+import KanbanBoard from "../components/Kanban.jsx";
+import { SelectBar, SelectProvider, useSelect } from "../components/select.jsx";
+import { CheckSquare } from "@phosphor-icons/react";
 
 const FILTERS = [
   ["open", "Đang mở", () => (t) => isOpen(t)],
@@ -15,25 +20,32 @@ const FILTERS = [
   ["review", "Chờ duyệt", () => (t) => t.status === "in_review"],
   ["late", "Quá hạn", () => (t) => isOverdue(t)],
   ["done", "Xong 60 ngày", () => (t) => t.status === "done"],
+  ["upcoming", "Sắp tới", (u) => (t) => isOpen(t) && t.assignee_id === u && !!t.due_date && due(t).n > 0],
+  ["anytime", "Bất cứ lúc nào", (u) => (t) => isOpen(t) && t.assignee_id === u && !t.due_date],
+  ["backlog", "Backlog", () => (t) => isOpen(t) && !t.assignee_id && !t.agent_role],
+  ["doing", "Đang làm", () => (t) => t.status === "in_progress"],
+  ["soon3", "Hạn 3 ngày", () => (t) => isOpen(t) && !!t.due_date && due(t).n >= 0 && due(t).n <= 3],
+  ["soon7", "Hạn 7 ngày", () => (t) => isOpen(t) && !!t.due_date && due(t).n >= 0 && due(t).n <= 7],
+  ["all", "Tất cả", () => () => true],
 ];
-const COLUMNS = ["todo", "in_progress", "blocked", "in_review", "done"];
+const HIDDEN = new Set(["doing", "soon3", "soon7", "all"]);   // chỉ hiện khi đang chọn (đi vào từ ô chỉ số Tổng quan)
+const NEED_DATE = ["upcoming"];
 
-function KanbanCard({ task }) {
-  const { lookups, openTask } = useApp();
-  const a = lookups.person[task.assignee_id];
-  return (
-    <button type="button" onClick={() => openTask(task.id)} className={`flex w-full flex-col gap-1.5 rounded-lg border border-separator bg-surface p-3 text-left hover:bg-surface-secondary ${isOverdue(task) ? "shadow-[inset_3px_0_0_var(--danger)]" : ""}`}>
-      <span className="text-[13.5px] font-medium leading-snug [overflow-wrap:anywhere]">{task.title}</span>
-      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-        {task.waiting_on_human && <StatusBadge status="blocked" waiting />}
-        {a && <span>{a.name}</span>}<DueText task={task} /><span>T-{task.id}</span>
-      </span>
-    </button>
-  );
+// Nhóm danh sách theo ngữ cảnh (design/README.md §3): Sắp tới theo ngày; Bất cứ lúc nào theo trạng thái; Hoàn thành theo thời điểm; Backlog theo dự án
+function groupsFor(f, tasks, today) {
+  const label = (d) => { const n = Math.round((d - today) / 864e5); return n === 1 ? `Ngày mai · ${WEEKDAYS[(d.getDay() + 6) % 7]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}` : `${WEEKDAYS[(d.getDay() + 6) % 7]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`; };
+  const by = (keyFn, titleFn, order) => { const m = new Map(); for (const t of tasks) { const k = keyFn(t); if (!m.has(k)) m.set(k, []); m.get(k).push(t); } return [...m.entries()].sort((a, b) => order(a[0], b[0])).map(([k, items]) => ({ key: String(k), title: titleFn(k), items })); };
+  if (f === "upcoming") { const wk = startOfWeek(today); const nextWk = new Date(wk); nextWk.setDate(nextWk.getDate() + 7);
+    return by((t) => { const d = fromIso(t.due_date); return d < nextWk ? t.due_date.slice(0, 10) : "later"; }, (k) => k === "later" ? "Tuần sau trở đi" : label(fromIso(k)), (a, b) => (a === "later") - (b === "later") || String(a).localeCompare(String(b))); }
+  if (f === "anytime") return by((t) => t.status === "in_progress" ? 0 : 1, (k) => (k === 0 ? "Đang làm" : "Chưa bắt đầu"), (a, b) => a - b);
+  if (f === "done") { const wk = startOfWeek(today).getTime(); return by((t) => { const c = t.completed_at ? new Date(t.completed_at) : null; return !c ? 2 : c >= today ? 0 : c.getTime() >= wk ? 1 : 2; }, (k) => ["Hôm nay", "Tuần này", "Trước đó"][k], (a, b) => a - b); }
+  if (f === "backlog") return by((t) => t.project_id || "_", (k) => k === "_" ? "Không thuộc dự án" : k, (a, b) => String(a).localeCompare(String(b)));
+  return null;
 }
+function SelectToggle() { const s = useSelect(); return <button type="button" aria-pressed={s.on} onClick={() => (s.on ? s.exit() : s.enter())} className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium ${s.on ? "bg-accent-soft text-act" : "text-muted hover:bg-surface-secondary"}`} style={{ boxShadow: `inset 0 0 0 1px ${s.on ? "var(--accent)" : "var(--border)"}` }}><CheckSquare size={16} />Chọn nhiều</button>; }
 
 export default function Tasks() {
-  const { companyId, userId, org, route } = useApp();
+  const { companyId, userId, org, route, refresh } = useApp();
   const [f, setF] = useState(route.params.f || "open");
   const [view, setView] = useState(() => route.params.v || (() => { try { return localStorage.getItem("deo.view") || "list"; } catch { return "list"; } })());
   const [dept, setDept] = useState(null);
@@ -57,18 +69,21 @@ export default function Tasks() {
   const setV = (v) => { setView(v); try { localStorage.setItem("deo.view", v); } catch { /* bỏ qua */ } };
 
   return (
+    <SelectProvider onDone={refresh}>
     <div className="flex flex-col gap-6">
       <PageHeader title="Việc" sub={data ? `${data.filter(isOpen).length} việc đang mở` : " "}
-        actions={
+        actions={<>
+          <SelectToggle />
           <ToggleButtonGroup aria-label="Cách xem" selectionMode="single" disallowEmptySelection selectedKeys={new Set([view])} onSelectionChange={(k) => setV([...k][0])}>
             <ToggleButton id="list" aria-label="Danh sách"><ListUl className="size-4" />Danh sách</ToggleButton>
             <ToggleButton id="kanban" aria-label="Bảng"><LayoutColumns3 className="size-4" />Bảng</ToggleButton>
-          </ToggleButtonGroup>
+          </ToggleButtonGroup></>
         } />
+      <SelectBar tasks={shown} />
 
       <div className="flex flex-col gap-3">
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Lọc">
-          {FILTERS.map(([k, label, fn]) => {
+          {FILTERS.filter(([k]) => !HIDDEN.has(k) || k === f).map(([k, label, fn]) => {
             const n = base.filter(fn(userId)).length, on = f === k;
             return (
               <button key={k} type="button" aria-pressed={on} onClick={() => setFilter(k)}
@@ -92,24 +107,17 @@ export default function Tasks() {
 
       <ErrorBox error={error} />
       {loading && !data ? <LoadingList rows={6} /> : view === "list" ? (
-        <TaskList tasks={shown} empty="Không có việc nào khớp bộ lọc này." />
+        (() => { const today = new Date(); today.setHours(0, 0, 0, 0); const gs = groupsFor(f, shown, today);
+          return gs ? (gs.length ? <div className="flex flex-col gap-5">{gs.map((g) => (
+            <section key={g.key} className="flex flex-col gap-2"><h2 className="flex items-center gap-2 px-1 text-[13px] font-medium text-muted">{g.title === "Ngày mai" || String(g.title).startsWith("Ngày mai") ? <ClockCountdown size={15} className="text-warning" /> : f === "anytime" ? <InfinityIcon size={15} /> : f === "done" ? <CheckCircle size={15} className="text-success" /> : null}{f === "backlog" && g.title !== "Không thuộc dự án" ? (org.projects.find((p) => p.id === g.title)?.name || "Dự án") : g.title}<span className="text-faint">{g.items.length}</span>
+              {f === "backlog" && <span className="ml-auto text-xs font-normal text-faint">Việc chưa giao: người có quyền giao ở panel chi tiết</span>}</h2>
+              <TaskList tasks={g.items} /></section>))}</div> : <TaskList tasks={[]} empty="Không có việc nào khớp bộ lọc này." />)
+            : <TaskList tasks={shown} empty="Không có việc nào khớp bộ lọc này." />; })()
       ) : (
-        <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-          {COLUMNS.map((c) => {
-            const col = base.filter((t) => t.status === c).sort(byPriority);
-            return (
-              <section key={c} className="flex min-h-[420px] w-72 shrink-0 flex-col gap-2 rounded-[14px] bg-surface/55 p-2 lg:w-auto lg:min-w-0 lg:flex-1" style={{ boxShadow: "0 0 0 1px var(--separator)" }}>
-                <h2 className="flex items-center justify-between px-1.5 pt-1"><StatusBadge status={c} /><span className="text-sm font-semibold text-muted">{col.length}</span></h2>
-                <div className="flex flex-col gap-1.5">
-                  {col.slice(0, 60).map((t) => <KanbanCard key={t.id} task={t} />)}
-                  {!col.length && <p className="px-1.5 py-3 text-sm text-muted">Trống</p>}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+        <KanbanBoard tasks={base} />
       )}
     </div>
+    </SelectProvider>
   );
 }
 

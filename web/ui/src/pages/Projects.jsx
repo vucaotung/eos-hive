@@ -290,7 +290,7 @@ export default function Projects() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map(({ p, open, done, late, pct, nm }) => (
             <div key={p.id} className={`flex flex-col gap-3 rounded-xl bg-surface p-4 ${p.active ? "" : "opacity-60"}`}>
-              <button type="button" onClick={() => go("tasks", { p: p.id })} className="flex flex-col gap-3 text-left">
+              <button type="button" onClick={() => go("project", { id: p.id })} className="flex flex-col gap-3 text-left">
                 <span className="flex flex-col gap-0.5">
                   <b className="text-lg font-semibold leading-snug">{p.name}</b>
                   <span className="text-sm text-muted">{lookups.dept[p.department_id]?.name || "Chung công ty"} · {STATUS[p.status] || p.status}</span>

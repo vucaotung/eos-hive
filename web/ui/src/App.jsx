@@ -13,10 +13,13 @@ import Me from "./pages/Me.jsx";
 import More from "./pages/More.jsx";
 import Eisenhower from "./pages/Eisenhower.jsx";
 import Calendar from "./pages/Calendar.jsx";
+import Overview from "./pages/Overview.jsx";
+import Project from "./pages/Project.jsx";
+import People from "./pages/People.jsx";
 import DriveSetup from "./pages/DriveSetup.jsx";
 import { ErrorBox } from "./components/ui.jsx";
 
-const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me, more: More, eisenhower: Eisenhower, calendar: Calendar };
+const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me, more: More, eisenhower: Eisenhower, calendar: Calendar, overview: Overview, people: People, project: Project };
 
 function Gate() {
   const { me, meError, loadMe, route, signOut } = useApp();

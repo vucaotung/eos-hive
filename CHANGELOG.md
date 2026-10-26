@@ -3,6 +3,9 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.3.0 — Giao diện Nocturne giai đoạn 3: phần còn lại của thiết kế (chưa triển khai)
+- Tổng quan (chỉ số, mục tiêu tuần, dự báo, burndown), Nhân sự (tải, KPI, xuất CSV), trang Dự án (Kanban/Danh sách sửa tại chỗ/Mindmap/Gantt), nhóm Sắp tới/Bất cứ lúc nào/Hoàn thành/Backlog, Cài đặt (màu chủ đạo đã đo WCAG AA, mật độ, mục tiêu tuần), mobile (vuốt trái, nhấn giữ chọn nhiều, Eisenhower thu gọn, tab chi tiết, bottom sheet). Không đổi CSDL. Phần cần backend: docs/18.
+
 ## 0.2.9 — Giao diện Nocturne 2b/2c: Eisenhower và Lịch (chưa triển khai; cần migration 0025)
 - Cờ Quan trọng/Khẩn cấp + ngày bắt đầu (migration 0025: `work.tasks.important/urgent`, `app_task_save`, `_task_json`); trang Eisenhower kéo thả/menu đổi cờ; trang Lịch Tháng/Tuần/Timeline; form giao việc có hai cờ và ngày bắt đầu. Thêm test DB và web e2e (22 bước).
 

@@ -5,6 +5,7 @@ import { rpc } from "../lib/api.js";
 import { PRIORITY } from "../lib/format.js";
 import { CaretDown, CaretUp, Star, Lightning } from "@phosphor-icons/react";
 import { quadOf } from "../pages/Eisenhower.jsx";
+import { useMedia } from "./ui.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
 const blank = (dept) => ({ title: "", description: "", department_id: dept || null, assignee_id: null, due_date: "", priority: "medium",
@@ -16,6 +17,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
   const [f, setF] = useState(blank(membership?.department_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const sheet = useMedia("(max-width: 639px)");   // mobile: hiện như bottom sheet (bo góc trên 20px)
   const [more, setMore] = useState(false);   // "Thêm chi tiết": mặc định chỉ hiện các trường thường dùng
 
   useEffect(() => {
@@ -53,8 +55,8 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
 
   return (
     <Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <Modal.Container placement="auto" scroll="inside">
-        <Modal.Dialog className="sm:max-w-[720px]">
+      <Modal.Container placement={sheet ? "bottom" : "auto"} scroll="inside">
+        <Modal.Dialog className={sheet ? "rounded-t-[20px]" : "sm:max-w-[720px]"}>
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading>{task ? `Sửa T-${task.id}` : parent ? `Việc con của T-${parent.id}` : "Giao việc"}</Modal.Heading>

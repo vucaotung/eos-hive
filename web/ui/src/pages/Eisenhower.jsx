@@ -4,7 +4,7 @@ import { Lightning, CalendarPlus, UserSwitch, Hourglass, DotsThree, Star } from 
 import { useApp, useLoad } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { isOpen, byPriority } from "../lib/format.js";
-import { ErrorBox, LoadingList, PageHeader, Person, StatusIcon, DueText } from "../components/ui.jsx";
+import { ErrorBox, LoadingList, PageHeader, Person, StatusIcon, DueText, useMedia } from "../components/ui.jsx";
 
 // Ma trận Eisenhower (design/README.md §5). Ô được suy ra từ hai cờ Quan trọng / Khẩn cấp của việc; kéo thả hoặc menu "Chuyển ô" CẬP NHẬT hai cờ đó:
 // Làm ngay = cả hai · Lên lịch = chỉ Quan trọng · Giao việc = chỉ Khẩn cấp · Để sau = không cờ. Quyền sửa do máy chủ kiểm (lỗi thì việc về chỗ cũ).
@@ -45,6 +45,7 @@ export default function Eisenhower() {
   const [tick, setTick] = useState(0);
   const [over, setOver] = useState({});          // id → cờ tạm thời (cập nhật lạc quan)
   const [drag, setDrag] = useState(null), [hover, setHover] = useState(null);
+  const mobile = useMedia("(max-width: 639px)"), [pick, setPick] = useState("do");
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 1 }) : Promise.resolve([]), [companyId, tick]);
 
   useEffect(() => { setOver({}); }, [data]);
@@ -87,7 +88,19 @@ export default function Eisenhower() {
             {[["all", "Tất cả"], ["mine", "Của tôi"]].map(([k, l]) => <Button key={k} size="sm" variant={scope === k ? "primary" : "secondary"} onPress={() => setScope(k)}>{l}</Button>)}
           </div>} />
       <ErrorBox error={error} />
-      {loading && !data ? <LoadingList rows={4} /> : (
+      {loading && !data ? <LoadingList rows={4} /> : mobile ? (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Ô Eisenhower">
+            {QUADS.map((q) => { const n = tasks.filter((t) => quadOf(t)?.id === q.id).length; return (
+              <button key={q.id} type="button" role="tab" aria-selected={pick === q.id} onClick={() => setPick(q.id)} className="flex flex-col gap-1 rounded-[14px] bg-surface px-3 py-2.5 text-left"
+                style={{ boxShadow: `0 0 0 ${pick === q.id ? 1.5 : 1}px ${pick === q.id ? "var(--accent)" : "var(--separator)"}, inset 0 3px 0 ${q.tone}` }}>
+                <span className="flex items-center gap-1.5 text-[13px] font-medium"><q.Icon size={16} weight="fill" style={{ color: q.tone }} />{q.title}</span><b className="text-2xl font-medium tabular-nums">{n}</b></button>); })}
+          </div>
+          <p className="text-xs text-muted">{QUADS.find((q) => q.id === pick).desc}. Đổi ô bằng nút ⋯ trên từng việc.</p>
+          <div className="flex flex-col gap-1.5">{tasks.filter((t) => quadOf(t)?.id === pick).map((t) => <Item key={t.id} task={t} onMove={move} onDragStart={setDrag} dragging={false} />)}
+            {!tasks.some((t) => quadOf(t)?.id === pick) && <p className="px-1 py-3 text-sm text-faint">Trống.</p>}</div>
+        </div>
+      ) : (
         <div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)] gap-3">
           <span />
           <p className="text-center text-[11px] font-medium uppercase tracking-[.08em] text-faint">Khẩn cấp</p>

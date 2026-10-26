@@ -64,15 +64,15 @@ export default function Today() {
       {loading && !data ? <LoadingList rows={4} /> : (
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-8">
-            <Section title="Việc của tôi" count={myOpen.length}><TaskList tasks={myOpen} empty="Bạn không có việc nào đang mở." /></Section>
-            {iGave.length > 0 && <Section title="Tôi đã giao" count={iGave.length}><TaskList tasks={iGave} /></Section>}
+            <Section title="Việc của tôi" count={myOpen.length}><TaskList swipe tasks={myOpen} empty="Bạn không có việc nào đang mở." /></Section>
+            {iGave.length > 0 && <Section title="Tôi đã giao" count={iGave.length}><TaskList swipe tasks={iGave} /></Section>}
           </div>
           <div className="flex min-w-0 flex-col gap-8">
             <Section title="Chờ tôi duyệt" count={approve.length} action={approve.length > 0 && <Button size="sm" variant="ghost" onPress={() => go("approvals")}>Mở hàng duyệt</Button>}>
               <TaskList tasks={approve} empty="Không có việc nào chờ bạn duyệt." />
             </Section>
             {asks.length > 0 && <Section title="Agent đang hỏi" count={asks.length}><TaskList tasks={asks} /></Section>}
-            {late.length > 0 && <Section title={isAdmin ? "Quá hạn trong công ty" : "Quá hạn trong phòng"} count={late.length}><TaskList tasks={late.slice(0, 8)} /></Section>}
+            {late.length > 0 && <Section title={isAdmin ? "Quá hạn trong công ty" : "Quá hạn trong phòng"} count={late.length}><TaskList swipe tasks={late.slice(0, 8)} /></Section>}
           </div>
         </div>
       )}
