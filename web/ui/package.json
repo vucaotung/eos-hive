@@ -1,19 +1,20 @@
 {
   "name": "eos-web-ui",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@gravity-ui/icons": "2.23.0",
     "@heroui/react": "3.2.6",
     "@heroui/styles": "3.2.6",
+    "@phosphor-icons/react": "^2.1.10",
     "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "@fontsource/be-vietnam-pro": "5.2.5"
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

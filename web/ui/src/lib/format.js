@@ -54,3 +54,9 @@ export const dt = (iso) => { const d = new Date(iso); return `${ddmmyyyy(d)} ${S
 export const initials = (name = "") => name.trim().split(/\s+/).slice(-2).map((w) => w[0]).join("").toUpperCase();
 export const byPriority = (a, b) => (PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]) || (a.due_date || "9").localeCompare(b.due_date || "9");
 export const plural = (n, word) => `${n} ${word}`;
+
+// Ô màu nhận diện dự án (ổn định theo id): oklch cùng độ sáng/độ đậm, chỉ đổi sắc độ
+export function projectColor(id = "") {
+  let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `oklch(0.72 0.11 ${h})`;
+}

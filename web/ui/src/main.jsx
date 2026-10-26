@@ -1,9 +1,12 @@
-import "@fontsource/be-vietnam-pro/vietnamese-400.css";
-import "@fontsource/be-vietnam-pro/vietnamese-600.css";
-import "@fontsource/be-vietnam-pro/vietnamese-800.css";
-import "@fontsource/be-vietnam-pro/latin-400.css";
-import "@fontsource/be-vietnam-pro/latin-600.css";
-import "@fontsource/be-vietnam-pro/latin-800.css";
+import "@fontsource/inter/vietnamese-400.css";
+import "@fontsource/inter/vietnamese-500.css";
+import "@fontsource/inter/vietnamese-600.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-ext-400.css";
+import "@fontsource/inter/latin-ext-500.css";
+import "@fontsource/inter/latin-ext-600.css";
 import "./app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

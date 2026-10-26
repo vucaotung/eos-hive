@@ -34,7 +34,7 @@ export default function DriveSetup({ compact = false, onDone }) {
       <div className="flex items-start gap-3">
         <Folder className="mt-1 size-6 shrink-0 text-accent" />
         <div className="min-w-0">
-          <h2 className="text-lg font-extrabold">Thư mục làm việc trên Google Drive</h2>
+          <h2 className="text-lg font-semibold">Thư mục làm việc trên Google Drive</h2>
           <p className={`text-sm font-semibold ${TONE[status]}`}>{DRIVE[status]}{me?.user?.drive_checked_at ? `, kiểm tra ${ago(me.user.drive_checked_at)}` : ""}</p>
           {me?.user?.drive_note && status !== "none" && <p className="text-sm text-muted">{me.user.drive_note}</p>}
         </div>

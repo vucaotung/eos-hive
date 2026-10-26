@@ -91,7 +91,7 @@ function Members({ goTab }) {
           {agents.map((a) => { const [label, tone] = AGENT_STATUS[a.status] || ["", ""]; return (
             <button key={a.code} type="button" onClick={() => setSel(a.code)} className={`${rowCls} w-full cursor-pointer text-left hover:bg-surface-secondary`}>
               <span className="min-w-0 flex-1">
-                <span className="mr-2 rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-extrabold text-accent">AI</span><b>{a.name}</b>
+                <span className="mr-2 rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-semibold text-accent">AI</span><b>{a.name}</b>
                 {a.title && <span className="ml-2 text-sm text-muted">{a.title}</span>}
               </span>
               <span className="w-28 truncate text-sm text-muted">{a.department_id ? deptLabel(a.department_id).replace(" · ", "") : "Chung"}</span>
@@ -133,7 +133,7 @@ function Invites() {
         <div className="flex flex-col gap-3 rounded-xl bg-accent-soft p-4">
           <p className="font-semibold">Mã mời mới, gửi trực tiếp cho người được mời:</p>
           <div className="flex flex-wrap items-center gap-3">
-            <code className="rounded-lg bg-surface px-3 py-2 text-2xl font-extrabold tracking-[.2em]">{created.code}</code>
+            <code className="rounded-lg bg-surface px-3 py-2 text-2xl font-semibold tracking-[.2em]">{created.code}</code>
             <CopyButton text={created.code} label="Sao chép mã" />
             <CopyButton text={link(created.code)} label="Sao chép link mời" />
           </div>
@@ -145,7 +145,7 @@ function Invites() {
         <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
           {data.map((i) => { const [s, tone] = state(i); return (
             <div key={i.code} className={rowCls}>
-              <code className="w-28 font-bold tracking-wider">{i.code}</code>
+              <code className="w-28 font-semibold tracking-wider">{i.code}</code>
               <span className="w-36 text-sm">{ROLE[i.role]}{i.department_id && lookups.dept[i.department_id] ? ` · ${lookups.dept[i.department_id].code}` : ""}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-muted">{i.email || i.note || "Ai có mã đều dùng được"}</span>
               <span className="text-sm text-muted">{i.uses}/{i.max_uses} lượt</span>

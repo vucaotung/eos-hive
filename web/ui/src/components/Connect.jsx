@@ -39,7 +39,7 @@ export default function Connect() {
       <div className="flex items-start gap-3">
         <Plug className="mt-1 size-6 shrink-0 text-accent" />
         <div className="min-w-0">
-          <h2 className="text-lg font-extrabold">Kết nối AI agent của bạn</h2>
+          <h2 className="text-lg font-semibold">Kết nối AI agent của bạn</h2>
           <p className="text-muted">Mã MCP cho phép agent cá nhân (Claude, ChatGPT, Cursor…) làm việc thay bạn trong phạm vi bạn chọn. Máy chủ: <code className="rounded bg-surface-secondary px-1.5 py-0.5">{mcpUrl}</code>. Mã chỉ hiện <b>một lần</b> khi tạo.</p>
         </div>
       </div>

@@ -10,10 +10,11 @@ import Projects from "./pages/Projects.jsx";
 import Reports from "./pages/Reports.jsx";
 import Admin from "./pages/Admin.jsx";
 import Me from "./pages/Me.jsx";
+import More from "./pages/More.jsx";
 import DriveSetup from "./pages/DriveSetup.jsx";
 import { ErrorBox } from "./components/ui.jsx";
 
-const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me };
+const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me, more: More };
 
 function Gate() {
   const { me, meError, loadMe, route, signOut } = useApp();
@@ -33,7 +34,7 @@ function Gate() {
       <div className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center gap-5 px-4 py-10">
         <div>
           <p className="text-sm font-semibold text-muted">Chào {me.user.name}, còn một bước nữa</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-balance">Thiết lập thư mục làm việc trên Drive</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">Thiết lập thư mục làm việc trên Drive</h1>
         </div>
         <DriveSetup onDone={loadMe} />
         <button type="button" className="self-start text-sm font-semibold text-muted underline-offset-2 hover:underline"

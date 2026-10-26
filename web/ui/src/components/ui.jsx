@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Avatar, Button, Description, Input, Label, ListBox, Select, Skeleton, TextArea, TextField } from "@heroui/react";
-import { STATUS, STATUS_COLOR, due, initials, ddmmyyyy } from "../lib/format.js";
+import { CircleDashed, CircleHalf, PauseCircle, CheckCircle, Prohibit, WarningCircle, XCircle, HourglassMedium, ChatCircleDots, CaretDoubleUp, CaretUp, Minus, Sparkle, Star, Lightning, ClockCountdown, Clock, CalendarBlank } from "@phosphor-icons/react";
+import { STATUS, PRIORITY, due, initials, ddmmyyyy } from "../lib/format.js";
 
 export function useMedia(q) {
   const [m, setM] = useState(() => matchMedia(q).matches);
@@ -8,27 +9,74 @@ export function useMedia(q) {
   return m;
 }
 
+// Hệ mã hoá trạng thái (design/README.md): hình dạng + màu + chữ. Nhãn giữ theo nghiệp vụ Enterprise OS.
+const ST = {
+  todo: [CircleDashed, "text-muted", "regular"],
+  in_progress: [CircleHalf, "text-info", "fill"],
+  blocked: [Prohibit, "text-danger", "bold"],
+  in_review: [HourglassMedium, "text-warning", "fill"],
+  done: [CheckCircle, "text-success", "fill"],
+  cancelled: [XCircle, "text-faint", "regular"],
+};
+export function StatusIcon({ status, waiting, size = 16, className = "" }) {
+  const [Icon, tone, weight] = waiting && status !== "done" ? [ChatCircleDots, "text-warning", "fill"] : ST[status] || ST.todo;
+  return <Icon size={size} weight={weight} className={`shrink-0 ${tone} ${className}`} aria-hidden="true" />;
+}
 export function StatusBadge({ status, waiting }) {
-  if (waiting && status !== "done") return <span className="st-blocked inline-flex items-center gap-1.5 text-sm font-semibold text-warning"><i className="st-dot" />Chờ người trả lời</span>;
-  return <span className={`st-${status} inline-flex items-center gap-1.5 text-sm font-semibold ${STATUS_COLOR[status]}`}><i className="st-dot" />{STATUS[status]}</span>;
+  const [, tone] = waiting && status !== "done" ? [0, "text-warning"] : ST[status] || ST.todo;
+  const label = waiting && status !== "done" ? "Chờ người trả lời" : STATUS[status];
+  // "Bị chặn" = huy hiệu vuông; các trạng thái khác = pill viền
+  const shape = status === "blocked" && !waiting ? "rounded" : "rounded-full";
+  return (
+    <span className={`inline-flex h-6 items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-semibold ${shape} ${tone}`} style={{ boxShadow: "inset 0 0 0 1px currentColor" }}>
+      <StatusIcon status={status} waiting={waiting} size={14} className="!text-current" />{label}
+    </span>
+  );
+}
+
+export function PriorityMark({ priority }) {
+  if (!priority) return null;
+  const [Icon, tone] = priority === "urgent" || priority === "high" ? [CaretDoubleUp, "text-danger"] : priority === "medium" ? [CaretUp, "text-warning"] : [Minus, "text-muted"];
+  return <span className={`inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium ${tone}`}><Icon size={14} weight="bold" aria-hidden="true" />{PRIORITY[priority]}</span>;
+}
+
+export function FlagMarks({ task }) {
+  return (<>
+    {task.important && <Star size={14} weight="fill" className="shrink-0 text-warning" aria-label="Quan trọng" />}
+    {task.urgent && <Lightning size={14} weight="fill" className="shrink-0 text-danger" aria-label="Khẩn cấp" />}
+  </>);
 }
 
 export function DueText({ task, className = "" }) {
   const d = due(task);
   if (!d) return null;
-  const tone = d.tone === "late" ? "text-danger font-semibold" : d.tone === "soon" ? "text-warning font-semibold" : "text-muted";
-  return <span className={`${tone} ${className}`}>{d.text}</span>;
+  const late = d.tone === "late", soon = d.tone === "soon";
+  const Icon = late ? WarningCircle : soon ? ClockCountdown : d.n === 0 ? Clock : CalendarBlank;
+  const tone = late ? "text-danger font-semibold" : soon ? "text-warning font-semibold" : "text-muted";
+  return <span className={`inline-flex items-center gap-1 whitespace-nowrap ${tone} ${className}`}><Icon size={14} weight={late || soon ? "fill" : "regular"} aria-hidden="true" />{d.text}</span>;
 }
 
+// Người: avatar tròn, nền surface-secondary, viền; chữ viết tắt
 export function Person({ user, size = "sm", showName = true }) {
-  if (!user) return <span className="text-muted">Chưa giao</span>;
+  if (!user) return <span className="inline-flex items-center gap-2 text-faint"><span className="grid size-6 place-items-center rounded-full border border-dashed border-faint" />Chưa giao</span>;
   return (
     <span className="inline-flex min-w-0 items-center gap-2">
-      <Avatar size={size} className="shrink-0">
+      <Avatar size={size} className="shrink-0 border border-border bg-surface-secondary">
         {user.avatar_url ? <Avatar.Image alt="" src={user.avatar_url} referrerPolicy="no-referrer" /> : null}
-        <Avatar.Fallback>{initials(user.name)}</Avatar.Fallback>
+        <Avatar.Fallback className="bg-surface-secondary text-foreground">{initials(user.name)}</Avatar.Fallback>
       </Avatar>
       {showName && <span className="truncate">{user.name}</span>}
+    </span>
+  );
+}
+
+// AI (agent): avatar VUÔNG bo, nền ai-bg, viền ai, biểu tượng sparkle, kèm nhãn "AI". AI không tính KPI.
+export function AgentChip({ name, size = 24, showName = true }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span className="grid shrink-0 place-items-center rounded-md border border-ai bg-ai-bg text-ai" style={{ width: size, height: size }} aria-hidden="true"><Sparkle size={Math.round(size * 0.55)} weight="fill" /></span>
+      {showName && <span className="truncate">{name}</span>}
+      <span className="rounded border border-ai px-1 text-[10px] font-semibold leading-4 text-ai">AI</span>
     </span>
   );
 }
@@ -37,7 +85,7 @@ export function PageHeader({ title, sub, actions }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">{title}</h1>
+        <h1 className="text-[26px] font-medium leading-tight tracking-tight text-balance sm:text-[36px]">{title}</h1>
         {sub && <p className="mt-1 text-muted">{sub}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -50,7 +98,7 @@ export function Section({ title, count, action, children }) {
     <section className="flex flex-col gap-3">
       {(title || action) && (
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-extrabold tracking-tight">{title}{count != null && <span className="ml-2 font-semibold text-muted">{count}</span>}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{title}{count != null && <span className="ml-2 font-semibold text-muted">{count}</span>}</h2>
           {action}
         </div>
       )}

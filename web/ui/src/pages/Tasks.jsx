@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { ListUl, LayoutColumns3, Magnifier } from "@gravity-ui/icons";
 import { useApp, useLoad, go } from "../lib/store.jsx";
@@ -22,9 +22,9 @@ function KanbanCard({ task }) {
   const { lookups, openTask } = useApp();
   const a = lookups.person[task.assignee_id];
   return (
-    <button type="button" onClick={() => openTask(task.id)} className="flex w-full flex-col gap-1.5 rounded-lg bg-surface p-3 text-left hover:bg-surface-secondary">
-      <span className="font-semibold leading-snug [overflow-wrap:anywhere]">{task.title}</span>
-      <span className="flex flex-wrap gap-x-3 text-sm text-muted">
+    <button type="button" onClick={() => openTask(task.id)} className={`flex w-full flex-col gap-1.5 rounded-lg border border-separator bg-surface p-3 text-left hover:bg-surface-secondary ${isOverdue(task) ? "shadow-[inset_3px_0_0_var(--danger)]" : ""}`}>
+      <span className="text-[13.5px] font-medium leading-snug [overflow-wrap:anywhere]">{task.title}</span>
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         {task.waiting_on_human && <StatusBadge status="blocked" waiting />}
         {a && <span>{a.name}</span>}<DueText task={task} /><span>T-{task.id}</span>
       </span>
@@ -35,11 +35,12 @@ function KanbanCard({ task }) {
 export default function Tasks() {
   const { companyId, userId, org, route } = useApp();
   const [f, setF] = useState(route.params.f || "open");
-  const [view, setView] = useState(() => { try { return localStorage.getItem("deo.view") || "list"; } catch { return "list"; } });
+  const [view, setView] = useState(() => route.params.v || (() => { try { return localStorage.getItem("deo.view") || "list"; } catch { return "list"; } })());
   const [dept, setDept] = useState(null);
   const [assignee, setAssignee] = useState(null);
   const [project, setProject] = useState(route.params.p || null);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(route.params.q || "");
+  useEffect(() => { if (route.params.f) setF(route.params.f); else if (!route.params.q) setF("open"); setQ(route.params.q || ""); if (route.params.v) setView(route.params.v); }, [route.params.f, route.params.q, route.params.v]);
 
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);
 
@@ -71,7 +72,7 @@ export default function Tasks() {
             const n = base.filter(fn(userId)).length, on = f === k;
             return (
               <button key={k} type="button" aria-pressed={on} onClick={() => setFilter(k)}
-                className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[15px] font-semibold ${on ? "bg-foreground text-background" : "bg-surface hover:bg-surface-secondary"}`}>
+                className={`flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[13.5px] font-medium ${on ? "bg-accent-soft text-act" : "bg-surface text-muted hover:bg-surface-secondary hover:text-foreground"}`} style={{ boxShadow: on ? "inset 0 0 0 1px var(--accent)" : "inset 0 0 0 1px var(--border)" }}>
                 {label}<span className={on ? "opacity-70" : "text-muted"}>{n}</span>
               </button>
             );
@@ -97,7 +98,7 @@ export default function Tasks() {
           {COLUMNS.map((c) => {
             const col = base.filter((t) => t.status === c).sort(byPriority);
             return (
-              <section key={c} className="flex w-72 shrink-0 flex-col gap-2 rounded-xl bg-surface-secondary p-2 lg:w-auto lg:min-w-0 lg:flex-1">
+              <section key={c} className="flex min-h-[420px] w-72 shrink-0 flex-col gap-2 rounded-[14px] bg-surface/55 p-2 lg:w-auto lg:min-w-0 lg:flex-1" style={{ boxShadow: "0 0 0 1px var(--separator)" }}>
                 <h2 className="flex items-center justify-between px-1.5 pt-1"><StatusBadge status={c} /><span className="text-sm font-semibold text-muted">{col.length}</span></h2>
                 <div className="flex flex-col gap-1.5">
                   {col.slice(0, 60).map((t) => <KanbanCard key={t.id} task={t} />)}

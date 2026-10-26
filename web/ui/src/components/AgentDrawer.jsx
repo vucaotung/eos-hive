@@ -52,8 +52,8 @@ export default function AgentDrawer({ agent, tech, onClose, onSaved, goAgents })
           <Drawer.Header>
             {agent && (
               <div className="flex flex-col gap-2 pr-8">
-                <div className="flex items-center gap-3 text-sm"><span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-extrabold text-accent">AI</span><span className={`font-semibold ${tone}`}>{label}</span></div>
-                <Drawer.Heading className="text-xl font-extrabold leading-snug tracking-tight">{agent.name}</Drawer.Heading>
+                <div className="flex items-center gap-3 text-sm"><span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent">AI</span><span className={`font-semibold ${tone}`}>{label}</span></div>
+                <Drawer.Heading className="text-xl font-semibold leading-snug tracking-tight">{agent.name}</Drawer.Heading>
                 {agent.title && <p className="text-muted">{agent.title}</p>}
               </div>
             )}
@@ -71,7 +71,7 @@ export default function AgentDrawer({ agent, tech, onClose, onSaved, goAgents })
               ]} />
               {tech && (
                 <section className="flex flex-col gap-2">
-                  <h3 className="font-extrabold">Được làm</h3>
+                  <h3 className="font-semibold">Được làm</h3>
                   <ul className="list-disc pl-5 text-sm">
                     <li>{LEVEL[agent.max_level] || LEVEL[0]}</li>
                     {(agent.token_scopes || []).filter((s) => SCOPE_DOES[s]).map((s) => <li key={s}>{SCOPE_DOES[s]}</li>)}
@@ -80,13 +80,13 @@ export default function AgentDrawer({ agent, tech, onClose, onSaved, goAgents })
                 </section>
               )}
               <section className="flex flex-col gap-2">
-                <h3 className="font-extrabold">Không bao giờ được làm</h3>
+                <h3 className="font-semibold">Không bao giờ được làm</h3>
                 <ul className="list-disc pl-5 text-sm">{NEVER.map((n) => <li key={n}>{n}</li>)}</ul>
                 <p className="text-xs text-muted">Các việc này luôn do người làm (mức L3), giao diện không có cách mở cho agent.</p>
               </section>
               {isAdmin && (
                 <section className="flex flex-col gap-3 rounded-xl bg-surface p-4">
-                  <h3 className="font-extrabold">Thiết lập cho công ty</h3>
+                  <h3 className="font-semibold">Thiết lập cho công ty</h3>
                   <Switch isSelected={!!agent.accepts_cards} isDisabled={busy || agent.active === false} onChange={(v) => call({ enabled: v }, v ? "Đã cho nhận việc" : "Đã tắt nhận việc")}>
                     <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control>Cho phép nhận việc từ Kanban (giao việc cho agent này)</Switch.Content>
                   </Switch>

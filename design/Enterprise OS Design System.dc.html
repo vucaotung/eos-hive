@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/styles.css">
+<script src="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/_ds_bundle.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+body{margin:0;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);
+--bg:var(--color-bg);--sf:var(--color-surface);--sf2:oklch(0.30 0.02 277);--ln:var(--color-divider);--ln2:color-mix(in srgb,var(--color-text) 9%,transparent);
+--tx:var(--color-text);--mu:var(--color-neutral-400);--fa:var(--color-neutral-500);--ac:var(--color-accent);--act:var(--color-accent-300);--acbg:var(--color-accent-900);
+--ok:oklch(0.76 0.13 155);--okbg:oklch(0.30 0.05 155);--wn:oklch(0.82 0.13 80);--wnbg:oklch(0.31 0.05 80);--dg:oklch(0.72 0.15 25);--dgbg:oklch(0.30 0.07 25);--in:oklch(0.76 0.10 240);--inbg:oklch(0.30 0.05 240);--ai:var(--color-accent-400);--aibg:var(--color-accent-900);--scrim:oklch(0.12 0.02 277 / .62)}
+a{color:var(--ac)}a:hover{color:var(--act)}
+button{font-family:inherit;color:inherit}
+.btn,.seg-opt{white-space:nowrap}
+</style>
+</helmet>
+<div style="padding:48px;display:flex;flex-direction:column;gap:48px;font-size:14px;line-height:1.5;color:var(--tx);background:var(--bg);min-height:100vh">
+  <header style="max-width:860px">
+    <div style="font-size:13px;color:var(--mu)">Enterprise OS · dựa trên Nocturne</div>
+    <h1 style="font-size:36px;line-height:1.25;margin:4px 0 8px">Design system</h1>
+    <div style="color:var(--mu);line-height:1.6">Một bộ token cho cả web và mobile. Màu chủ đạo, chữ, bo góc, đổ bóng lấy từ Nocturne; bổ sung hệ màu ngữ nghĩa (thành công / cảnh báo / quá hạn / thông tin / AI) dựng bằng OKLCH trên cùng thang độ sáng để các vai trò nặng nhẹ ngang nhau. Trạng thái luôn mã hoá bằng hình dạng + màu + chữ.</div>
+  </header>
+
+  <section id="ds-color" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">01</span><h2 style="font-size:22px;line-height:1.3;margin:0">Màu · tối và sáng</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:20px">
+      <div style="background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-weight:500">Chế độ tối · mặc định</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><sc-for list="{{ neutrals }}" as="t" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;border-radius:var(--radius-md);background:{{ t.v }};border:1px solid var(--ln)"></div><div style="font-size:12px;line-height:1.35">{{ t.n }}<div style="color:var(--fa);font-size:11px">{{ t.k }}</div></div></div></sc-for></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ semantics }}" as="s" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:center;padding:8px 10px;border-radius:var(--radius-md);background:{{ s.bg }}"><span style="display:flex;align-items:center;gap:8px;color:{{ s.fg }};font-weight:500"><i class="{{ s.icon }}"></i>{{ s.n }}</span><span style="font-size:12.5px;color:var(--tx)">{{ s.use }}</span><span style="font-size:11px;color:var(--mu);font-family:ui-monospace,monospace">{{ s.k }}</span></div></sc-for></div>
+      </div>
+      <div style="--bg:oklch(0.955 0.008 277);--sf:oklch(0.99 0.003 277);--sf2:oklch(0.965 0.006 277);--ln:color-mix(in srgb,#161826 15%,transparent);--ln2:color-mix(in srgb,#161826 8%,transparent);--tx:#161826;--mu:#595d6c;--fa:#6b6f80;--ac:#6a5db3;--act:#4f4590;--acbg:#ecebfd;--ok:oklch(0.48 0.12 155);--okbg:oklch(0.94 0.04 155);--wn:oklch(0.52 0.12 70);--wnbg:oklch(0.95 0.05 85);--dg:oklch(0.52 0.17 25);--dgbg:oklch(0.95 0.03 25);--in:oklch(0.50 0.12 245);--inbg:oklch(0.95 0.03 245);--ai:#5d5294;--aibg:#ecebfd;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-weight:500">Chế độ sáng</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><sc-for list="{{ neutrals }}" as="t" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;border-radius:var(--radius-md);background:{{ t.v }};border:1px solid var(--ln)"></div><div style="font-size:12px;line-height:1.35">{{ t.n }}<div style="color:var(--fa);font-size:11px">{{ t.k }}</div></div></div></sc-for></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ semantics }}" as="s" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:center;padding:8px 10px;border-radius:var(--radius-md);background:{{ s.bg }}"><span style="display:flex;align-items:center;gap:8px;color:{{ s.fg }};font-weight:500"><i class="{{ s.icon }}"></i>{{ s.n }}</span><span style="font-size:12.5px;color:var(--tx)">{{ s.use }}</span><span style="font-size:11px;color:var(--mu);font-family:ui-monospace,monospace">{{ s.k }}</span></div></sc-for></div>
+      </div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;max-width:900px">Chữ ngữ nghĩa dùng trực tiếp trên Nền/Bề mặt đều đạt tương phản AA cho chữ thường ở cả hai chế độ (bước sáng ở nền tối, bước đậm ở nền sáng). Nền tint (…bg) chỉ để làm nền chip/hàng, không đặt chữ phụ lên. Không có gradient; AI dùng chính tông tím của Nocturne nhưng luôn đi kèm hình vuông bo + biểu tượng ✦ + nhãn “AI”.</div>
+  </section>
+
+  <section id="ds-type" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">02</span><h2 style="font-size:22px;line-height:1.3;margin:0">Chữ · Inter, hỗ trợ đầy đủ tiếng Việt</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:20px">
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ typeScale }}" as="ty" hint-placeholder-count="6"><div style="display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:baseline;border-top:1px solid var(--ln2);padding-top:10px"><span style="font-size:11.5px;color:var(--fa);font-family:ui-monospace,monospace">{{ ty.k }}</span><span style="font-size:{{ ty.s }};line-height:{{ ty.lh }};font-weight:{{ ty.w }}">{{ ty.sample }}</span></div></sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 20px">
+          <div style="font-weight:500;margin-bottom:8px">Kiểm tra dấu chồng &amp; nhãn dài</div>
+          <div style="font-size:20px;line-height:1.35">Ưu tiên · Quyết định · Nghiệm thu · Thẩm duyệt</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><span style="height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--wn);color:var(--wn);display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap"><i class="ph-bold ph-clock-countdown"></i>Có task chậm tiến độ</span><span style="height:26px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap"><i class="ph ph-infinity"></i>Không giới hạn</span><span style="height:26px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;font-size:12.5px;white-space:nowrap">Hồ sơ pháp lý KĐT Phú Mỹ</span></div>
+          <div style="font-size:12.5px;color:var(--mu);margin-top:10px;line-height:1.55">Line-height tối thiểu 1.25 cho tiêu đề (Nocturne gốc 1.12 làm dấu “Ữ, Ặ” chạm dòng trên), 1.5 cho nội dung. Chip cao ≥24px; nhãn không xuống dòng, cắt bằng dấu “…” khi thiếu chỗ.</div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 20px">
+          <div style="font-weight:500;margin-bottom:8px">Số liệu · tabular-nums</div>
+          <div style="display:flex;gap:28px;font-variant-numeric:tabular-nums"><div><div style="font-size:28px;font-weight:500">111</div><div style="font-size:12px;color:var(--mu)">thẳng cột</div></div><div><div style="font-size:28px;font-weight:500">26/10</div><div style="font-size:12px;color:var(--mu)">ngày dd/mm</div></div><div><div style="font-size:28px;font-weight:500">14:00</div><div style="font-size:12px;color:var(--mu)">giờ 24h</div></div><div><div style="font-size:28px;font-weight:500">2,4 MB</div><div style="font-size:12px;color:var(--mu)">dấu phẩy thập phân</div></div></div>
+          <div style="font-size:12.5px;color:var(--mu);margin-top:8px;line-height:1.55">Nocturne không có font mono; dùng chữ số tabular của Inter để cột số thẳng hàng mà vẫn đồng bộ chữ.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ds-space" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">03</span><h2 style="font-size:22px;line-height:1.3;margin:0">Khoảng cách, bo góc, độ nổi</h2></div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:20px">
+      <sc-for list="{{ spaces }}" as="sp" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="width:{{ sp.v }};height:{{ sp.v }};background:var(--ac);border-radius:2px"></div><span style="font-size:11.5px;color:var(--mu);font-family:ui-monospace,monospace">{{ sp.k }}</span></div></sc-for>
+      <div style="width:1px;align-self:stretch;background:var(--ln2)"></div>
+      <div style="display:flex;gap:16px;align-items:flex-end"><div style="width:56px;height:40px;border:1px solid var(--ln);border-radius:var(--radius-sm)"></div><div style="width:56px;height:40px;border:1px solid var(--ln);border-radius:var(--radius-md)"></div><div style="width:56px;height:40px;border:1px solid var(--ln);border-radius:var(--radius-lg)"></div><span style="font-size:11.5px;color:var(--mu)">4 · 8 · 14 px</span></div>
+      <div style="width:1px;align-self:stretch;background:var(--ln2)"></div>
+      <div style="display:flex;gap:16px;align-items:flex-end"><div style="width:72px;height:44px;border-radius:var(--radius-md);background:var(--sf);box-shadow:var(--shadow-sm)"></div><div style="width:72px;height:44px;border-radius:var(--radius-md);background:var(--sf);box-shadow:var(--shadow-md)"></div><div style="width:72px;height:44px;border-radius:var(--radius-md);background:var(--sf);box-shadow:var(--shadow-lg)"></div><span style="font-size:11.5px;color:var(--mu);line-height:1.4">thẻ · menu · modal/sheet</span></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;max-width:900px">Mật độ 0.7× của Nocturne dùng cho web. Mobile giữ cùng token nhưng mọi vùng chạm ≥44px, dòng task 72px, tab bar 56px + 34px safe-area.</div>
+  </section>
+  <section id="ds-comp" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">04</span><h2 style="font-size:22px;line-height:1.3;margin:0">Component</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:20px">
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-weight:500">Chip trạng thái · pill có biểu tượng</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--mu);color:var(--mu);font-size:12px;white-space:nowrap"><i class="ph ph-circle-dashed"></i>Chưa làm</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--in);color:var(--in);font-size:12px;white-space:nowrap"><i class="ph-fill ph-circle-half"></i>Đang làm</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--wn);color:var(--wn);font-size:12px;white-space:nowrap"><i class="ph-fill ph-pause-circle"></i>Tạm dừng</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);font-size:12px;white-space:nowrap"><i class="ph-fill ph-check-circle"></i>Hoàn thành</span>
+          <span style="display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 7px;border-radius:4px;border:1px solid var(--dg);color:var(--dg);font-size:12px;font-weight:600;white-space:nowrap"><i class="ph-bold ph-prohibit"></i>Bị chặn</span>
+        </div>
+        <div style="font-weight:500;margin-top:4px">Chip ưu tiên · số mũi tên</div>
+        <div style="display:flex;gap:14px;font-size:13px"><span><i class="ph-bold ph-caret-double-up" style="color:var(--dg)"></i> Cao</span><span><i class="ph-bold ph-caret-up" style="color:var(--wn)"></i> TB</span><span><i class="ph-bold ph-minus" style="color:var(--mu)"></i> Thấp</span><span style="color:var(--mu)">·</span><span><i class="ph-fill ph-star" style="color:var(--wn)"></i> Quan trọng</span><span><i class="ph-fill ph-lightning" style="color:var(--dg)"></i> Khẩn cấp</span></div>
+        <div style="font-weight:500;margin-top:4px">Chip hạn</div>
+        <div style="display:flex;gap:14px;font-size:12.5px;font-variant-numeric:tabular-nums;flex-wrap:wrap"><span style="color:var(--dg);font-weight:600"><i class="ph-bold ph-warning-circle"></i> 24/10 · trễ 2 ngày</span><span style="color:var(--wn)"><i class="ph-bold ph-clock-countdown"></i> Mai 27/10</span><span><i class="ph ph-clock"></i> Hôm nay 14:00</span><span><i class="ph ph-calendar-blank"></i> 06/11</span><span style="color:var(--fa)"><i class="ph ph-infinity"></i> Không giới hạn</span></div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-weight:500">Avatar · người tròn, AI vuông</div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:9.5px;font-weight:600">LT</span><span style="width:28px;height:28px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:11px;font-weight:600">LT</span><span style="width:38px;height:38px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:13px;font-weight:600">LT</span></span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:6px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:12px"></i></span><span style="width:28px;height:28px;border-radius:8px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle"></i></span><span style="width:38px;height:38px;border-radius:10px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:18px"></i></span></span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px">Hermes<span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px">AI</span></span>
+        </div>
+        <div style="font-size:12.5px;color:var(--mu);line-height:1.55">Mọi nơi AI xuất hiện (người làm, bình luận, nhật ký, đề xuất) đều có đủ 3 dấu hiệu: hình vuông bo, ✦, nhãn AI. Người dùng mù màu vẫn phân biệt được.</div>
+        <div style="font-weight:500">Ô chỉ số</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--bg);border:1px solid var(--ln2);border-radius:var(--radius-lg);box-shadow:inset 0 2px 0 var(--dg)"><span style="font-size:12px;color:var(--mu)"><i class="ph-fill ph-flag" style="color:var(--dg)"></i> Quá hạn</span><span style="font-size:26px;line-height:1;font-weight:500;color:var(--dg);font-variant-numeric:tabular-nums">5</span><span style="font-size:11.5px;color:var(--fa)">Cũ nhất: trễ 3 ngày</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--bg);border:1px solid var(--ln2);border-radius:var(--radius-lg);box-shadow:inset 0 2px 0 var(--wn)"><span style="font-size:12px;color:var(--mu)"><i class="ph-bold ph-clock-countdown" style="color:var(--wn)"></i> Hạn 3 ngày</span><span style="font-size:26px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums">7</span><span style="font-size:11.5px;color:var(--fa)">Đến 29/10</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--bg);border:1px solid var(--ln2);border-radius:var(--radius-lg);box-shadow:inset 0 2px 0 var(--ok)"><span style="font-size:12px;color:var(--mu)"><i class="ph-fill ph-check-circle" style="color:var(--ok)"></i> Đã xong</span><span style="font-size:26px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums">41</span><span style="font-size:11.5px;color:var(--fa)">64% tổng số</span></div>
+        </div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:10px;grid-column:1/-1">
+        <div style="font-weight:500">Dòng task · các trạng thái</div>
+        <div style="border:1px solid var(--ln2);border-radius:var(--radius-md);overflow:hidden;background:var(--bg)">
+          <sc-for list="{{ rowStates }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-top:1px solid var(--ln2);box-shadow:inset 3px 0 0 {{ r.bar }};background:{{ r.bg }};outline:{{ r.focus }};outline-offset:-2px">
+              <span style="width:36px;height:36px;display:grid;place-items:center;font-size:21px;color:{{ r.cc }}"><i class="{{ r.check }}"></i></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:500;text-decoration:{{ r.strike }};color:{{ r.tc }}">{{ r.t }}</div><div style="font-size:12px;color:var(--mu)">{{ r.meta }}</div></div>
+              <span style="font-size:12.5px;color:{{ r.dc }};font-weight:{{ r.dw }};font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.due }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid {{ r.sc }};color:{{ r.sc }};font-size:12px;white-space:nowrap"><i class="{{ r.si }}"></i>{{ r.sl }}</span>
+              <span style="width:160px;font-size:11.5px;color:var(--fa)">{{ r.state }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-weight:500">Nút · tab phân đoạn · bộ lọc</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary"><i class="ph ph-plus"></i>Tạo task</button><button class="btn btn-secondary">Huỷ</button><button class="btn btn-ghost">Xoá lọc</button><button class="btn btn-secondary" style="color:var(--dg);border-color:color-mix(in srgb,var(--dg) 50%,transparent)"><i class="ph-bold ph-prohibit"></i>Đánh dấu bị chặn</button><button class="btn btn-primary" disabled>Đang lưu…</button></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><div class="seg"><label class="seg-opt"><input type="radio" name="d1" checked>Tuần</label><label class="seg-opt"><input type="radio" name="d1">Tháng</label><label class="seg-opt"><input type="radio" name="d1">Quý</label></div><div style="display:flex;gap:2px;border-bottom:1px solid var(--ln2)"><span style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;color:var(--ac);box-shadow:inset 0 -2px 0 var(--ac);font-size:13px">Kanban</span><span style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;color:var(--mu);font-size:13px">Danh sách</span><span style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;color:var(--mu);font-size:13px">Gantt</span></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="height:32px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--ac);color:var(--ac);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap">Người làm: Lan Trần, +2<i class="ph ph-x" style="width:20px;text-align:center"></i></span><span style="height:32px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--ac);color:var(--ac);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap">Hạn: 26/10 – 02/11<i class="ph ph-x" style="width:20px;text-align:center"></i></span><span style="height:32px;padding:0 12px;border-radius:999px;border:1px dashed var(--ln);color:var(--mu);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap"><i class="ph ph-plus"></i>Thêm bộ lọc</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mu)"><button class="btn btn-secondary" style="outline:2px solid var(--ac);outline-offset:2px">Focus bàn phím</button>Viền 2px màu nhấn, cách 2px — áp dụng cho mọi phần tử tương tác.</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-weight:500">Thẻ Kanban</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="width:240px;background:var(--bg);border:1px solid var(--ln2);border-radius:var(--radius-md);padding:10px 12px;display:flex;flex-direction:column;gap:7px;box-shadow:inset 3px 0 0 var(--dg)"><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mu)"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.70 0.11 290)"></span><span style="flex:1">Enterprise OS v1.3</span><i class="ph-bold ph-caret-double-up" style="color:var(--dg)"></i></div><div style="font-weight:500;font-size:13.5px;line-height:1.4">Khắc phục sự cố API giao việc trả lỗi 502</div><div style="height:3px;border-radius:2px;background:var(--ln2)"><div style="width:50%;height:100%;background:var(--ok);border-radius:2px"></div></div><div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mu)"><span style="width:22px;height:22px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:9.5px;font-weight:600;color:var(--tx)">ĐD</span><span style="color:var(--dg);font-weight:600">trễ 2 ngày</span><span style="margin-left:auto"><i class="ph ph-tree-structure"></i> 2/4</span></div></div>
+          <div style="width:240px;background:var(--bg);border:1px solid var(--ac);border-radius:var(--radius-md);padding:10px 12px;display:flex;flex-direction:column;gap:7px;box-shadow:var(--shadow-md);transform:rotate(-1.5deg)"><div style="font-size:11.5px;color:var(--mu)">Đang kéo</div><div style="font-weight:500;font-size:13.5px;line-height:1.4">Kết nối Hermes với Kanban phòng ban</div><div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mu)"><span style="width:22px;height:22px;border-radius:6px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:12px"></i></span><span>05/11</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="ds-overlay" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">05</span><h2 style="font-size:22px;line-height:1.3;margin:0">Lớp nổi · modal, bottom sheet, toast</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px;align-items:start">
+      <div style="position:relative;height:300px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--ln2);background:var(--bg)">
+        <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:320px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-weight:500;font-size:16px">Xoá task này?</div>
+          <div style="font-size:13.5px;color:var(--mu);line-height:1.55">“Nhắc hạn xử lý công văn đến” và 0 việc con sẽ bị xoá. Có thể khôi phục trong 30 ngày từ Lưu trữ.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px"><button class="btn btn-secondary">Huỷ</button><button class="btn btn-secondary" style="color:var(--dg);border-color:var(--dg)"><i class="ph ph-trash"></i>Xoá</button></div>
+        </div>
+      </div>
+      <div style="position:relative;height:300px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--ln2);background:var(--bg)">
+        <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--sf);border-radius:20px 20px 0 0;border-top:1px solid var(--ln);padding:8px 16px 20px;display:flex;flex-direction:column;gap:6px">
+          <div style="width:36px;height:5px;border-radius:3px;background:var(--ln);align-self:center;margin-bottom:6px"></div>
+          <div style="font-weight:500">Đổi hạn</div>
+          <div style="min-height:44px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--ln2)"><i class="ph ph-sun-horizon"></i>Hôm nay<span style="margin-left:auto;color:var(--mu);font-size:12.5px;white-space:nowrap">T2 26/10</span></div>
+          <div style="min-height:44px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--ln2)"><i class="ph ph-arrow-right"></i>Ngày mai<span style="margin-left:auto;color:var(--mu);font-size:12.5px;white-space:nowrap">T3 27/10</span></div>
+          <div style="min-height:44px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--ln2)"><i class="ph ph-calendar-dots"></i>Tuần sau<span style="margin-left:auto;color:var(--mu);font-size:12.5px;white-space:nowrap">T2 02/11</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-md);box-shadow:var(--shadow-md);font-size:13.5px"><i class="ph-fill ph-check-circle" style="color:var(--ok);font-size:18px"></i><span style="flex:1">Đã hoàn thành “Họp giao ban”</span><button class="btn btn-ghost">Hoàn tác</button></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-md);box-shadow:var(--shadow-md);font-size:13.5px"><i class="ph-fill ph-sparkle" style="color:var(--ai);font-size:18px"></i><span style="flex:1">Hermes đã giao 2 việc con cho Minh Nguyễn</span><button class="btn btn-ghost">Xem</button></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:var(--sf);border:1px solid var(--dg);border-radius:var(--radius-md);box-shadow:var(--shadow-md);font-size:13.5px"><i class="ph-fill ph-warning-circle" style="color:var(--dg);font-size:18px"></i><span style="flex:1">File vượt 5 MB — hãy dùng link Drive</span><button class="btn btn-ghost">Thêm link</button></div>
+        <div style="font-size:12.5px;color:var(--mu);line-height:1.55">Toast nằm giữa đáy (web) / trên tab bar (mobile), tự ẩn sau 4 giây, luôn có hành động hoàn tác hoặc đi tiếp. Lỗi không tự ẩn.</div>
+      </div>
+    </div>
+  </section>
+  <section id="ds-states" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">06</span><h2 style="font-size:22px;line-height:1.3;margin:0">Trạng thái rỗng · đang tải · lỗi</h2></div>
+    <div style="display:grid;grid-template-columns:120px repeat(3,minmax(0,1fr));gap:14px;align-items:stretch">
+      <span></span><span style="font-size:12.5px;color:var(--mu)">Rỗng</span><span style="font-size:12.5px;color:var(--mu)">Đang tải · skeleton</span><span style="font-size:12.5px;color:var(--mu)">Lỗi / mất mạng</span>
+
+      <span style="font-weight:500;align-self:center">Hôm nay</span>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><i class="ph ph-sun-horizon" style="font-size:32px;color:var(--ok)"></i><div style="font-weight:500">Hôm nay không còn việc nào</div><div style="font-size:12.5px;color:var(--mu);line-height:1.5">Đã xong 6 việc, chuỗi 7 ngày. Xem việc Sắp tới hoặc kéo một việc từ Bất cứ lúc nào.</div><button class="btn btn-secondary" style="margin-top:6px">Xem Sắp tới</button></div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:12px" aria-busy="true"><sc-for list="{{ sk }}" as="x" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px"><span style="width:20px;height:20px;border-radius:50%;background:var(--ln2)"></span><div style="flex:1;display:flex;flex-direction:column;gap:6px"><span style="height:10px;border-radius:5px;background:var(--ln2);width:{{ x.a }}"></span><span style="height:8px;border-radius:4px;background:var(--ln2);width:{{ x.b }}"></span></div><span style="width:56px;height:20px;border-radius:999px;background:var(--ln2)"></span></div></sc-for></div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--wnbg);color:var(--wn);font-size:12.5px;font-weight:500"><i class="ph-bold ph-wifi-slash"></i>Mất kết nối · đang hiện dữ liệu lúc 09:41</div><div style="padding:14px;font-size:13px;color:var(--mu);line-height:1.55;display:flex;flex-direction:column;gap:8px"><span>Bạn vẫn đánh dấu xong được; thay đổi sẽ đồng bộ khi có mạng.</span><span style="display:flex;align-items:center;gap:8px;color:var(--tx)"><i class="ph-fill ph-check-circle" style="color:var(--ok)"></i>Họp giao ban<span style="margin-left:auto;font-size:11.5px;color:var(--wn)"><i class="ph ph-cloud-arrow-up"></i> chờ đồng bộ</span></span></div></div>
+
+      <span style="font-weight:500;align-self:center">Kanban</span>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="border:1px dashed var(--ln);border-radius:var(--radius-md);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--mu);text-align:center;padding:8px"><i class="ph ph-tray" style="font-size:20px"></i>Chưa có việc<span style="color:var(--act)">+ Thêm</span></div><div style="border:1px dashed var(--ln);border-radius:var(--radius-md);min-height:120px;display:grid;place-items:center;font-size:12px;color:var(--fa)">Kéo thẻ vào đây</div><div style="border:1px dashed var(--ln);border-radius:var(--radius-md);min-height:120px;display:grid;place-items:center;font-size:12px;color:var(--fa)">Kéo thẻ vào đây</div></div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px" aria-busy="true"><sc-for list="{{ skCols }}" as="c" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:8px"><span style="height:10px;width:60%;border-radius:5px;background:var(--ln2)"></span><span style="height:{{ c.h1 }};border-radius:var(--radius-md);background:var(--ln2)"></span><span style="height:{{ c.h2 }};border-radius:var(--radius-md);background:var(--ln2)"></span></div></sc-for></div>
+      <div style="background:var(--sf);border:1px solid var(--dg);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><i class="ph ph-warning-octagon" style="font-size:26px;color:var(--dg)"></i><div style="font-weight:500">Không chuyển được thẻ</div><div style="font-size:12.5px;color:var(--mu);line-height:1.5">“Tự động đánh số văn bản” đã trở về cột Đang làm. Máy chủ trả lỗi 502 lúc 10:14.</div><div style="display:flex;gap:8px;margin-top:6px"><button class="btn btn-primary"><i class="ph ph-arrow-clockwise"></i>Thử lại</button><button class="btn btn-ghost">Báo lỗi</button></div></div>
+
+      <span style="font-weight:500;align-self:center">Tổng quan</span>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><i class="ph ph-chart-line-up" style="font-size:32px;color:var(--fa)"></i><div style="font-weight:500">Chưa đủ dữ liệu cho Quý này</div><div style="font-size:12.5px;color:var(--mu);line-height:1.5">Biểu đồ xuất hiện khi có ít nhất 5 task có hạn trong khoảng đã chọn.</div><button class="btn btn-secondary" style="margin-top:6px">Xem theo Tuần</button></div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:10px" aria-busy="true"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><span style="height:56px;border-radius:var(--radius-md);background:var(--ln2)"></span><span style="height:56px;border-radius:var(--radius-md);background:var(--ln2)"></span><span style="height:56px;border-radius:var(--radius-md);background:var(--ln2)"></span></div><div style="display:flex;align-items:flex-end;gap:6px;height:80px"><sc-for list="{{ skBars }}" as="b" hint-placeholder-count="8"><span style="flex:1;height:{{ b.h }};border-radius:3px 3px 0 0;background:var(--ln2)"></span></sc-for></div></div>
+      <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:10px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><span style="height:56px;border-radius:var(--radius-md);border:1px solid var(--ln2);display:flex;flex-direction:column;justify-content:center;padding:0 10px;font-size:11.5px;color:var(--mu)">Tổng<b style="font-size:18px;color:var(--tx);font-weight:500">64</b></span><span style="height:56px;border-radius:var(--radius-md);border:1px dashed var(--dg);display:flex;flex-direction:column;justify-content:center;padding:0 10px;font-size:11.5px;color:var(--dg)">Burndown<b style="font-size:12.5px;font-weight:500">Không tải được</b></span><span style="height:56px;border-radius:var(--radius-md);border:1px solid var(--ln2);display:flex;flex-direction:column;justify-content:center;padding:0 10px;font-size:11.5px;color:var(--mu)">Quá hạn<b style="font-size:18px;color:var(--dg);font-weight:500">5</b></span></div><div style="font-size:12.5px;color:var(--mu);line-height:1.5">Lỗi từng khối, không làm trắng cả trang: khối nào hỏng hiện viền đứt đỏ + nút <span style="color:var(--act)">Tải lại khối</span>.</div></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;max-width:900px">Skeleton giữ đúng kích thước khối thật để trang không nhảy khi dữ liệu về; trên sản phẩm có hiệu ứng nhấp nháy nhẹ (tắt khi bật “giảm chuyển động”). Trạng thái rỗng luôn có một hành động tiếp theo.</div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      neutrals: [['Nền', '--bg', 'var(--bg)'], ['Bề mặt', '--sf', 'var(--sf)'], ['Bề mặt 2', '--sf2', 'var(--sf2)'], ['Viền', '--ln', 'var(--ln)'], ['Chữ', '--tx', 'var(--tx)'], ['Chữ phụ', '--mu', 'var(--mu)'], ['Nhấn', '--ac', 'var(--ac)'], ['Nhấn · nền', '--acbg', 'var(--acbg)']].map(([n, k, v]) => ({ n, k, v })),
+      semantics: [['Thành công', 'Hoàn thành, đúng hạn, Rảnh', '--ok', 'var(--ok)', 'var(--okbg)', 'ph-fill ph-check-circle'], ['Cảnh báo', 'Tạm dừng, hạn ≤3 ngày, Bận', '--wn', 'var(--wn)', 'var(--wnbg)', 'ph-bold ph-clock-countdown'], ['Quá hạn', 'Quá hạn, bị chặn, Quá tải, xoá', '--dg', 'var(--dg)', 'var(--dgbg)', 'ph-fill ph-flag'], ['Thông tin', 'Đang làm, sự kiện Google, Vừa sức', '--in', 'var(--in)', 'var(--inbg)', 'ph-fill ph-circle-half'], ['AI · Hermes', 'Hành động, tin nhắn, đề xuất của AI', '--ai', 'var(--ai)', 'var(--aibg)', 'ph-fill ph-sparkle']].map(([n, use, k, fg, bg, icon]) => ({ n, use, k, fg, bg, icon })),
+      typeScale: [['Display 36/500', '36px', 1.25, 500, 'Tổng quan tuần 44'], ['H1 26/500', '26px', 1.25, 500, 'Hôm nay — 3 việc quá hạn'], ['H2 22/500', '22px', 1.3, 500, 'Rà soát hợp đồng hợp tác đầu tư'], ['Body 14/400', '14px', 1.5, 400, 'Gửi ý kiến pháp chế trước 14:00 để kịp họp HĐQT.'], ['Label 12.5/500', '12.5px', 1.4, 500, 'Người làm · Hạn chót · Ưu tiên'], ['Caption 11.5/400', '11.5px', 1.4, 400, 'Đồng bộ Google Calendar · 2 phút trước']].map(([k, s, lh, w, sample]) => ({ k, s, lh, w, sample })),
+      rowStates: [
+        ['Rà soát hợp đồng hợp tác đầu tư (bản 3)', 'Hồ sơ pháp lý KĐT Phú Mỹ · Nguyễn Quốc Tuấn', 'Hôm nay 14:00', 'doing', 'Mặc định', ''],
+        ['Đối chiếu công nợ nhà cung cấp tháng 9', 'Báo cáo tài chính Q3 · Thảo Vũ', '25/10 · trễ 1 ngày', 'todo', 'Quá hạn: dải + cờ + chữ đỏ', 'over'],
+        ['Khắc phục sự cố API giao việc trả lỗi 502', 'Enterprise OS v1.3 · Trần Đức Dương · Bị chặn', '24/10 · trễ 2 ngày', 'doing', 'Quá hạn + bị chặn', 'over'],
+        ['Tổng hợp báo cáo tiến độ tuần 43', 'Enterprise OS v1.3 · ✦ Hermes (AI)', 'Hôm nay 16:30', 'doing', 'AI đang làm', 'ai'],
+        ['Họp giao ban phòng Kỹ thuật', 'Enterprise OS v1.3 · Trần Đức Dương', '09:00', 'done', 'Hoàn thành', 'done'],
+        ['Kiểm thử phân quyền Quản trị / Quản lý / Thành viên', 'Enterprise OS v1.3 · Lan Trần', 'Hôm nay 17:00', 'todo', 'Focus bàn phím', 'focus']
+      ].map(([t, meta, due, st, state, k]) => { const S = { todo: ['Chưa làm', 'ph ph-circle-dashed', 'var(--mu)'], doing: ['Đang làm', 'ph-fill ph-circle-half', 'var(--in)'], done: ['Hoàn thành', 'ph-fill ph-check-circle', 'var(--ok)'] }[st]; return { t, meta, due, state, sl: S[0], si: S[1], sc: S[2],
+        bar: k === 'over' ? 'var(--dg)' : k === 'ai' ? 'var(--ai)' : 'transparent', bg: k === 'over' ? 'color-mix(in srgb,var(--dg) 5%,transparent)' : 'transparent', focus: k === 'focus' ? '2px solid var(--ac)' : 'none',
+        check: k === 'done' ? 'ph-fill ph-check-circle' : 'ph ph-circle', cc: k === 'done' ? 'var(--ok)' : 'var(--fa)', strike: k === 'done' ? 'line-through' : 'none', tc: k === 'done' ? 'var(--fa)' : 'var(--tx)',
+        dc: k === 'over' ? 'var(--dg)' : 'var(--tx)', dw: k === 'over' ? 600 : 400 }; }),
+      sk: [['72%', '40%'], ['58%', '32%'], ['80%', '46%'], ['50%', '28%']].map(([a, b]) => ({ a, b })),
+      skCols: [['64px', '48px'], ['80px', '64px'], ['48px', '72px']].map(([h1, h2]) => ({ h1, h2 })),
+      skBars: [40, 65, 50, 80, 55, 70, 35, 60].map(h => ({ h: h + '%' })),
+      spaces: [['space-1 · 2.8', '2.8px'], ['space-2 · 5.6', '5.6px'], ['space-3 · 8.4', '8.4px'], ['space-4 · 11.2', '11.2px'], ['space-6 · 16.8', '16.8px'], ['space-8 · 22.4', '22.4px'], ['chạm · 44', '44px']].map(([k, v]) => ({ k, v }))
+    };
+  }
+}
+</script>
+</body>
+</html>
