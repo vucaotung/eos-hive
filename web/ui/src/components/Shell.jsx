@@ -7,6 +7,7 @@ import { ROLE } from "../lib/format.js";
 import { Person } from "./ui.jsx";
 import TaskForm from "./TaskForm.jsx";
 import Logo from "./Logo.jsx";
+import Notifications from "./Notifications.jsx";
 import { NAV_GROUPS, ME_ITEM, isActive } from "./nav.js";
 
 function CompanySwitcher() {
@@ -105,7 +106,7 @@ export default function Shell({ children }) {
           <span className="flex items-center gap-2 lg:hidden"><Logo className="size-8" /></span>
           <div className="min-w-0 max-w-64"><CompanySwitcher /></div>
           <GlobalSearch />
-          <div className="ml-auto hidden lg:block"><Button onPress={() => setCreating(true)}><Plus size={16} weight="bold" />Giao việc<kbd className="ml-1 rounded border border-border px-1 text-[10px] text-muted">N</kbd></Button></div>
+          <div className="ml-auto flex items-center gap-2"><Notifications /><span className="hidden lg:block"><Button onPress={() => setCreating(true)}><Plus size={16} weight="bold" />Giao việc<kbd className="ml-1 rounded border border-border px-1 text-[10px] text-muted">N</kbd></Button></span></div>
           <a href="#/me" className="hidden size-8 lg:block" aria-label="Tài khoản"><Person user={me?.user} showName={false} /></a>
         </div>
       </header>

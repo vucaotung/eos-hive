@@ -328,6 +328,22 @@ try {
     const denied = await kt.rpc('app_task_save', { id: made.id, important: true }); assert.ok([400, 403].includes(denied.status), `người không sửa được: HTTP ${denied.status}`);
     r = await row(); assert.equal(r.important, false, 'cờ không đổi khi bị chặn');
   });
+  await step('thông báo: giao việc và nhắc tên tạo thông báo cho người nhận, lọc, đánh dấu đã đọc; người khác không đọc/đánh dấu hộ', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const base = (await minh.ok('app_notifications', { company_id: CO })).unread;
+    const made = await adm.ok('app_task_save', { company_id: CO, title: 'Việc thử thông báo web', assignee_id: ID.minh, department_id: HC });
+    await adm.ok('app_comment', { task: made.id, body: 'Nhờ @Trần Minh kiểm tra giúp' });
+    const nm = await minh.ok('app_notifications', { company_id: CO });
+    assert.equal(nm.unread, base + 2, JSON.stringify(nm.items.slice(0, 2)));
+    assert.ok(nm.items.some((n) => n.kind === 'task_assigned' && n.task === made.id && n.who));
+    const mention = (await minh.ok('app_notifications', { company_id: CO, filter: 'mention' })).items; assert.ok(mention.length >= 1 && mention.every((n) => n.kind === 'mention'));
+    assert.equal((await adm.ok('app_notifications_read', { company_id: CO, ids: nm.items.map((n) => n.id) })).marked, 0, 'không đánh dấu hộ người khác');
+    await minh.ok('app_notifications_read', { company_id: CO, ids: [nm.items[0].id] });
+    assert.equal((await minh.ok('app_notifications', { company_id: CO })).unread, base + 1);
+    await minh.ok('app_notifications_read', { company_id: CO, all: true });
+    assert.equal((await minh.ok('app_notifications', { company_id: CO })).unread, 0);
+    assert.equal((await minh.rpc('app_notifications', { company_id: CO, filter: 'bậy' })).status, 400);
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });

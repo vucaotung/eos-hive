@@ -895,4 +895,52 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; r jsonb
   RAISE NOTICE 'Cờ Eisenhower ok';
 END $$;
 
+-- ===== Thông báo (migration 0026) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; mem constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+              tid bigint; r jsonb; n int; ids jsonb; BEGIN
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  r := agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc thử thông báo', 'assignee_id', mem));
+  tid := (r->>'id')::bigint;
+  ASSERT (SELECT count(*) FROM core.notifications WHERE user_id = mem AND kind = 'task_assigned' AND entity_id = tid::text AND actor = 'user:' || own AND NOT is_ai) = 1, 'người nhận việc được báo, ghi người giao';
+  ASSERT NOT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = own AND entity_id = tid::text), 'người giao không tự nhận thông báo';
+  PERFORM agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc tự giao', 'assignee_id', own));
+  ASSERT NOT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = own AND kind = 'task_assigned'), 'tự giao việc cho mình không báo';
+  -- bình luận của người làm → báo người giao (không báo chính mình)
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  PERFORM agent.app_comment(jsonb_build_object('task', tid, 'body', 'Đã nhận việc'));
+  ASSERT (SELECT count(*) FROM core.notifications WHERE user_id = own AND kind = 'comment' AND entity_id = tid::text) = 1, 'người giao được báo có bình luận';
+  ASSERT NOT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mem AND kind = 'comment'), 'người bình luận không tự nhận';
+  -- nhắc tên: chỉ một thông báo "mention" cho người được nhắc (không thêm "comment")
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  PERFORM agent.app_comment(jsonb_build_object('task', tid, 'body', 'Nhờ @thành viên cơ bản xem lại giúp'));
+  ASSERT (SELECT count(*) FROM core.notifications WHERE user_id = mem AND entity_id = tid::text AND kind = 'mention') = 1
+     AND (SELECT count(*) FROM core.notifications WHERE user_id = mem AND entity_id = tid::text AND kind = 'comment') = 0, 'nhắc tên (không phân biệt hoa thường) chỉ một thông báo mention';
+  -- agent bình luận → thông báo có nhãn AI
+  INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (tid, 'eeeeeeee-0000-0000-0000-0000000000b1', 'agent:mai', 'note', 'Mình đã tra cứu xong');
+  ASSERT (SELECT count(*) FROM core.notifications WHERE user_id = mem AND is_ai AND actor = 'agent:mai') = 1, 'bình luận của agent có is_ai';
+  -- RPC: danh sách, lọc, chưa đọc, đánh dấu đã đọc
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  r := agent.app_notifications(jsonb_build_object('company_id', c));
+  ASSERT (r->>'unread')::int = 3 AND jsonb_array_length(r->'items') = 3 AND (r->'items'->0->>'kind') = 'comment' AND (r->'items'->0->>'ai')::boolean AND r->'items'->0->>'who' = 'Mai - Trợ lý AI', format('danh sách mới nhất trước, có tên người/AI: %s', r);
+  ASSERT jsonb_array_length(agent.app_notifications(jsonb_build_object('company_id', c, 'filter', 'mention'))->'items') = 1, 'lọc nhắc tên';
+  ASSERT jsonb_array_length(agent.app_notifications(jsonb_build_object('company_id', c, 'filter', 'ai'))->'items') = 1, 'lọc từ AI';
+  BEGIN PERFORM agent.app_notifications(jsonb_build_object('company_id', c, 'filter', 'xxx')); ASSERT false, 'bộ lọc sai';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  ids := jsonb_build_array((r->'items'->0->>'id')::bigint);
+  ASSERT (agent.app_notifications_read(jsonb_build_object('company_id', c, 'ids', ids))->>'marked')::int = 1 AND (agent.app_notifications(jsonb_build_object('company_id', c))->>'unread')::int = 2, 'đánh dấu một thông báo';
+  -- người khác không đánh dấu hộ được
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  ASSERT (agent.app_notifications_read(jsonb_build_object('company_id', c, 'ids', jsonb_build_array((SELECT id FROM core.notifications WHERE user_id = mem AND read_at IS NULL LIMIT 1))))->>'marked')::int = 0, 'không đánh dấu hộ người khác';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  ASSERT (agent.app_notifications_read(jsonb_build_object('company_id', c, 'all', true))->>'marked')::int = 2 AND (agent.app_notifications(jsonb_build_object('company_id', c))->>'unread')::int = 0, 'đánh dấu tất cả';
+  -- việc xong: báo người giao
+  PERFORM agent.app_submit(jsonb_build_object('task', tid, 'note', 'Xong rồi'));
+  ASSERT (SELECT count(*) FROM core.notifications WHERE user_id = own AND kind = 'task_done' AND entity_id = tid::text) = 1, 'người giao được báo khi việc xong';
+  -- người ngoài công ty không xem được
+  PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-0000000000f0","via":"web"}', true);
+  BEGIN PERFORM agent.app_notifications(jsonb_build_object('company_id', c)); ASSERT false, 'người ngoài';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  RAISE NOTICE 'Thông báo ok';
+END $$;
+
 ROLLBACK;
