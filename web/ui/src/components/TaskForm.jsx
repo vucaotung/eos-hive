@@ -5,6 +5,7 @@ import { rpc } from "../lib/api.js";
 import { PRIORITY } from "../lib/format.js";
 import { CaretDown, CaretUp, Star, Lightning } from "@phosphor-icons/react";
 import { quadOf } from "../pages/Eisenhower.jsx";
+import AiTaskCreator from "./AiTaskCreator.jsx";
 import { useMedia } from "./ui.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
@@ -12,21 +13,23 @@ const blank = (dept) => ({ title: "", description: "", department_id: dept || nu
   project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "", est: "", repeat: "none" });
 
 // Tạo hoặc sửa việc. task = null → tạo mới; parent → việc con
-export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved }) {
+export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved, aiRequest = null }) {
   const { companyId, membership, org, lookups, refresh, me } = useApp();
   const [f, setF] = useState(blank(membership?.department_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const sheet = useMedia("(max-width: 639px)");   // mobile: hiện như bottom sheet (bo góc trên 20px)
+  const [tab, setTab] = useState("manual");   // manual | ai (chỉ khi tạo mới)
+  const canAi = !task && !parent;
   const [more, setMore] = useState(false);   // "Thêm chi tiết": mặc định chỉ hiện các trường thường dùng
 
   useEffect(() => {
     if (!isOpen) return;
-    setError(null); setMore(!!task || !!parent);
+    setError(null); setMore(!!task || !!parent); setTab(aiRequest ? "ai" : "manual");
     if (task) setF({ title: task.title, description: task.description || "", department_id: task.department_id, assignee_id: task.assignee_id,
       due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "", est: task.est_minutes ? String(task.est_minutes) : "" });
     else setF({ ...blank(parent?.department_id || membership?.department_id), project_id: parent?.project_id || null });
-  }, [isOpen, task, parent, membership]);
+  }, [isOpen, task, parent, membership, aiRequest]);
 
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const people = useMemo(() => org.members.filter((m) => m.active && m.user?.active !== false).map((m) => ({
@@ -66,6 +69,11 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
             <Modal.Heading>{task ? `Sửa T-${task.id}` : parent ? `Việc con của T-${parent.id}` : "Giao việc"}</Modal.Heading>
           </Modal.Header>
           <Modal.Body>
+            {canAi && (
+              <div className="mb-4 inline-flex rounded-lg p-0.5" role="tablist" aria-label="Cách tạo việc" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>
+                {[["manual", "Tạo thủ công"], ["ai", "✦ Tạo bằng AI"]].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`h-8 whitespace-nowrap rounded-md px-3 text-[13px] font-medium ${tab === k ? "bg-accent-soft text-act" : "text-muted"}`} style={tab === k ? { boxShadow: "inset 0 0 0 1px var(--accent)" } : undefined}>{l}</button>)}
+              </div>)}
+            {canAi && tab === "ai" ? <AiTaskCreator requestId={aiRequest} onClose={onClose} /> : (<>
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save(); }}
               onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); save(); } }}>
               <div className="sm:col-span-2"><TextInput label="Tên việc" value={f.title} onChange={set("title")} isRequired autoFocus placeholder="Ví dụ: Soạn công văn xin gia hạn tiến độ" /></div>
@@ -113,13 +121,13 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
               </>)}
               <button type="submit" hidden />
             </form>
-            {error && <div className="mt-4"><ErrorBox error={error} /></div>}
+            {error && <div className="mt-4"><ErrorBox error={error} /></div>}</>)}
           </Modal.Body>
-          <Modal.Footer>
+          {!(canAi && tab === "ai") && <Modal.Footer>
             <span className="mr-auto hidden text-xs text-faint sm:block">Ctrl+Enter để lưu · Esc để đóng</span>
             <Button variant="secondary" onPress={onClose}>Hủy</Button>
             <Button isPending={busy} onPress={save}>{task ? "Lưu thay đổi" : "Giao việc"}</Button>
-          </Modal.Footer>
+          </Modal.Footer>}
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>

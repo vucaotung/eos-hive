@@ -9,6 +9,7 @@ import { ErrorBox, LoadingList, PageHeader, StatusIcon, AgentChip } from "../com
 import KanbanBoard from "../components/Kanban.jsx";
 import { Seg } from "../components/charts.jsx";
 import { Timeline } from "./Calendar.jsx";
+import ZoomBox from "../components/ZoomBox.jsx";
 
 // Trang dự án (design/README.md §7): Kanban · Danh sách (sửa tại chỗ) · Mindmap · Gantt, chung một thanh lọc.
 const VIEWS = [["kanban", "Kanban"], ["list", "Danh sách"], ["mindmap", "Mindmap"], ["gantt", "Gantt"]];
@@ -118,11 +119,11 @@ export default function Project() {
       </div>
       <ErrorBox error={error} />
       {loading && !data ? <LoadingList rows={5} /> : view === "kanban" ? <KanbanBoard tasks={shown} /> : view === "list" ? <ListView tasks={shown} all={mine} onSave={save} />
-        : view === "mindmap" ? <Mindmap project={project} tasks={shown} /> : (<div className="flex flex-col gap-3">
+        : view === "mindmap" ? <ZoomBox label="Phóng to Mindmap"><Mindmap project={project} tasks={shown} /></ZoomBox> : (<div className="flex flex-col gap-3">
           <div className="flex items-center gap-1"><Button isIconOnly size="sm" variant="secondary" aria-label="Trước" onPress={() => setAnchor(addDays(anchor, -14))}><CaretLeft size={16} /></Button>
             <Button size="sm" variant="secondary" onPress={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAnchor(d); }}>Hôm nay</Button>
             <Button isIconOnly size="sm" variant="secondary" aria-label="Sau" onPress={() => setAnchor(addDays(anchor, 14))}><CaretRight size={16} /></Button></div>
-          <Timeline anchor={anchor} tasks={shown} today={(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })()} /></div>)}
+          <ZoomBox label="Phóng to Gantt"><Timeline anchor={anchor} tasks={shown} today={(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })()} /></ZoomBox></div>)}
     </div>
   );
 }

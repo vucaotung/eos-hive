@@ -1,4 +1,4 @@
--- 0026 · Thông báo trong app (chuông): cột actor/is_ai, trigger giao việc/nhắc tên/bình luận/duyệt/xong, app_notifications, app_notifications_read.
+-- 0026 · Thông báo trong app (chuông): cột actor/is_ai, trigger giao việc/nhắc tên/bình luận/duyệt/xong, app_notifications (trả cả yêu cầu AI), app_notifications_read.
 -- Nguồn chính: db/63_features.sql (PHẦN A). Idempotent.
 BEGIN;
 ALTER TABLE core.notifications ADD COLUMN IF NOT EXISTS actor text;
@@ -108,7 +108,7 @@ BEGIN
   RETURN jsonb_build_object(
     'unread', (SELECT count(*) FROM core.notifications n WHERE n.user_id = me.id AND n.company_id = cid AND n.read_at IS NULL),
     'items', coalesce((SELECT jsonb_agg(x ORDER BY (x->>'id')::bigint DESC) FROM (
-       SELECT jsonb_build_object('id', n.id, 'kind', n.kind, 'title', n.title, 'body', n.body, 'task', CASE WHEN n.entity_type = 'task' THEN n.entity_id::bigint END,
+       SELECT jsonb_build_object('id', n.id, 'kind', n.kind, 'title', n.title, 'body', n.body, 'task', CASE WHEN n.entity_type = 'task' THEN n.entity_id::bigint END, 'request', CASE WHEN n.entity_type = 'ai_request' THEN n.entity_id::bigint END,
               'at', n.created_at, 'read', n.read_at IS NOT NULL, 'ai', n.is_ai,
               'who', CASE WHEN n.actor LIKE 'user:%' THEN (SELECT name FROM core.users WHERE id = substring(n.actor from 6)::uuid)
                           WHEN n.actor LIKE 'agent:%' THEN (SELECT g.name FROM agent.agents g WHERE g.code = substring(n.actor from 7)) END) AS x

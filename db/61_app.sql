@@ -290,7 +290,7 @@ BEGIN
     'agents', coalesce((SELECT jsonb_agg(jsonb_build_object('code', g.code, 'name', g.name, 'description', g.description) ORDER BY g.code)
                           FROM agent.agents g
                          WHERE g.active AND EXISTS (SELECT 1 FROM agent.company_agents ca JOIN core.memberships m ON m.company_id = ca.company_id AND m.user_id = me.id AND m.active
-                                                     WHERE ca.agent_id = g.id AND ca.enabled)), '[]'));
+                                                     WHERE ca.agent_id = g.id AND ca.enabled AND NOT coalesce((ca.config->>'internal')::boolean, false))), '[]'));   -- agent "nội bộ" (vd. Mai nhận yêu cầu tạo việc bằng AI) không hiện trong ô chọn agent
 END $$;
 
 CREATE OR REPLACE FUNCTION agent.app_org(p jsonb) RETURNS jsonb
@@ -326,7 +326,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS
 DECLARE me core.users := agent._web_me(); cid uuid := agent._uuid(p, 'company_id'); days int := least(greatest(coalesce((p->>'days')::int, 60), 1), 400);
 BEGIN
   PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
-  RETURN coalesce((SELECT jsonb_agg(agent._task_json(v) ORDER BY v.updated_at DESC) FROM agent._visible_tasks(me.id, cid, days, 1500) v), '[]');
+  RETURN coalesce((SELECT jsonb_agg(agent._task_json(v) ORDER BY v.updated_at DESC) FROM agent._visible_tasks(me.id, cid, days, 1500) v WHERE NOT EXISTS (SELECT 1 FROM agent.ai_requests r WHERE r.task_id = v.id)), '[]');   -- việc "phân tích yêu cầu" của Mai không hiện trong danh sách
 END $$;
 
 CREATE OR REPLACE FUNCTION agent.app_task(p jsonb) RETURNS jsonb
@@ -415,7 +415,7 @@ BEGIN
     ag_code := nullif(btrim(coalesce(p->>'agent_role', '')), '');
     IF ag_code IS NULL THEN v_agent := NULL;
     ELSE
-      SELECT g.id INTO v_agent FROM agent.agents g JOIN agent.company_agents ca ON ca.agent_id = g.id AND ca.company_id = cid AND ca.enabled WHERE g.code = ag_code AND g.active;
+      SELECT g.id INTO v_agent FROM agent.agents g JOIN agent.company_agents ca ON ca.agent_id = g.id AND ca.company_id = cid AND ca.enabled AND NOT coalesce((ca.config->>'internal')::boolean, false) WHERE g.code = ag_code AND g.active;
       IF v_agent IS NULL THEN RAISE EXCEPTION 'Agent % chưa được bật cho công ty', ag_code; END IF;
     END IF;
   END IF;

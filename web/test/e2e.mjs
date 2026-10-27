@@ -380,6 +380,28 @@ try {
     assert.equal((await adm.rpc('app_watchers_set', { task: made.id, user_ids: ['99999999-9999-9999-9999-999999999999'] })).status, 400);
     await adm.ok('app_checklist_template_delete', { id: tpl.id });
   });
+  await step('tạo việc bằng AI qua web: gửi yêu cầu → Mai đề xuất (giả lập bằng SQL agent) → người dùng xem, sửa, xác nhận → việc tạo bằng quyền người dùng; người khác không đụng được; web không gọi được công cụ của Mai', async () => {
+    await sql("INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000a9', 'mai@agent', 'Mai - Trợ lý AI', 'agent') ON CONFLICT DO NOTHING");
+    await sql("INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, token_scopes, max_level) VALUES ('a2222222-0000-0000-0000-0000000000a9', 'cccccccc-0000-0000-0000-0000000000a9', 'mai', 'Mai - Trợ lý AI', 'specialist', 'work', 'team_admin', '{read,task_create}', 1) ON CONFLICT DO NOTHING");
+    await sql("INSERT INTO agent.company_agents (company_id, agent_id, enabled, auto_done, config) VALUES ($1, 'a2222222-0000-0000-0000-0000000000a9', true, true, '{\"internal\": true}') ON CONFLICT DO NOTHING", [CO]);
+    const minh = await as('minh@demo.vn'), adm = await as('admin@demo.vn');
+    assert.ok(!(await minh.me()).json.agents.some((a) => a.code === 'mai'), 'Mai nội bộ không hiện trong ô chọn agent');
+    const req = await minh.ok('app_ai_request', { company_id: CO, description: 'Giao anh Minh soạn báo cáo tuần trước thứ Sáu' });
+    assert.equal((await minh.ok('app_ai_request_get', { id: req.id })).state, 'pending');
+    assert.equal((await adm.ok('app_ai_request_get', { id: req.id })).state, 'pending');
+    assert.equal((await minh.rpc('mcp_task_propose', { request_id: req.id, tasks: [] })).status, 404, 'web không gọi được hàm của Mai (không nằm trong bảng trắng)');
+    await admin.query('BEGIN'); await admin.query(`SELECT set_config('request.jwt.claims', '{"sub":"cccccccc-0000-0000-0000-0000000000a9","role":"agent","agent":"a2222222-0000-0000-0000-0000000000a9","via":"agent:mai"}', true)`);
+    await admin.query('SELECT agent.mcp_task_propose($1::jsonb)', [JSON.stringify({ request_id: req.id, summary: 'Một việc, một việc con', tasks: [{ title: 'Soạn báo cáo tuần (AI)', assignee_email: 'minh@demo.vn', due_date: '2030-08-02', priority: 'high', subtasks: [{ title: 'Đối chiếu số liệu' }] }] })]); await admin.query('COMMIT');
+    const got = await minh.ok('app_ai_request_get', { id: req.id }); assert.equal(got.state, 'proposed'); assert.equal(got.proposal.tasks[0].assignee_id, ID.minh);
+    assert.ok((await minh.ok('app_notifications', { company_id: CO })).items.some((n) => n.kind === 'ai_proposal' && n.request === req.id && n.ai), 'thông báo có nhãn AI trỏ tới yêu cầu');
+    assert.equal((await adm.rpc('app_ai_confirm', { id: req.id, tasks: got.proposal.tasks })).status, 403, 'người khác không xác nhận hộ');
+    const tasks = got.proposal.tasks.map((x) => ({ ...x, title: 'Soạn báo cáo tuần (đã sửa)' }));
+    const done = await minh.ok('app_ai_confirm', { id: req.id, tasks }); assert.equal(done.created.length, 2);
+    const rows = await sql('SELECT title, created_by, parent_id, source FROM work.tasks WHERE id = ANY($1::bigint[]) ORDER BY id', [done.created]);
+    assert.equal(rows[0].title, 'Soạn báo cáo tuần (đã sửa)'); assert.equal(rows[0].created_by, ID.minh); assert.equal(Number(rows[1].parent_id), done.created[0]); assert.equal(rows[0].source, 'manual');
+    assert.equal((await minh.ok('app_tasks', { company_id: CO, days: 1 })).some((x) => (x.title || '').startsWith('Phân tích yêu cầu giao việc')), false, 'việc phân tích của Mai không hiện trong danh sách');
+    assert.equal((await minh.rpc('app_ai_confirm', { id: req.id, tasks })).status, 400, 'không xác nhận hai lần');
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });

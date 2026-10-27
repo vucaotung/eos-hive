@@ -5,7 +5,8 @@ import re, sys, pathlib
 a = sys.argv[1:]
 part, num, slug, desc = a[0], a[1], a[2], a[3]
 pre = a[a.index('--pre') + 1] if '--pre' in a else ''
-fn61 = a[a.index('--fn61') + 1].split(',') if '--fn61' in a else []   # hàm lấy nguyên văn từ db/61_app.sql (nguồn chính của chúng)
+fn61 = a[a.index('--fn61') + 1].split(',') if '--fn61' in a else []
+fn60 = a[a.index('--fn60') + 1].split(',') if '--fn60' in a else []   # hàm lấy nguyên văn từ db/61_app.sql (nguồn chính của chúng)
 grant = a[a.index('--grant') + 1] if '--grant' in a else ''
 src = pathlib.Path(__file__).resolve().parent.parent / 'db' / '63_features.sql'
 t = src.read_text(encoding='utf-8')
@@ -13,7 +14,10 @@ m = re.search(r'-- ==== PHẦN %s:.*?-- ==== HẾT PHẦN %s ====\n' % (part, pa
 if not m: sys.exit('Không thấy PHẦN %s' % part)
 t61 = (src.parent / '61_app.sql').read_text(encoding='utf-8'); extra = ''
 for fn in fn61:
-    i = t61.index('CREATE OR REPLACE FUNCTION ' + fn + '('); j = t61.index('END $$;', i) + len('END $$;'); extra += t61[i:j] + '\n'
+    i = t61.index('CREATE OR REPLACE FUNCTION ' + fn + '('); j = t61.index('$$;', t61.index('AS $$', i) + 5) + len('$$;'); extra += t61[i:j] + '\n'
+t60 = (src.parent / '60_agent.sql').read_text(encoding='utf-8')
+for fn in fn60:
+    i = t60.index('CREATE FUNCTION ' + fn + '('); j = t60.index('$$;', t60.index('AS $$', i) + 5) + len('$$;'); extra += t60[i:j].replace('CREATE FUNCTION', 'CREATE OR REPLACE FUNCTION', 1) + '\n'
 out = pathlib.Path(__file__).resolve().parent.parent / 'db' / 'migrations' / f'{num}_{slug}.sql'
 out.write_text(f"""-- {num} · {desc}
 -- Nguồn chính: db/63_features.sql (PHẦN {part}). Idempotent.

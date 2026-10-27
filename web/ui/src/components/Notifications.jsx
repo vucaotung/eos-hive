@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, Sparkle } from "@phosphor-icons/react";
-import { useApp } from "../lib/store.jsx";
+import { useApp, go } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { ago, initials } from "../lib/format.js";
 
@@ -8,7 +8,7 @@ import { ago, initials } from "../lib/format.js";
 const FILTERS = [["all", "Tất cả"], ["mention", "Nhắc tên tôi"], ["ai", "Từ AI"]];
 
 export default function Notifications() {
-  const { companyId, openTask } = useApp();
+  const { companyId, openTask, route } = useApp();
   const [open, setOpen] = useState(false), [filter, setFilter] = useState("all");
   const [data, setData] = useState({ unread: 0, items: [] }), [err, setErr] = useState(null);
   const box = useRef(null);
@@ -27,7 +27,8 @@ export default function Notifications() {
   const pick = async (n) => {
     setOpen(false);
     if (!n.read) { rpc("app_notifications_read", { company_id: companyId, ids: [n.id] }).then(() => load()).catch(() => {}); }
-    if (n.task) openTask(n.task);
+    if (n.request) go(route.page === "login" ? "today" : route.page, { ...route.params, ai: n.request });
+    else if (n.task) openTask(n.task);
   };
   const badge = data.unread > 99 ? "99+" : data.unread;
   return (

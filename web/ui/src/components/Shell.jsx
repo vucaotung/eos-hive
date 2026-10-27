@@ -63,6 +63,7 @@ export default function Shell({ children }) {
   const counts = { approvals: pending.data?.items?.length || 0 };
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((n) => !n.adminOnly || isAdmin || isManager) }));
   const page = route.page;
+  const aiId = /^\d{1,12}$/.test(route.params.ai || "") ? Number(route.params.ai) : null;   // #/trang?ai=7 mở thẳng yêu cầu AI đang chờ/đã có đề xuất
   const tabs = [
     { id: "today", label: "Hôm nay", icon: CalendarCheck, on: page === "today", href: "#/today" },
     { id: "tasks", label: "Việc", icon: ListChecks, on: page === "tasks", href: "#/tasks" },
@@ -134,7 +135,7 @@ export default function Shell({ children }) {
         </div>
       </nav>
 
-      <TaskForm isOpen={creating} onClose={() => setCreating(false)} />
+      <TaskForm isOpen={creating || !!aiId} aiRequest={aiId} onClose={() => { setCreating(false); if (aiId) { const q = { ...route.params }; delete q.ai; go(route.page, Object.keys(q).length ? q : undefined); } }} />
     </div>
   );
 }
