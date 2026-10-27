@@ -9,7 +9,7 @@ import { useMedia } from "./ui.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
 const blank = (dept) => ({ title: "", description: "", department_id: dept || null, assignee_id: null, due_date: "", priority: "medium",
-  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "" });
+  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "", repeat: "none" });
 
 // Tạo hoặc sửa việc. task = null → tạo mới; parent → việc con
 export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved }) {
@@ -42,7 +42,11 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
       let saved;
       const fields = { title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "",
         due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "" };
-      if (task) {
+      if (!task && !parent && f.repeat !== "none") {   // chọn "Lặp lại": lưu thành việc định kỳ (việc đầu tiên tạo ngay nếu đến hạn)
+        const start = f.due_date || new Date().toISOString().slice(0, 10);
+        saved = await rpc("app_recurrence_save", { company_id: companyId, title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "", project_id: f.project_id || "", priority: f.priority, freq: f.repeat, start });
+        toast.success(`Đã tạo việc định kỳ${saved.created_task ? ` và việc T-${saved.created_task}` : ""}`);
+      } else if (task) {
         saved = await rpc("app_task_save", { id: task.id, ...fields });
         toast.success(`Đã lưu T-${task.id}`);
       } else {
@@ -92,6 +96,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
                   placeholder={"Mục tiêu, kết quả cần nộp, tài liệu liên quan"} /></div>
                 <SelectField label="Phòng ban" value={f.department_id} onChange={set("department_id")} allowEmpty emptyLabel="Chung công ty"
                   options={org.departments.filter((d) => d.active).map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
+                {!task && !parent && <SelectField label="Lặp lại" value={f.repeat} onChange={set("repeat")} options={[{ value: "none", label: "Không lặp" }, { value: "daily", label: "Hằng ngày" }, { value: "weekly", label: "Hằng tuần (thứ của ngày bắt đầu)" }, { value: "monthly", label: "Hằng tháng (ngày của ngày bắt đầu)" }]} />}
                 <TextInput label="Ngày bắt đầu" type="date" value={f.start_date} onChange={set("start_date")} description="Thanh Timeline chạy từ ngày này đến hạn chót." />
                 {f.approval_flow_id && (
                   <SelectField label="Ai duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} isDisabled={locked}

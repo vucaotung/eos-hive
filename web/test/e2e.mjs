@@ -344,6 +344,23 @@ try {
     assert.equal((await minh.ok('app_notifications', { company_id: CO })).unread, 0);
     assert.equal((await minh.rpc('app_notifications', { company_id: CO, filter: 'bậy' })).status, 400);
   });
+  await step('việc định kỳ: tạo (đến hạn thì sinh việc ngay), danh sách theo vai trò, tạm dừng/xóa chỉ người tạo hoặc quản trị', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn'), kt = await as('ketoan@demo.vn');
+    const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);   // ngày theo giờ Việt Nam (+07), cùng cách tính của máy chủ
+    const r = await adm.ok('app_recurrence_save', { company_id: CO, title: 'Báo cáo định kỳ web', freq: 'daily', start: today, assignee_id: ID.minh, department_id: HC, due_offset: 1 });
+    assert.ok(r.id && r.created_task, 'đến hạn nên có việc đầu tiên');
+    const list = await minh.ok('app_recurrences', { company_id: CO }); const mine = list.find((x) => x.id === r.id);
+    assert.ok(mine, 'người được giao thấy mẫu'); assert.equal(mine.can_edit, false); assert.equal(new Date(mine.next_run) > new Date(today), true, 'next_run đã tiến sang ngày sau');
+    const tk = (await minh.ok('app_tasks', { company_id: CO, days: 1 })).find((x) => x.id === r.created_task);
+    assert.ok(tk && tk.recurrence_id === r.id && tk.assignee_id === ID.minh && tk.title === 'Báo cáo định kỳ web', 'việc sinh ra mang recurrence_id');
+    assert.equal((await kt.ok('app_recurrences', { company_id: CO })).some((x) => x.id === r.id), false, 'người không liên quan không thấy');
+    assert.equal((await minh.rpc('app_recurrence_set', { id: r.id, active: false })).status, 403, 'người chỉ được giao thì không đổi mẫu');
+    await adm.ok('app_recurrence_set', { id: r.id, active: false });
+    assert.equal((await adm.ok('app_recurrences', { company_id: CO })).find((x) => x.id === r.id).active, false);
+    assert.equal((await adm.rpc('app_recurrence_save', { company_id: CO, title: 'Sai', freq: 'weekly', weekdays: [9] })).status, 400);
+    await adm.ok('app_recurrence_set', { id: r.id, delete: true });
+    assert.equal((await adm.ok('app_recurrences', { company_id: CO })).some((x) => x.id === r.id), false);
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });

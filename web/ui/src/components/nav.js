@@ -1,4 +1,4 @@
-import { CalendarCheck, UserCircle, UserSwitch, ChatCircleDots, ListChecks, SealCheck, FolderSimple, ChartBar, Gear, Kanban, User, GridFour, Gauge, ClockCountdown, Infinity as InfinityIcon, CheckCircle, Tray, UsersThree, CalendarBlank, CalendarDots, ChartBarHorizontal } from "@phosphor-icons/react";
+import { CalendarCheck, UserCircle, UserSwitch, ChatCircleDots, ListChecks, SealCheck, FolderSimple, ChartBar, Gear, Kanban, User, GridFour, Gauge, ClockCountdown, Repeat, Infinity as InfinityIcon, CheckCircle, Tray, UsersThree, CalendarBlank, CalendarDots, ChartBarHorizontal } from "@phosphor-icons/react";
 
 // Ba nhóm giống sidebar thiết kế (design/README.md §Khung): Việc của tôi · Quản lý · Góc nhìn. Điểm đến là các màn đã có; màn mới (Eisenhower, Lịch, Nhân sự...) thêm sau khi dữ liệu đủ (docs/18).
 export const NAV_GROUPS = [
@@ -6,6 +6,7 @@ export const NAV_GROUPS = [
     { id: "today", page: "today", label: "Hôm nay", icon: CalendarCheck },
     { id: "mine", page: "tasks", params: { f: "mine" }, label: "Việc của tôi", icon: UserCircle },
     { id: "upcoming", page: "tasks", params: { f: "upcoming" }, label: "Sắp tới", icon: ClockCountdown },
+    { id: "recurring", page: "recurring", label: "Việc định kỳ", icon: Repeat },
     { id: "anytime", page: "tasks", params: { f: "anytime" }, label: "Bất cứ lúc nào", icon: InfinityIcon },
     { id: "done", page: "tasks", params: { f: "done" }, label: "Hoàn thành", icon: CheckCircle },
     { id: "backlog", page: "tasks", params: { f: "backlog" }, label: "Backlog", icon: Tray },

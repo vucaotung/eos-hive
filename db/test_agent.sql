@@ -943,4 +943,71 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   RAISE NOTICE 'Thông báo ok';
 END $$;
 
+-- ===== Việc định kỳ (migration 0027) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; mem constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+              mgr constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c2'; r jsonb; rid uuid; rec work.recurrences; n int; made bigint; tk work.tasks; BEGIN
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  -- toán lịch: hằng ngày cách 2 ngày; hằng tuần theo thứ; hằng tháng (31 = ngày cuối tháng)
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Báo cáo ngày', 'freq', 'daily', 'interval_n', 2, 'start', '2030-03-01'));
+  rid := (r->>'id')::uuid; SELECT * INTO rec FROM work.recurrences WHERE id = rid;
+  ASSERT work.recur_next(rec, '2030-03-01') = '2030-03-03', 'daily cách 2 ngày';
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Họp T2 T6', 'freq', 'weekly', 'weekdays', jsonb_build_array(1, 5), 'start', '2030-03-04'));
+  SELECT * INTO rec FROM work.recurrences WHERE id = (r->>'id')::uuid;
+  ASSERT work.recur_next(rec, '2030-03-06') = '2030-03-08' AND work.recur_next(rec, '2030-03-08') = '2030-03-11', 'weekly T2 và T6';
+  UPDATE work.recurrences SET interval_n = 2, weekdays = '{1}', created_at = '2030-03-04' WHERE id = rec.id; SELECT * INTO rec FROM work.recurrences WHERE id = rec.id;
+  ASSERT work.recur_next(rec, '2030-03-04') = '2030-03-18' AND work.recur_next(rec, '2030-03-18') = '2030-04-01', 'cách 2 tuần theo tuần của ngày tạo';
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Chốt tháng', 'freq', 'monthly', 'month_day', 31, 'start', '2030-01-31'));
+  SELECT * INTO rec FROM work.recurrences WHERE id = (r->>'id')::uuid;
+  ASSERT work.recur_next(rec, '2030-01-31') = '2030-02-28' AND work.recur_next(rec, '2030-02-28') = '2030-03-31', 'ngày 31 lùi về ngày cuối tháng';
+  UPDATE work.recurrences SET month_day = 15, interval_n = 2 WHERE id = rec.id; SELECT * INTO rec FROM work.recurrences WHERE id = rec.id;
+  ASSERT work.recur_next(rec, '2030-01-15') = '2030-03-15', 'hằng tháng cách 2 tháng';
+  -- chạy: sinh việc, không sinh trùng trong ngày, bỏ qua các lần đã lỡ (chỉ lần mới nhất)
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Việc định kỳ thử', 'description', 'Mô tả', 'freq', 'daily', 'start', '2030-03-01', 'due_offset', 2, 'assignee_id', mem, 'priority', 'high'));
+  rid := (r->>'id')::uuid; ASSERT r->>'created_task' IS NULL, 'ngày bắt đầu ở tương lai thì chưa sinh việc';
+  made := work._run_recurrence(rid, '2030-03-01');
+  SELECT * INTO tk FROM work.tasks WHERE id = made;
+  ASSERT tk.recurrence_id = rid AND tk.source = 'recurrence' AND tk.due_date = '2030-03-03' AND tk.assignee_id = mem AND tk.created_by = own AND tk.priority = 'high' AND tk.title = 'Việc định kỳ thử', 'việc sinh ra đúng mẫu, hạn = ngày + due_offset';
+  ASSERT (SELECT next_run FROM work.recurrences WHERE id = rid) = '2030-03-02', 'next_run tiến một ngày';
+  ASSERT work._run_recurrence(rid, '2030-03-01') IS NULL, 'chạy lại trong ngày không sinh trùng';
+  made := work._run_recurrence(rid, '2030-03-05');
+  ASSERT (SELECT due_date FROM work.tasks WHERE id = made) = '2030-03-07' AND (SELECT count(*) FROM work.tasks WHERE recurrence_id = rid) = 2 AND (SELECT next_run FROM work.recurrences WHERE id = rid) = '2030-03-06', 'sau khi ngừng nhiều ngày chỉ sinh MỘT việc cho lần mới nhất';
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mem AND kind = 'task_assigned' AND entity_id = made::text), 'người nhận việc định kỳ được báo';
+  -- cuối tuần / ngày lễ
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Việc bỏ cuối tuần', 'freq', 'daily', 'start', '2030-03-09'));   -- 09/03/2030 là thứ Bảy
+  rid := (r->>'id')::uuid; made := work._run_recurrence(rid, '2030-03-09');
+  ASSERT made IS NULL, 'bỏ ngày không làm việc (không sinh việc)'; ASSERT (SELECT next_run FROM work.recurrences WHERE id = rid) = '2030-03-10', 'vẫn tiến lịch sang ngày kế';
+  UPDATE work.recurrences SET skip_holidays = false, next_run = '2030-03-09' WHERE id = rid;
+  ASSERT work._run_recurrence(rid, '2030-03-09') IS NOT NULL, 'không bỏ ngày nghỉ khi tắt skip_holidays';
+  INSERT INTO core.holidays (company_id, day, kind, name) VALUES (c, '2030-03-12', 'holiday', 'Nghỉ thử');
+  UPDATE work.recurrences SET skip_holidays = true, next_run = '2030-03-12' WHERE id = rid;
+  ASSERT work._run_recurrence(rid, '2030-03-12') IS NULL, 'bỏ ngày lễ';
+  -- kết thúc
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Có hạn kết thúc', 'freq', 'daily', 'start', '2030-03-01', 'until_date', '2030-03-02'));
+  rid := (r->>'id')::uuid; made := work._run_recurrence(rid, '2030-03-05');
+  ASSERT made IS NULL, 'quá ngày kết thúc: không sinh việc'; ASSERT NOT (SELECT active FROM work.recurrences WHERE id = rid), 'quá ngày kết thúc thì ngừng';
+  -- kiểm dữ liệu vào
+  BEGIN PERFORM agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'x', 'freq', 'daily')); ASSERT false, 'tên quá ngắn'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Sai tần suất', 'freq', 'hourly')); ASSERT false, 'tần suất sai'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Sai thứ', 'freq', 'weekly', 'weekdays', jsonb_build_array(9))); ASSERT false, 'thứ sai'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Người lạ', 'freq', 'daily', 'assignee_id', 'eeeeeeee-0000-0000-0000-0000000000f0')); ASSERT false, 'người ngoài công ty'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- quyền: thành viên khác không đổi/xóa mẫu của người khác; người tạo và quản trị thì được; danh sách theo vai trò
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mgr, 'via', 'web')::text, true);
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(agent.app_recurrences(jsonb_build_object('company_id', c))) x WHERE x->>'title' = 'Báo cáo ngày'), 'trưởng phòng thấy mọi mẫu';
+  BEGIN PERFORM agent.app_recurrence_set(jsonb_build_object('id', rid, 'active', false)); ASSERT false, 'không phải người tạo';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  ASSERT (SELECT count(*) FROM jsonb_array_elements(agent.app_recurrences(jsonb_build_object('company_id', c))) x WHERE x->>'title' = 'Báo cáo ngày') = 0
+     AND EXISTS (SELECT 1 FROM jsonb_array_elements(agent.app_recurrences(jsonb_build_object('company_id', c))) x WHERE x->>'title' = 'Việc định kỳ thử'), 'thành viên chỉ thấy mẫu mình tạo hoặc được giao';
+  r := agent.app_recurrence_save(jsonb_build_object('company_id', c, 'title', 'Mẫu của thành viên', 'freq', 'weekly', 'start', '2030-03-04'));
+  PERFORM agent.app_recurrence_set(jsonb_build_object('id', (r->>'id')::uuid, 'active', false));
+  ASSERT NOT (SELECT active FROM work.recurrences WHERE id = (r->>'id')::uuid), 'người tạo tạm dừng được';
+  PERFORM agent.app_recurrence_set(jsonb_build_object('id', (r->>'id')::uuid, 'delete', true));
+  ASSERT NOT EXISTS (SELECT 1 FROM work.recurrences WHERE id = (r->>'id')::uuid), 'người tạo xóa được';
+  -- job ngày chỉ dành cho quản trị hệ thống
+  BEGIN PERFORM work.run_recurrences('2030-03-10'); ASSERT false, 'thành viên không chạy job'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  ASSERT (work.run_recurrences('2030-03-10')->>'created')::int >= 1, 'quản trị hệ thống chạy job ngày';
+  RAISE NOTICE 'Việc định kỳ ok';
+END $$;
+
 ROLLBACK;

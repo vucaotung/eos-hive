@@ -6,6 +6,7 @@ import { rpc } from "../lib/api.js";
 import { addDays, iso, fromIso } from "../lib/cal.js";
 import { AgentChip, DueText, FlagMarks, Person, PriorityMark, StatusBadge, StatusIcon } from "./ui.jsx";
 import { SelectMark, useLongPress, useSelect } from "./select.jsx";
+import { Repeat } from "@phosphor-icons/react";
 
 // Vuốt TRÁI (cảm ứng): lộ "Hoãn 1 ngày" và "Đổi hạn" (88px mỗi nút). Vuốt phải để hoàn thành chưa có: hoàn thành đi qua nộp kết quả/duyệt, không đóng bằng một cử chỉ.
 function useSwipe(enabled) {
@@ -50,6 +51,7 @@ export function TaskRow({ task, showDept = true, showProject = true, swipe = fal
           {showDept && d && <span>{d.code}</span>}
           <PriorityMark priority={task.priority === "medium" || task.priority === "low" ? null : task.priority} />
           <DueText task={task} />
+          {task.recurrence_id && <span className="inline-flex items-center gap-1" title="Việc định kỳ"><Repeat size={13} aria-label="Việc định kỳ" /></span>}
           <span className="text-faint">T-{task.id}</span>
         </span>
       </span>
