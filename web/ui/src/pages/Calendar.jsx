@@ -73,7 +73,7 @@ function Week({ anchor, byDay, today }) {
 }
 
 const COLW = 40, NDAYS = 20;
-function Timeline({ anchor, tasks, today }) {
+export function Timeline({ anchor, tasks, today }) {
   const { lookups, openTask } = useApp();
   const w0 = startOfWeek(anchor), wEnd = addDays(w0, NDAYS - 1), days = Array.from({ length: NDAYS }, (_, i) => addDays(w0, i));
   const [closed, setClosed] = useState({});

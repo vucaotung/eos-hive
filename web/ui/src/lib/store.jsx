@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { rpc, getMe, logout, onUnauthorized } from "./api.js";
+import { applyAccent } from "./accent.js";
 
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
@@ -31,11 +32,18 @@ export function AppProvider({ children }) {
 
   useEffect(() => { const f = () => setRoute(readRoute()); addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
   useEffect(() => onUnauthorized(() => setMe(null)), []);
+  // Cài đặt giao diện của riêng thiết bị này: màu chủ đạo, mật độ, mục tiêu tuần (lưu trong trình duyệt, không đổi dữ liệu công ty)
+  const [settings, setSettings] = useState(() => { try { return { accent: "default", density: "normal", weeklyGoal: 24, ...JSON.parse(store.get("eos.settings") || "{}") }; } catch { return { accent: "default", density: "normal", weeklyGoal: 24 }; } });
+  const setSetting = useCallback((k, v) => setSettings((s) => { const n = { ...s, [k]: v }; store.set("eos.settings", JSON.stringify(n)); return n; }), []);
   useEffect(() => {
     const el = document.documentElement;
     if (theme) el.setAttribute("data-theme", theme); else el.removeAttribute("data-theme");
     store.set("deo.theme", theme || "system");
-  }, [theme]);
+    applyAccent(settings.accent);
+    const mq = matchMedia("(prefers-color-scheme: light)"), f = () => applyAccent(settings.accent);
+    mq.addEventListener("change", f); return () => mq.removeEventListener("change", f);   // "Theo hệ thống": đổi sáng/tối thì đổi bộ màu chủ đạo theo
+  }, [theme, settings.accent]);
+  useEffect(() => { document.documentElement.setAttribute("data-density", settings.density); }, [settings.density]);
 
   const loadMe = useCallback(async () => {
     try { const m = await getMe(); setMe(m); setMeError(null); return m; }
@@ -85,10 +93,10 @@ export function AppProvider({ children }) {
       memberships, membership, companyId: membership?.company_id || null, switchCompany,
       role, isAdmin: role === "owner" || role === "admin", isManager: role === "manager", isSystemAdmin: !!me?.user?.is_system_admin,
       org, lookups, loadOrg, version, refresh,
-      openTaskId, openTask, theme, setTheme: setThemeState,
+      openTaskId, openTask, theme, setTheme: setThemeState, settings, setSetting,
       userId: me?.user?.id || null,
     };
-  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, openTaskId, openTask, theme]);
+  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, openTaskId, openTask, theme, settings, setSetting]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

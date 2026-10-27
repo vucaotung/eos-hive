@@ -136,3 +136,7 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; font-
 .safe-b { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-t { padding-top: env(safe-area-inset-top, 0px); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Mật độ "Gọn": dòng việc và thẻ thấp hơn */
+[data-density="compact"] .task-row { padding-top: .375rem; padding-bottom: .375rem; }
+[data-density="compact"] .task-row .task-meta { row-gap: 0; }

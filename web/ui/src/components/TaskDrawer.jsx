@@ -45,6 +45,7 @@ export default function TaskDrawer() {
   const [link, setLink] = useState({ url: "", title: "" });
   const [busy, setBusy] = useState("");
   const [stamped, setStamped] = useState(false);
+  const [tab, setTab] = useState("detail");   // mobile: Chi tiết / Trao đổi (desktop hiện cả hai)
 
   const load = useCallback((id) => rpc("app_task", { id }), []);
 
@@ -54,7 +55,7 @@ export default function TaskDrawer() {
     load(openTaskId).then((x) => alive && setD(x)).catch((e) => alive && setError(e));
     return () => { alive = false; };
   }, [openTaskId, load, version]);
-  useEffect(() => { setNote(""); setComment(""); setAnswer(""); setReason(""); setRejecting(false); setLink({ url: "", title: "" }); }, [openTaskId]);
+  useEffect(() => { setTab("detail"); setNote(""); setComment(""); setAnswer(""); setReason(""); setRejecting(false); setLink({ url: "", title: "" }); }, [openTaskId]);
 
   async function act(name, fn, ok) {
     setBusy(name);
@@ -104,7 +105,7 @@ export default function TaskDrawer() {
                   {t.attempts > 0 && <span className="text-xs text-faint">Nộp lần {t.attempts + 1}</span>}
                 </div>
                 <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_230px]">
-                <aside className="order-last lg:sticky lg:top-0">
+                <aside className={`order-last lg:sticky lg:top-0 ${tab === "chat" ? "max-lg:hidden" : ""}`}>
                 <Facts rows={[
                   ["Phòng ban", lookups.dept[t.department_id] ? `${lookups.dept[t.department_id].code} · ${lookups.dept[t.department_id].name}` : "Chung công ty"],
                   lookups.project[t.project_id] && ["Dự án", lookups.project[t.project_id].name],
@@ -114,6 +115,10 @@ export default function TaskDrawer() {
                 ]} />
                 </aside>
                 <div className="flex min-w-0 flex-col gap-5">
+                <div className="grid grid-cols-2 gap-1 rounded-lg p-0.5 lg:hidden" role="tablist" aria-label="Phần hiển thị" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>
+                  {[["detail", "Chi tiết"], ["chat", `Trao đổi · ${d.comments.length}`]].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`h-9 rounded-md text-[13.5px] font-medium ${tab === k ? "bg-accent-soft text-act" : "text-muted"}`}>{l}</button>)}
+                </div>
+                <div className={tab === "chat" ? "contents max-lg:hidden" : "contents"}>
 
                 {(t.status === "done" || t.status === "in_review") && (() => {
                   const outs = [
@@ -308,9 +313,10 @@ export default function TaskDrawer() {
                     <TaskList tasks={d.children} showDept={false} /></section>
                 )}
 
-                <Separator />
+                </div>
+                <Separator className="max-lg:hidden" />
                 {/* Trao đổi */}
-                <section className="flex flex-col gap-2">
+                <section className={`flex flex-col gap-2 ${tab === "detail" ? "max-lg:hidden" : ""}`}>
                   <h3 className="font-semibold">Trao đổi</h3>
                   {d.comments.length ? (
                     <ol className="flex flex-col gap-3">
