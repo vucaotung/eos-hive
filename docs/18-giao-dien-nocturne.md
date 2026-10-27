@@ -2,7 +2,7 @@
 
 Nguồn thiết kế: gói bàn giao Claude Design (26/10/2026) đã chép vào `design/` (tham chiếu, **không phải mã production**; mở bằng `npx serve design`). Đặc tả đầy đủ: `design/README.md`. Công cụ DesignSync không dùng được trong phiên không tương tác (cần `/design-login`), nên nhập từ tệp zip người dùng cung cấp.
 
-## Đã dựng (giai đoạn 1: nhánh `feat/nocturne-ui`; giai đoạn 2a: nhánh `feat/nocturne-ui-2`; giai đoạn 2b/2c: nhánh `feat/nocturne-ui-3`; giai đoạn 3: nhánh `feat/nocturne-ui-4`)
+## Đã dựng (giai đoạn 1: nhánh `feat/nocturne-ui`; giai đoạn 2a: nhánh `feat/nocturne-ui-2`; giai đoạn 2b/2c: nhánh `feat/nocturne-ui-3`; giai đoạn 3: nhánh `feat/nocturne-ui-4`; giai đoạn 4: nhánh `feat/nocturne-ui-5`)
 | Hạng mục | Trạng thái |
 | --- | --- |
 | Token Nocturne sáng/tối, ánh xạ vào biến HeroUI (`web/ui/src/app.css`), màu ngữ nghĩa thành lớp Tailwind (`text-ai`, `bg-dg-bg`, `text-faint`…), focus 2px, nút chính là **viền** màu nhấn | Xong. Mặc định chế độ **tối**; "Theo hệ thống" vẫn chọn được (Tài khoản). |
@@ -23,16 +23,28 @@ Nguồn thiết kế: gói bàn giao Claude Design (26/10/2026) đã chép vào 
 | **Mobile** (3): vuốt trái dòng việc (Hoãn 1 ngày / Đổi hạn, rung nhẹ) ở màn Hôm nay; nhấn giữ vào **chọn nhiều** + thanh thao tác (Đổi hạn, Giao cho, Bị chặn, Hủy việc) và nút "Chọn nhiều" trên web; Kanban cuộn có snap; Eisenhower thu gọn 2×2 + danh sách ô; chi tiết việc có tab Chi tiết / Trao đổi; form giao việc hiện như bottom sheet | Xong |
 | **Form tạo/sửa việc** (giai đoạn 2a): modal 720px; mặc định chỉ tên, hạn, người phụ trách, dự án, ưu tiên, duyệt; **"Thêm chi tiết"** mở mô tả, phòng ban, quy trình duyệt, giao cho agent AI; **Ctrl+Enter** lưu, Esc đóng; phím **N** mở form (bỏ qua khi đang gõ) | Xong (`TaskForm.jsx`, `Shell.jsx`) |
 
+## Giai đoạn 4 (đã dựng, cần migration 0026–0029)
+| Hạng mục | Cách làm | Ghi chú |
+| --- | --- | --- |
+| **Thông báo (chuông)** | Bảng `core.notifications` có sẵn, thêm `actor`/`is_ai`; trigger báo: được giao việc, **nhắc tên** `@Họ tên`, bình luận ở việc của mình/đang theo dõi, đến lượt duyệt (người được chỉ định), việc xong, được thêm vào theo dõi, có đề xuất AI; sự kiện agent cũ (hỏi, nộp, lỗi) giữ nguyên. Popover có chip Tất cả / Nhắc tên tôi / Từ AI, "Đánh dấu đã đọc", bấm mở thẳng việc; hỏi máy chủ mỗi 60 giây | Migration 0026. Người tự làm tự nhận không báo chính mình; bình luận nội bộ giữa agent không báo người. Chưa có đẩy realtime/Telegram/email (cột `sent_*` có sẵn). |
+| **Việc định kỳ** | Bảng `work.recurrences` có sẵn; thêm `recur_next` (hằng ngày/tuần theo thứ ISO/tháng, 31 = ngày cuối tháng, chu kỳ 1–12), `run_recurrences` (job ngày), RPC lưu/liệt kê/tạm dừng/xóa; trang **Việc định kỳ**; ô "Lặp lại" trong form giao việc; biểu tượng lặp ở dòng việc | Migration 0027. **Mỗi lần chạy sinh MỘT việc cho lần gần nhất đến hạn** (không dồn sau khi ngừng); bỏ cuối tuần và ngày lễ nếu bật; job chạy trong `scripts/housekeeping.sh` (03:30). Bật lại không sinh bù. |
+| **Chi tiết việc** | Checklist (tick/thêm/xóa, giữ người tick cũ), **mẫu checklist** (quản trị/trưởng phòng tạo ở Tài khoản; chèn vào cuối hoặc thay thế, đếm số lần dùng), người theo dõi (thêm/bỏ, báo người mới), **nhật ký ghi ĐỔI GÌ** ("trạng thái Chờ làm → Đang làm; hạn 12/11 → 15/11"), thời lượng ước tính, menu gõ `@` chọn tên | Migration 0028. **Đính kèm tệp ≤ 5 MB chưa làm**: máy chủ web không có thông tin đăng nhập Drive; vẫn dùng "Link Google Drive". |
+| **Tạo việc bằng AI (giao cho Mai, profile team_admin)** | Mô tả bằng lời → `app_ai_request` tạo thẻ "phân tích" giao cho agent `mai` (không hiện trong danh sách việc) → Mai gọi công cụ MCP **`eos_task_propose`** (chỉ ĐỀ XUẤT) → người dùng xem, sửa từng việc/việc con, bấm **Xác nhận** → việc tạo bằng quyền của NGƯỜI DÙNG qua `app_task_save`. Chờ tối đa 10 phút; Mai hỏi lại thì báo lý do để thử lại; đề xuất xong có thông báo ở chuông | Migration 0029. Mai bật nhận thẻ ở chế độ **nội bộ** (`company_agents.config.internal`, `auto_done`): không hiện trong ô chọn agent, không giao tay/chia việc được. Mô tả của người dùng được coi là DỮ LIỆU (lời nhắc + mô tả công cụ + skill 1.2.0). Tối đa 3 yêu cầu chưa xử lý mỗi người. |
+| **Phóng to Gantt và Mindmap** | Chụm hai ngón, Ctrl + lăn chuột, hoặc nút +/− (50%–220%) | Chỉ giao diện. |
+
+### Việc ops-admin phải kiểm sau khi triển khai (chưa thể kiểm trong phiên phát triển)
+1. Cài skill `enterprise-os-guide` **1.2.0** vào `team_admin` (có mục "Thẻ phân tích yêu cầu tạo việc bằng AI"), khởi động lại gateway từ shell ngoài.
+2. Chạy `deploy/setup_agent_profiles.sql` để bật Mai nội bộ (hoặc bật tay `company_agents.enabled = true, auto_done = true, config = '{"internal": true}'`).
+3. Thử một yêu cầu thật trên web ("✦ Tạo bằng AI"): phải thấy thẻ Kanban sang `team_admin`, Mai gọi `eos_task_propose`, đề xuất hiện ở web trong vài chục giây. **Nếu thẻ không chạy** (profile `team_admin` chưa chạy được worker Kanban): yêu cầu sẽ báo "Mai chưa phản hồi sau 10 phút", không hỏng gì khác; xử lý ở phía Hermes.
+
 ## Còn lại: cần backend hoặc quyết định (chưa làm)
 | Hạng mục thiết kế | Điều còn thiếu | Đề xuất |
 | --- | --- | --- |
-| **Việc định kỳ** | Không có quy tắc lặp | Bảng quy tắc lặp (có thể nối `agent.routines`) + sinh việc theo lịch |
-| **Lịch Ngày** và **đồng bộ Google Calendar** | Việc chỉ có ngày (không giờ, không thời lượng); chưa có tích hợp Google | Giờ bắt đầu + thời lượng; OAuth và quyết định một chiều/hai chiều |
-| **Tạo việc bằng AI** (stepper 3 bước) | Cần API phân tích mô tả thành việc + việc con, ghi `actor = agent` | Thiết kế riêng (quyền, xác nhận trước khi lưu) |
-| **Trợ lý Hermes trong web** (nút nổi, hỏi đáp, M7) | Chưa có API agent riêng cho web | Thiết kế riêng, chỉ đọc dữ liệu người dùng được xem |
-| **Thông báo (chuông)** | Chưa có bảng thông báo | `core.notifications` + đẩy realtime |
-| **Chi tiết việc**: checklist + mẫu, đính kèm tệp ≤ 5 MB, nhật ký thay đổi, người theo dõi, lặp lại, thời lượng; menu gõ `@` chọn tên | `app_task` chưa trả các dữ liệu này (có bảng `work.checklist_items`, `task_watchers`, `audit_log` nhưng chưa nối) | Mở rộng `app_task`/`app_task_save` và bảng mẫu checklist |
-| **Vuốt phải để hoàn thành**, pinch-zoom Gantt/Mindmap | Hoàn thành đi qua nộp kết quả/duyệt, không đóng bằng một cử chỉ; pinch cần thư viện cử chỉ | Quyết định có cho "Hoàn thành nhanh" với việc không cần duyệt không |
+| **Lịch chế độ Ngày** và **đồng bộ Google Calendar** | Anh quyết định **tạm dừng**. Việc chỉ có ngày (không giờ, không thời lượng) | Khi làm lại: thêm giờ bắt đầu (cùng `est_minutes` đã có), OAuth Google và quyết định một chiều/hai chiều |
+| **Trợ lý Hermes trong web** (nút nổi hỏi đáp, M7) | Chưa có API agent riêng cho web | Thiết kế riêng, chỉ đọc dữ liệu người dùng được xem |
+| **Đính kèm tệp ≤ 5 MB** | Web chưa có đăng nhập Drive | Dùng chung bộ tải của MCP hoặc cấp thông tin Drive cho `eos-web` (cần quyết định bảo mật) |
+| **Đẩy thông báo ngoài app** (Telegram/email) | Có cột `sent_telegram_at`, `sent_email_at` nhưng chưa có tiến trình gửi | Job gửi theo hàng đợi, tôn trọng giờ yên lặng |
+| **Vuốt phải để hoàn thành** | Hoàn thành đi qua nộp kết quả/duyệt, không đóng bằng một cử chỉ | Quyết định có cho "Hoàn thành nhanh" với việc không cần duyệt không |
 | **Kéo thả Kanban** | 5 trạng thái + luật duyệt (kéo vào "Xong" phải đi qua nộp) | Chỉ cho kéo giữa Chờ làm/Đang làm/Vướng |
 | **Burndown thật** | Hiện suy từ ngày tạo/hoàn thành | Bảng chụp số liệu hằng ngày |
 
@@ -42,7 +54,10 @@ Ghi chú khác: dòng việc chỉ hiện nhãn ưu tiên Gấp/Cao (Thường/T
 `make ui` dựng lại `web/public`; `make test-web` (21 bước) đạt. Ảnh chụp kiểm tra bằng Chrome không giao diện với dữ liệu giả lập (tối/sáng, desktop/mobile).
 
 ## Hoàn tác
-Giai đoạn 1 và 2a chỉ là mã tĩnh: triển khai lại bản trước và khởi động lại `eos-web`. Giai đoạn 2b/2c có migration 0025 (cột thêm, tương thích ngược): giao diện cũ vẫn chạy với CSDL mới; muốn gỡ cột, xem lệnh down ở đầu `db/migrations/0025_task_flags_start.sql`.
+Giai đoạn 1, 2a và 3 chỉ là mã tĩnh: triển khai lại bản trước và khởi động lại `eos-web`. Giai đoạn 2b/2c có migration 0025 (cột thêm, tương thích ngược): giao diện cũ vẫn chạy với CSDL mới; muốn gỡ cột, xem lệnh down ở đầu `db/migrations/0025_task_flags_start.sql`.
+
+## Thứ tự triển khai giai đoạn 4 (migration 0026 → 0029) và 2b/2c
+Giai đoạn 4: sao lưu → áp **0025, 0026, 0027, 0028, 0029 theo thứ tự (đều idempotent)** → đưa mã web + MCP + `scripts/housekeeping.sh` → restart `eos-web` và `eos-mcp` → chạy `deploy/setup_agent_profiles.sql` → ops-admin kiểm 3 việc ở trên. Mã mới chạy trước migration thì các RPC mới báo lỗi; mã cũ vẫn chạy với CSDL mới.
 
 ## Thứ tự triển khai giai đoạn 2b/2c
 1. Sao lưu `pg_dump -Fc eos`. 2. Áp migration `0025_task_flags_start.sql` TRƯỚC. 3. Đưa mã web lên (`push_to_host.sh`) và khởi động lại `eos-web`. (Giao diện mới gọi `app_task_save` với `important`/`urgent`/`start_date`: nếu mã chạy trước migration, lưu việc báo lỗi.)

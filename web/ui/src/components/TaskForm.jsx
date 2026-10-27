@@ -5,28 +5,31 @@ import { rpc } from "../lib/api.js";
 import { PRIORITY } from "../lib/format.js";
 import { CaretDown, CaretUp, Star, Lightning } from "@phosphor-icons/react";
 import { quadOf } from "../pages/Eisenhower.jsx";
+import AiTaskCreator from "./AiTaskCreator.jsx";
 import { useMedia } from "./ui.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
 const blank = (dept) => ({ title: "", description: "", department_id: dept || null, assignee_id: null, due_date: "", priority: "medium",
-  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "" });
+  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "", est: "", repeat: "none" });
 
 // Tạo hoặc sửa việc. task = null → tạo mới; parent → việc con
-export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved }) {
+export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved, aiRequest = null }) {
   const { companyId, membership, org, lookups, refresh, me } = useApp();
   const [f, setF] = useState(blank(membership?.department_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const sheet = useMedia("(max-width: 639px)");   // mobile: hiện như bottom sheet (bo góc trên 20px)
+  const [tab, setTab] = useState("manual");   // manual | ai (chỉ khi tạo mới)
+  const canAi = !task && !parent;
   const [more, setMore] = useState(false);   // "Thêm chi tiết": mặc định chỉ hiện các trường thường dùng
 
   useEffect(() => {
     if (!isOpen) return;
-    setError(null); setMore(!!task || !!parent);
+    setError(null); setMore(!!task || !!parent); setTab(aiRequest ? "ai" : "manual");
     if (task) setF({ title: task.title, description: task.description || "", department_id: task.department_id, assignee_id: task.assignee_id,
-      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "" });
+      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "", est: task.est_minutes ? String(task.est_minutes) : "" });
     else setF({ ...blank(parent?.department_id || membership?.department_id), project_id: parent?.project_id || null });
-  }, [isOpen, task, parent, membership]);
+  }, [isOpen, task, parent, membership, aiRequest]);
 
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const people = useMemo(() => org.members.filter((m) => m.active && m.user?.active !== false).map((m) => ({
@@ -41,8 +44,12 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
     try {
       let saved;
       const fields = { title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "",
-        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "" };
-      if (task) {
+        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "", est_minutes: f.est ? Number(f.est) : "" };
+      if (!task && !parent && f.repeat !== "none") {   // chọn "Lặp lại": lưu thành việc định kỳ (việc đầu tiên tạo ngay nếu đến hạn)
+        const start = f.due_date || new Date().toISOString().slice(0, 10);
+        saved = await rpc("app_recurrence_save", { company_id: companyId, title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "", project_id: f.project_id || "", priority: f.priority, freq: f.repeat, start });
+        toast.success(`Đã tạo việc định kỳ${saved.created_task ? ` và việc T-${saved.created_task}` : ""}`);
+      } else if (task) {
         saved = await rpc("app_task_save", { id: task.id, ...fields });
         toast.success(`Đã lưu T-${task.id}`);
       } else {
@@ -62,6 +69,11 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
             <Modal.Heading>{task ? `Sửa T-${task.id}` : parent ? `Việc con của T-${parent.id}` : "Giao việc"}</Modal.Heading>
           </Modal.Header>
           <Modal.Body>
+            {canAi && (
+              <div className="mb-4 inline-flex rounded-lg p-0.5" role="tablist" aria-label="Cách tạo việc" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>
+                {[["manual", "Tạo thủ công"], ["ai", "✦ Tạo bằng AI"]].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`h-8 whitespace-nowrap rounded-md px-3 text-[13px] font-medium ${tab === k ? "bg-accent-soft text-act" : "text-muted"}`} style={tab === k ? { boxShadow: "inset 0 0 0 1px var(--accent)" } : undefined}>{l}</button>)}
+              </div>)}
+            {canAi && tab === "ai" ? <AiTaskCreator requestId={aiRequest} onClose={onClose} /> : (<>
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save(); }}
               onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); save(); } }}>
               <div className="sm:col-span-2"><TextInput label="Tên việc" value={f.title} onChange={set("title")} isRequired autoFocus placeholder="Ví dụ: Soạn công văn xin gia hạn tiến độ" /></div>
@@ -92,7 +104,9 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
                   placeholder={"Mục tiêu, kết quả cần nộp, tài liệu liên quan"} /></div>
                 <SelectField label="Phòng ban" value={f.department_id} onChange={set("department_id")} allowEmpty emptyLabel="Chung công ty"
                   options={org.departments.filter((d) => d.active).map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
+                {!task && !parent && <SelectField label="Lặp lại" value={f.repeat} onChange={set("repeat")} options={[{ value: "none", label: "Không lặp" }, { value: "daily", label: "Hằng ngày" }, { value: "weekly", label: "Hằng tuần (thứ của ngày bắt đầu)" }, { value: "monthly", label: "Hằng tháng (ngày của ngày bắt đầu)" }]} />}
                 <TextInput label="Ngày bắt đầu" type="date" value={f.start_date} onChange={set("start_date")} description="Thanh Timeline chạy từ ngày này đến hạn chót." />
+                <TextInput label="Thời lượng ước tính (phút)" type="number" value={f.est} onChange={set("est")} description="Ví dụ 90 = 1 giờ 30 phút; để trống nếu chưa rõ." />
                 {f.approval_flow_id && (
                   <SelectField label="Ai duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} isDisabled={locked}
                     options={flows.map((fl) => ({ value: fl.id, label: `${fl.name}${fl.steps?.length > 1 ? ` (${fl.steps.length} bước)` : ""}` }))} />
@@ -107,13 +121,13 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
               </>)}
               <button type="submit" hidden />
             </form>
-            {error && <div className="mt-4"><ErrorBox error={error} /></div>}
+            {error && <div className="mt-4"><ErrorBox error={error} /></div>}</>)}
           </Modal.Body>
-          <Modal.Footer>
+          {!(canAi && tab === "ai") && <Modal.Footer>
             <span className="mr-auto hidden text-xs text-faint sm:block">Ctrl+Enter để lưu · Esc để đóng</span>
             <Button variant="secondary" onPress={onClose}>Hủy</Button>
             <Button isPending={busy} onPress={save}>{task ? "Lưu thay đổi" : "Giao việc"}</Button>
-          </Modal.Footer>
+          </Modal.Footer>}
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>

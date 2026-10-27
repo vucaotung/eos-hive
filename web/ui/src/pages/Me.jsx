@@ -4,6 +4,7 @@ import { useApp, go } from "../lib/store.jsx";
 import { ROLE } from "../lib/format.js";
 import { PageHeader, Person, SelectField, TextInput } from "../components/ui.jsx";
 import { ACCENTS } from "../lib/accent.js";
+import ChecklistTemplates from "../components/ChecklistTemplates.jsx";
 import DriveSetup from "./DriveSetup.jsx";
 import Connect from "../components/Connect.jsx";
 
@@ -56,6 +57,7 @@ export default function Me() {
         <div className="max-w-xs"><TextInput label="Mục tiêu hoàn thành mỗi tuần (việc)" type="number" value={String(settings.weeklyGoal)} onChange={(v) => setSetting("weeklyGoal", Math.min(60, Math.max(5, Number(v) || 5)))} description="5 đến 60. Dùng ở màn Tổng quan (lưu trên thiết bị này)." /></div>
       </Card>
 
+      {(isAdmin || isManager) && <ChecklistTemplates />}
       <DriveSetup />
       <Connect />
     </div>

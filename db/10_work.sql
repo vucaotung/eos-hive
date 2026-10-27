@@ -53,6 +53,7 @@ CREATE TABLE work.tasks (
   waiting_on_human boolean NOT NULL DEFAULT false,
   start_date       date,
   due_date         date,
+  est_minutes      int CHECK (est_minutes IS NULL OR est_minutes BETWEEN 1 AND 43200),   -- thời lượng ước tính (phút)
   completed_at     timestamptz,
   result           text CHECK (length(result) <= 4000),       -- Kết quả
   -- KPI
@@ -89,6 +90,18 @@ CREATE TABLE work.checklist_items (                  -- Việc con dạng đánh
   done_by     uuid REFERENCES core.users(id),
   done_at     timestamptz,
   UNIQUE (task_id, position)
+);
+
+-- Mẫu checklist của công ty (vd. "Hồ sơ đất đai"): chèn vào việc bằng agent.app_checklist_apply
+CREATE TABLE work.checklist_templates (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id  uuid NOT NULL REFERENCES core.companies(id) ON DELETE CASCADE,
+  name        text NOT NULL CHECK (length(btrim(name)) BETWEEN 2 AND 120),
+  items       text[] NOT NULL CHECK (cardinality(items) BETWEEN 1 AND 50),
+  uses        int NOT NULL DEFAULT 0,
+  created_by  uuid REFERENCES core.users(id),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, name)
 );
 
 CREATE TABLE work.task_watchers (

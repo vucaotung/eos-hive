@@ -1,7 +1,8 @@
 -- Hồ sơ AI agent theo công ty (docs/17): chức danh, mô tả, người phụ trách theo bảng phân vai. KHÔNG chạy tự động.
 -- Dùng: psql -v company=<uuid-công-ty> -v owner_email=<email-người-phụ-trách> -f deploy/setup_agent_profiles.sql        (cần migration 0023)
 -- Chạy lại không tạo trùng. Quy tắc cập nhật: mô tả luôn đặt theo bảng; chức danh và người phụ trách chỉ đặt khi đang TRỐNG (không ghi đè chỉnh tay trên giao diện);
--- nhận việc Kanban (company_agents.enabled): mai, nhan-su, phap-che luôn đặt false (mai chỉ dùng mã MCP riêng, không nhận thẻ Kanban).
+-- nhận việc Kanban (company_agents.enabled): nhan-su, phap-che luôn đặt false. mai: BẬT ở chế độ "nội bộ" (config.internal = true, auto_done = true): chỉ nhận thẻ "phân tích yêu cầu tạo việc bằng AI"
+-- (docs/18, Phần D); không hiện trong ô chọn agent, không giao tay hay chia việc cho Mai được.
 -- Không tạo core.memberships cho agent (Mai đã có membership từ trước, cần cho công cụ MCP của người; script này không đụng tới). Không đổi max_level, can_delegate, skills.
 \set ON_ERROR_STOP on
 BEGIN;
@@ -12,13 +13,13 @@ INSERT INTO agent.agents (user_id, code, name, kind, module, hermes_profile, ski
 SELECT u.id, 'mai', 'Mai - Trợ lý AI', 'specialist', 'work', 'team_admin', '{}', 1, false, 'hermes', '{read,task_create}', 'x'
   FROM core.users u WHERE lower(u.email) = 'mai@agent.enterpriseos.bond' AND u.kind = 'agent'
 ON CONFLICT (code) DO NOTHING;
-INSERT INTO agent.company_agents (company_id, agent_id, enabled)
-SELECT :'company'::uuid, g.id, false FROM agent.agents g WHERE g.code = 'mai' ON CONFLICT DO NOTHING;
+INSERT INTO agent.company_agents (company_id, agent_id, enabled, auto_done, config)
+SELECT :'company'::uuid, g.id, true, true, '{"internal": true}' FROM agent.agents g WHERE g.code = 'mai' ON CONFLICT DO NOTHING;
 
 -- 2. Bảng phân vai
 CREATE TEMP TABLE _roles (code text PRIMARY KEY, title text NOT NULL, descr text NOT NULL, enabled_false boolean NOT NULL) ON COMMIT DROP;
 INSERT INTO _roles VALUES
- ('mai', 'Trợ lý tiếp nhận', 'Tiếp nhận yêu cầu qua Zalo/Telegram, trả lời thông tin, ghi nhận thông tin bổ sung chờ chủ sở hữu duyệt; chỉ tạo việc mới cho người theo lệnh của người được ủy quyền.', true),
+ ('mai', 'Trợ lý tiếp nhận', 'Tiếp nhận yêu cầu qua Zalo/Telegram, trả lời thông tin, ghi nhận thông tin bổ sung chờ chủ sở hữu duyệt; chỉ tạo việc mới cho người theo lệnh của người được ủy quyền; phân tích mô tả của người dùng thành việc đề xuất (người dùng duyệt).', false),
  ('dieu-phoi', 'Điều phối dự án', 'Chia việc dự án cho agent chuyên môn, theo dõi, tổng hợp; không tự làm việc chuyên môn.', false),
  ('van-thu', 'Văn thư', 'Công văn NĐ 30, biên mục hồ sơ; không cấp số, không ký, không gửi ra ngoài.', false),
  ('quan-tri-du-lieu', 'Quản trị dữ liệu', 'Kiểm chất lượng dữ liệu, nạp kho tri thức; chỉ nạp thông tin đã duyệt.', false),
@@ -33,6 +34,9 @@ UPDATE agent.company_agents ca SET title = r.title
 UPDATE agent.company_agents ca SET enabled = false
   FROM _roles r JOIN agent.agents g ON g.code = r.code
  WHERE ca.company_id = :'company'::uuid AND ca.agent_id = g.id AND r.enabled_false AND ca.enabled;
+-- Mai: bật nhận thẻ nội bộ (kể cả khi đã tồn tại từ trước với enabled = false)
+UPDATE agent.company_agents ca SET enabled = true, auto_done = true, config = ca.config || '{"internal": true}'::jsonb
+  FROM agent.agents g WHERE g.id = ca.agent_id AND g.code = 'mai' AND ca.company_id = :'company'::uuid AND (NOT ca.enabled OR NOT ca.auto_done OR ca.config->>'internal' IS DISTINCT FROM 'true');
 -- người phụ trách: phải là thành viên người của công ty (trigger company_agents_owner_chk cũng kiểm)
 UPDATE agent.company_agents ca SET owner_user_id = o.id
   FROM _roles r JOIN agent.agents g ON g.code = r.code,

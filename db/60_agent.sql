@@ -1021,7 +1021,7 @@ BEGIN
   FOR it IN SELECT * FROM jsonb_array_elements(p_items) LOOP
     SELECT * INTO tgt FROM agent.agents g
      WHERE g.code = it->>'agent' AND g.active
-       AND EXISTS (SELECT 1 FROM agent.company_agents ca WHERE ca.company_id = p.company_id AND ca.agent_id = g.id AND ca.enabled);
+       AND EXISTS (SELECT 1 FROM agent.company_agents ca WHERE ca.company_id = p.company_id AND ca.agent_id = g.id AND ca.enabled AND NOT coalesce((ca.config->>'internal')::boolean, false));
     IF tgt.id IS NULL THEN RAISE EXCEPTION 'Agent % chưa bật cho công ty', it->>'agent'; END IF;
     IF tgt.id = a.id THEN RAISE EXCEPTION 'Không tự giao việc con cho chính mình'; END IF;
     INSERT INTO work.tasks (company_id, department_id, project_id, parent_id, source, title, description, priority,

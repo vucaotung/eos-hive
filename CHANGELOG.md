@@ -3,6 +3,10 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.4.0 — Giao diện Nocturne giai đoạn 4: thông báo, việc định kỳ, chi tiết việc, tạo việc bằng AI (chưa triển khai; cần migration 0026–0029)
+- Chuông thông báo (giao việc, nhắc tên, bình luận, duyệt, xong, đề xuất AI); việc định kỳ (job ngày); checklist + mẫu, người theo dõi, nhật ký đổi gì, thời lượng, menu `@`; tạo việc bằng AI giao cho Mai (`eos_task_propose` chỉ đề xuất, người dùng xác nhận); phóng to Gantt/Mindmap.
+- Skill `enterprise-os-guide` 1.2.0 (quy trình thẻ phân tích yêu cầu). Mai bật nhận thẻ ở chế độ nội bộ. Lịch ngày/Google Calendar tạm dừng theo quyết định.
+
 ## 0.3.0 — Giao diện Nocturne giai đoạn 3: phần còn lại của thiết kế (chưa triển khai)
 - Tổng quan (chỉ số, mục tiêu tuần, dự báo, burndown), Nhân sự (tải, KPI, xuất CSV), trang Dự án (Kanban/Danh sách sửa tại chỗ/Mindmap/Gantt), nhóm Sắp tới/Bất cứ lúc nào/Hoàn thành/Backlog, Cài đặt (màu chủ đạo đã đo WCAG AA, mật độ, mục tiêu tuần), mobile (vuốt trái, nhấn giữ chọn nhiều, Eisenhower thu gọn, tab chi tiết, bottom sheet). Không đổi CSDL. Phần cần backend: docs/18.
 

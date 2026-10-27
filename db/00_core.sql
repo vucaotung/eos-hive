@@ -345,6 +345,8 @@ CREATE TABLE core.notifications (
   link        text,                                 -- đường dẫn trong app: #/hr/payslips/123
   entity_type text,
   entity_id   text,
+  actor       text,                                 -- user:<uuid> | agent:<mã> | system (ai làm ra sự kiện)
+  is_ai       boolean NOT NULL DEFAULT false,       -- sự kiện do agent AI tạo (hiện nhãn AI, lọc "Từ AI")
   created_at  timestamptz NOT NULL DEFAULT now(),
   read_at     timestamptz,
   sent_email_at    timestamptz,

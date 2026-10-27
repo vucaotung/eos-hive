@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Drawer, Separator, toast } from "@heroui/react";
 import { Pencil, Plus, TrashBin, Link as LinkIcon, FileText } from "@gravity-ui/icons";
-import { LinkSimple, Prohibit, CalendarBlank } from "@phosphor-icons/react";
+import { LinkSimple, Prohibit, CalendarBlank, Clock, X as XIcon, CaretDown, CaretUp } from "@phosphor-icons/react";
+import Checklist from "./Checklist.jsx";
+import MentionTextArea from "./MentionTextArea.jsx";
 import { useApp } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { KIND, PRIORITY, STATUS, ago, ddmmyyyy, isOpen, parseDate } from "../lib/format.js";
@@ -30,7 +32,7 @@ function Mentions({ text }) {
 }
 
 export default function TaskDrawer() {
-  const { openTaskId, openTask, lookups, userId, isAdmin, role, membership, refresh, version } = useApp();
+  const { openTaskId, openTask, lookups, userId, isAdmin, role, membership, refresh, version, org } = useApp();
   const copyLink = async () => { try { await navigator.clipboard.writeText(`${location.origin}/app/#/tasks?t=${openTaskId}`); toast.success("Đã sao chép link việc"); } catch { toast.danger("Không sao chép được, hãy chép địa chỉ trên thanh trình duyệt"); } };
   const desktop = useMedia("(min-width: 1024px)");
   const [d, setD] = useState(null);
@@ -71,6 +73,9 @@ export default function TaskDrawer() {
   const report = d?.reports?.[0];
   const agentName = (code) => lookups.agent[code]?.name || code;
   const flow = t && lookups.flow[t.approval_flow_id];
+  const canCheck = !!t && (canEdit || t.assignee_id === userId || t.created_by === userId);   // máy chủ kiểm lại quyền
+  const setWatch = (ids) => act("watch", () => rpc("app_watchers_set", { task: t.id, user_ids: ids }));
+  const [showLog, setShowLog] = useState(false);
 
   return (
     <>
@@ -111,8 +116,20 @@ export default function TaskDrawer() {
                   lookups.project[t.project_id] && ["Dự án", lookups.project[t.project_id].name],
                   flow && ["Duyệt", `${flow.name}${flow.steps?.length > 1 ? `, ${flow.steps.length} bước` : ""} · ${({ none: "chưa nộp", pending: "chờ duyệt", approved: "đã duyệt", rejected: "bị trả lại, cần sửa" })[t.approval_status] || t.approval_status}`],
                   ["Người giao", t.created_by ? (lookups.person[t.created_by]?.name || "Không rõ") : (t.created_by_agent || "Hệ thống")],
+                  t.est_minutes && ["Thời lượng", `${Math.floor(t.est_minutes / 60) ? `${Math.floor(t.est_minutes / 60)} giờ ` : ""}${t.est_minutes % 60 ? `${t.est_minutes % 60} phút` : ""}`.trim()],
+                  t.recurrence_id && ["Lặp lại", "Việc định kỳ"],
                   ["Cập nhật", ago(t.updated_at)],
                 ]} />
+                <section className="mt-3 flex flex-col gap-1.5 rounded-[14px] bg-surface p-3" style={{ boxShadow: "0 0 0 1px var(--separator)" }}>
+                  <h3 className="text-[11px] font-medium uppercase tracking-[.05em] text-faint">Người theo dõi</h3>
+                  <div className="flex flex-wrap gap-1.5">{(d.watchers || []).map((u) => (
+                    <span key={u} className="inline-flex items-center gap-1 rounded-full bg-surface-secondary py-0.5 pl-1 pr-2 text-[12.5px]"><Person user={lookups.person[u]} />
+                      {canCheck && <button type="button" aria-label={`Bỏ theo dõi ${lookups.person[u]?.name || ""}`} onClick={() => setWatch((d.watchers || []).filter((x) => x !== u))} className="text-faint hover:text-danger"><XIcon size={11} /></button>}</span>))}
+                    {!(d.watchers || []).length && <span className="text-sm text-muted">Chưa có ai.</span>}</div>
+                  {canCheck && (
+                    <select aria-label="Thêm người theo dõi" className="h-8 rounded-md border border-border bg-field-background px-1.5 text-[13px]" value="" onChange={(e) => e.target.value && setWatch([...(d.watchers || []), e.target.value])}>
+                      <option value="">+ Thêm người theo dõi</option>{org.members.filter((m) => m.active && m.user && !(d.watchers || []).includes(m.user.id)).map((m) => <option key={m.user.id} value={m.user.id}>{m.user.name}</option>)}</select>)}
+                </section>
                 </aside>
                 <div className="flex min-w-0 flex-col gap-5">
                 <div className="grid grid-cols-2 gap-1 rounded-lg p-0.5 lg:hidden" role="tablist" aria-label="Phần hiển thị" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>
@@ -277,6 +294,8 @@ export default function TaskDrawer() {
                   </div>
                 )}
 
+                <Checklist task={t} items={d.checklist || []} canEdit={canCheck} onChanged={refresh} />
+
                 {/* Tài liệu */}
                 <section className="flex flex-col gap-2">
                   <h3 className="font-semibold">Tài liệu</h3>
@@ -336,7 +355,7 @@ export default function TaskDrawer() {
                       })}
                     </ol>
                   ) : <p className="text-sm text-muted">Chưa có trao đổi.</p>}
-                  <TextAreaInput label="Thêm ghi chú" hideLabel value={comment} onChange={setComment} placeholder="Viết ghi chú cho mọi người trong việc này" rows={2} />
+                  <MentionTextArea label="Thêm ghi chú" value={comment} onChange={setComment} placeholder="Viết ghi chú; gõ @ để nhắc tên" rows={2} onSubmit={() => comment.trim() && act("comment", () => rpc("app_comment", { task: t.id, body: comment }), "Đã lưu ghi chú").then(() => setComment(""))} />
                   <div><Button variant="secondary" isDisabled={!comment.trim()} isPending={busy === "comment"}
                     onPress={() => act("comment", () => rpc("app_comment", { task: t.id, body: comment }), "Đã lưu ghi chú").then(() => setComment(""))}>Lưu ghi chú</Button></div>
                 </section>
