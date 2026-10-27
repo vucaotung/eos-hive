@@ -940,6 +940,11 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   PERFORM set_config('request.jwt.claims', '{"sub":"eeeeeeee-0000-0000-0000-0000000000f0","via":"web"}', true);
   BEGIN PERFORM agent.app_notifications(jsonb_build_object('company_id', c)); ASSERT false, 'người ngoài';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- cầu nối/dịch vụ có "sub" không phải UUID (vd. "bridge"): ghi dữ liệu KHÔNG được lỗi, thông báo ghi người làm là hệ thống
+  PERFORM set_config('request.jwt.claims', '{"sub":"bridge","role":"agent_bridge"}', true);
+  UPDATE work.tasks SET assignee_id = own WHERE id = tid;
+  INSERT INTO work.comments (task_id, user_id, actor, kind, body) VALUES (tid, NULL, 'system', 'note', 'Ghi bởi cầu nối');
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = own AND kind = 'task_assigned' AND entity_id = tid::text AND actor = 'system'), 'claims không phải UUID: thông báo ghi hệ thống, không lỗi';
   RAISE NOTICE 'Thông báo ok';
 END $$;
 

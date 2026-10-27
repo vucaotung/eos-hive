@@ -19,12 +19,16 @@ RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = core, public AS $$
   SELECT p_company, p_user, p_kind, left(p_title, 300), left(p_body, 300), '#/tasks?t=' || p_task, 'task', p_task::text, p_actor, p_ai WHERE p_user IS NOT NULL
 $$;
 
--- Người thực hiện thao tác hiện tại (từ claims): (actor, là AI?)
+-- Người thực hiện thao tác hiện tại (từ claims). Cầu nối/dịch vụ có "sub" không phải UUID (vd. "bridge") → coi là hệ thống, KHÔNG làm hỏng thao tác ghi dữ liệu.
+CREATE OR REPLACE FUNCTION agent._uid() RETURNS uuid
+LANGUAGE plpgsql STABLE SET search_path = core, public AS $$
+BEGIN RETURN core.current_user_id(); EXCEPTION WHEN invalid_text_representation THEN RETURN NULL; END $$;
+
 CREATE OR REPLACE FUNCTION agent._who() RETURNS TABLE (uid uuid, actor text, ai boolean, name text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = core, public AS $$
   SELECT u.id, CASE WHEN u.kind = 'agent' THEN 'agent:' || coalesce((SELECT g.code FROM agent.agents g WHERE g.user_id = u.id), 'agent') ELSE 'user:' || u.id END, u.kind = 'agent', u.name
-    FROM core.users u WHERE u.id = core.current_user_id()
-  UNION ALL SELECT NULL, 'system', false, 'Hệ thống' WHERE core.current_user_id() IS NULL
+    FROM core.users u WHERE u.id = agent._uid()
+  UNION ALL SELECT NULL, 'system', false, 'Hệ thống' WHERE agent._uid() IS NULL
 $$;
 
 CREATE OR REPLACE FUNCTION agent.notify_task_trg() RETURNS trigger
@@ -90,7 +94,7 @@ DECLARE r core.approval_requests; t work.tasks; w record;
 BEGIN
   IF NEW.decision <> 'pending' OR NEW.approver_user IS NULL THEN RETURN NEW; END IF;
   SELECT * INTO r FROM core.approval_requests WHERE id = NEW.request_id;
-  IF r.entity_type <> 'task' OR NEW.approver_user IS NOT DISTINCT FROM core.current_user_id() THEN RETURN NEW; END IF;
+  IF r.entity_type <> 'task' OR NEW.approver_user IS NOT DISTINCT FROM agent._uid() THEN RETURN NEW; END IF;
   SELECT * INTO t FROM work.tasks WHERE id = r.entity_id;
   SELECT * INTO w FROM agent._who();
   IF t.id IS NOT NULL THEN PERFORM agent._notify_from(t.company_id, NEW.approver_user, 'approval_waiting', 'Chờ bạn duyệt (' || NEW.step_name || '): ' || t.title, NULL, t.id, w.actor, coalesce(w.ai, false)); END IF;

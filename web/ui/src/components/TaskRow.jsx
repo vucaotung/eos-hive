@@ -27,7 +27,7 @@ function useSwipe(enabled) {
 // Quá hạn: dải trái đỏ + nền đỏ nhạt. Xong: tiêu đề gạch ngang, chữ mờ. (Không có nút tick: hoàn thành đi qua nộp kết quả/duyệt.)
 export function TaskRow({ task, showDept = true, showProject = true, swipe = false }) {
   const { lookups, openTask, openTaskId, refresh } = useApp();
-  const sel = useSelect(), sw = useSwipe(swipe && !sel?.on && matchMedia("(pointer: coarse)").matches);
+  const coarse = swipe && matchMedia("(pointer: coarse)").matches, sel = useSelect(), sw = useSwipe(coarse && !sel?.on);
   const lp = useLongPress(() => sel?.enter(task.id));
   const dateRef = useRef(null);
   async function shift(date) {
@@ -58,10 +58,10 @@ export function TaskRow({ task, showDept = true, showProject = true, swipe = fal
       <span className="hidden shrink-0 pt-0.5 sm:block"><StatusBadge status={task.status} waiting={task.waiting_on_human} /></span>
     </button>
   );
-  if (!swipe) return row;
+  if (!coarse) return row;   // vuốt chỉ có trên màn cảm ứng (không dựng nút hành động ẩn trên máy tính)
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 flex" aria-hidden={!sw.open}>
+      <div className={`absolute inset-y-0 right-0 flex ${sw.dx === 0 && !sw.open ? "invisible" : ""}`} aria-hidden={!sw.open}>
         <button type="button" tabIndex={sw.open ? 0 : -1} onClick={() => shift(iso(addDays(task.due_date ? fromIso(task.due_date) : new Date(), 1)))} className="w-[88px] bg-wn-bg text-[13px] font-medium text-warning">Hoãn 1 ngày</button>
         <button type="button" tabIndex={sw.open ? 0 : -1} onClick={() => dateRef.current?.showPicker?.() ?? dateRef.current?.click()} className="w-[88px] bg-in-bg text-[13px] font-medium text-info">Đổi hạn</button>
         <input ref={dateRef} type="date" tabIndex={-1} aria-label="Hạn mới" className="pointer-events-none absolute opacity-0" onChange={(e) => e.target.value && shift(e.target.value)} />
