@@ -574,6 +574,24 @@ try {
     assert.equal((await sql("SELECT status FROM work.tasks WHERE id = 501"))[0].status, before, 'chỉ dẫn lạ không bị thi hành');
     await me.close();
   });
+  await step('tạo việc bằng AI: Mai chỉ ĐỀ XUẤT qua eos_task_propose (không tạo việc), chỉ cho thẻ của chính Mai; agent khác không có công cụ này', async () => {
+    const mai = await connect(process.env.TOKEN_MAI), dp = await connect(process.env.TOKEN_AGENT);
+    assert.ok((await mai.listTools()).tools.some((x) => x.name === 'eos_task_propose'), 'Mai có công cụ đề xuất');
+    assert.ok(!(await dp.listTools()).tools.some((x) => x.name === 'eos_task_propose'), 'agent khác không có công cụ đề xuất');
+    await sql("UPDATE agent.company_agents SET enabled = true, config = '{\"internal\": true}' WHERE agent_id = 'a2222222-0000-0000-0000-000000000005'");
+    const c = adm; await c.query('BEGIN'); await c.query("SELECT set_config('request.jwt.claims', '{\"sub\":\"cccccccc-0000-0000-0000-000000000001\"}', true)");
+    const rid = (await c.query("SELECT (agent.app_ai_request(jsonb_build_object('company_id', '33333333-3333-3333-3333-333333333333', 'description', 'Giao anh Minh kiểm tra bản vẽ KC-01 trước thứ Sáu')))->>'id' AS id")).rows[0].id; await c.query('COMMIT');
+    const before = (await sql('SELECT count(*)::int n FROM work.tasks'))[0].n;
+    const bad = await dp.callTool({ name: 'eos_task_propose', arguments: { request_id: Number(rid), tasks: [{ title: 'Việc của agent khác' }] } }); assert.equal(bad.isError, true);
+    const ok = json(await mai.callTool({ name: 'eos_task_propose', arguments: { request_id: Number(rid), summary: 'Một việc', tasks: [{ title: 'Kiểm tra bản vẽ KC-01', assignee_email: 'minh@demo.vn', due_date: '2030-07-05', priority: 'high', subtasks: [{ title: 'Đối chiếu kích thước' }] }] } }));
+    assert.equal(ok.proposed, 1);
+    assert.equal((await sql('SELECT count(*)::int n FROM work.tasks'))[0].n, before, 'Mai không tạo việc');
+    const st = (await sql('SELECT state, proposal FROM agent.ai_requests WHERE id = $1', [rid]))[0];
+    assert.equal(st.state, 'proposed'); assert.equal(st.proposal.tasks[0].assignee_id, 'cccccccc-0000-0000-0000-000000000001'); assert.equal(st.proposal.tasks[0].subtasks.length, 1);
+    const again = await mai.callTool({ name: 'eos_task_propose', arguments: { request_id: Number(rid), tasks: [{ title: 'Lần hai' }] } }); assert.equal(again.isError, true, 'không đề xuất hai lần');
+    const noSave = await mai.callTool({ name: 'eos_task_save', arguments: { id: 'T-501', title: 'bị chặn' } }); assert.equal(noSave.isError, true, 'Mai vẫn không sửa việc');
+    await mai.close(); await dp.close();
+  });
   await step('runner Python (máy khách MCP không giữ phiên) nói chuyện được với máy chủ thật', async () => {
     const { execFile } = await import('node:child_process'); const { promisify } = await import('node:util');   // bất đồng bộ: máy chủ MCP chạy cùng tiến trình với test
     const py = (script, ...args) => promisify(execFile)('python3', ['-I', '-c', "import sys; sys.path.insert(0, '../runner'); import json, eos_z2_runner as R\n" + script, ...args],
