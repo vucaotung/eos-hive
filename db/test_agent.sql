@@ -1010,4 +1010,52 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   RAISE NOTICE 'Việc định kỳ ok';
 END $$;
 
+-- ===== Chi tiết việc: checklist, mẫu, người theo dõi, nhật ký, thời lượng (migration 0028) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; mem constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+              mgr constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c2'; stranger constant uuid := 'eeeeeeee-0000-0000-0000-0000000000f0'; tid bigint; r jsonb; d jsonb; tpl uuid; BEGIN
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  tid := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Việc có chi tiết', 'assignee_id', mem, 'est_minutes', 90))->>'id')::bigint;
+  d := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT (d->'task'->>'est_minutes')::int = 90 AND d->'checklist' = '[]'::jsonb AND d->'watchers' = '[]'::jsonb, 'thời lượng, checklist và người theo dõi rỗng lúc đầu';
+  BEGIN PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'est_minutes', 0)); ASSERT false, 'thời lượng 0'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- nhật ký ghi ĐỔI GÌ
+  PERFORM agent.app_task_save(jsonb_build_object('id', tid, 'status', 'in_progress', 'due_date', '2030-05-20', 'priority', 'high'));
+  d := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT d->'activity'->0->>'summary' LIKE '%trạng thái Chờ làm → Đang làm%' AND d->'activity'->0->>'summary' LIKE '%hạn không → 20/05%' AND d->'activity'->0->>'who' = 'Web Admin', format('nhật ký ghi thay đổi cụ thể: %s', d->'activity'->0);
+  -- checklist: lưu, tick, giữ người tick của mục cũ
+  PERFORM agent.app_checklist_save(jsonb_build_object('task', tid, 'items', jsonb_build_array(jsonb_build_object('title', 'Thu thập hồ sơ', 'done', true), jsonb_build_object('title', 'Soạn tờ trình', 'done', false))));
+  d := agent.app_task(jsonb_build_object('id', tid));
+  ASSERT jsonb_array_length(d->'checklist') = 2 AND (d->'checklist'->0->>'done')::boolean AND d->'checklist'->1->>'title' = 'Soạn tờ trình', 'checklist đã lưu theo thứ tự';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);   -- người làm sửa được checklist
+  PERFORM agent.app_checklist_save(jsonb_build_object('task', tid, 'items', jsonb_build_array(jsonb_build_object('title', 'Thu thập hồ sơ', 'done', true), jsonb_build_object('title', 'Soạn tờ trình', 'done', true), jsonb_build_object('title', 'Trình ký', 'done', false))));
+  ASSERT (SELECT done_by FROM work.checklist_items WHERE task_id = tid AND title = 'Thu thập hồ sơ') = own AND (SELECT done_by FROM work.checklist_items WHERE task_id = tid AND title = 'Soạn tờ trình') = mem, 'mục đã tick giữ người tick cũ, mục mới tick ghi người làm';
+  BEGIN PERFORM agent.app_checklist_save(jsonb_build_object('task', tid, 'items', jsonb_build_array(jsonb_build_object('title', '   ')))); ASSERT false, 'mục rỗng'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000003","via":"web"}', true);   -- thành viên không liên quan tới việc: không sửa được
+  BEGIN PERFORM agent.app_checklist_save(jsonb_build_object('task', tid, 'items', '[]'::jsonb)); ASSERT false, 'người khác sửa checklist'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  -- mẫu checklist: chỉ quản trị/trưởng phòng tạo; người có quyền sửa việc chèn; đếm số lần dùng
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.app_checklist_template_save(jsonb_build_object('company_id', c, 'name', 'Mẫu của thành viên', 'items', jsonb_build_array('a'))); ASSERT false, 'thành viên tạo mẫu'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mgr, 'via', 'web')::text, true);
+  tpl := (agent.app_checklist_template_save(jsonb_build_object('company_id', c, 'name', 'Hồ sơ đất đai', 'items', jsonb_build_array('Giấy chứng nhận', 'Bản đồ địa chính', 'Biên bản bàn giao')))->>'id')::uuid;
+  BEGIN PERFORM agent.app_checklist_template_save(jsonb_build_object('company_id', c, 'name', 'Hồ sơ đất đai', 'items', jsonb_build_array('x'))); ASSERT false, 'trùng tên mẫu'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  ASSERT jsonb_array_length(agent.app_checklist_templates(jsonb_build_object('company_id', c))) = 1, 'mọi thành viên xem được mẫu';
+  r := agent.app_checklist_apply(jsonb_build_object('task', tid, 'template_id', tpl));
+  ASSERT (r->>'added')::int = 3 AND (SELECT count(*) FROM work.checklist_items WHERE task_id = tid) = 6 AND (SELECT uses FROM work.checklist_templates WHERE id = tpl) = 1, 'chèn mẫu vào cuối, tăng số lần dùng';
+  r := agent.app_checklist_apply(jsonb_build_object('task', tid, 'template_id', tpl, 'mode', 'replace'));
+  ASSERT (SELECT count(*) FROM work.checklist_items WHERE task_id = tid) = 3 AND (SELECT uses FROM work.checklist_templates WHERE id = tpl) = 2, 'thay thế bằng mẫu';
+  -- người theo dõi
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  r := agent.app_watchers_set(jsonb_build_object('task', tid, 'user_ids', jsonb_build_array(mgr, mem)));
+  ASSERT (r->>'watchers')::int = 2 AND (r->>'added')::int = 2 AND (SELECT count(*) FROM work.task_watchers WHERE task_id = tid) = 2, 'đặt người theo dõi';
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mgr AND kind = 'watching' AND entity_id = tid::text), 'người mới được thêm nhận thông báo';
+  PERFORM agent.app_watchers_set(jsonb_build_object('task', tid, 'user_ids', jsonb_build_array(mgr)));
+  ASSERT (SELECT count(*) FROM work.task_watchers WHERE task_id = tid) = 1, 'bỏ người theo dõi';
+  BEGIN PERFORM agent.app_watchers_set(jsonb_build_object('task', tid, 'user_ids', jsonb_build_array(stranger))); ASSERT false, 'người ngoài công ty'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- người theo dõi nhận thông báo bình luận và việc xong
+  PERFORM agent.app_comment(jsonb_build_object('task', tid, 'body', 'Cập nhật tiến độ'));
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mgr AND kind = 'comment' AND entity_id = tid::text), 'người theo dõi nhận thông báo bình luận';
+  RAISE NOTICE 'Chi tiết việc ok';
+END $$;
+
 ROLLBACK;

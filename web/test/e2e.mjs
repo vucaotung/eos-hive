@@ -361,6 +361,25 @@ try {
     await adm.ok('app_recurrence_set', { id: r.id, delete: true });
     assert.equal((await adm.ok('app_recurrences', { company_id: CO })).some((x) => x.id === r.id), false);
   });
+  await step('chi tiết việc: checklist (người làm sửa được), mẫu, người theo dõi, nhật ký đổi gì, thời lượng; người không liên quan bị chặn', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn'), kt = await as('ketoan@demo.vn');
+    const made = await adm.ok('app_task_save', { company_id: CO, title: 'Việc có checklist web', assignee_id: ID.minh, department_id: HC, est_minutes: 150 });
+    await adm.ok('app_task_save', { id: made.id, status: 'in_progress', due_date: '2030-06-01' });
+    const d0 = await adm.ok('app_task', { id: made.id });
+    assert.equal(d0.task.est_minutes, 150); assert.match(d0.activity[0].summary, /trạng thái Chờ làm → Đang làm/); assert.equal(d0.activity[0].who, 'Quản Trị');
+    await minh.ok('app_checklist_save', { task: made.id, items: [{ title: 'Bước 1', done: true }, { title: 'Bước 2', done: false }] });
+    const d1 = await adm.ok('app_task', { id: made.id }); assert.deepEqual(d1.checklist.map((x) => [x.title, x.done]), [['Bước 1', true], ['Bước 2', false]]);
+    assert.ok([400, 403].includes((await kt.rpc('app_checklist_save', { task: made.id, items: [] })).status), 'người không liên quan bị chặn');
+    const tpl = await adm.ok('app_checklist_template_save', { company_id: CO, name: 'Hồ sơ đất đai web', items: ['Giấy chứng nhận', 'Bản đồ địa chính'] });
+    assert.equal((await minh.rpc('app_checklist_template_save', { company_id: CO, name: 'Mẫu lậu', items: ['x'] })).status, 403, 'thành viên thường không tạo mẫu');
+    assert.equal((await minh.ok('app_checklist_apply', { task: made.id, template_id: tpl.id })).added, 2);
+    assert.equal((await adm.ok('app_task', { id: made.id })).checklist.length, 4);
+    assert.equal((await adm.ok('app_checklist_templates', { company_id: CO })).find((x) => x.id === tpl.id).uses, 1);
+    await adm.ok('app_watchers_set', { task: made.id, user_ids: [ID.mgr] });
+    assert.deepEqual((await adm.ok('app_task', { id: made.id })).watchers, [ID.mgr]);
+    assert.equal((await adm.rpc('app_watchers_set', { task: made.id, user_ids: ['99999999-9999-9999-9999-999999999999'] })).status, 400);
+    await adm.ok('app_checklist_template_delete', { id: tpl.id });
+  });
   await step('dự án: tạo, cài đặt, thành viên, quyền người thường, xóa (việc còn nhưng mất liên kết)', async () => {
     const adm = await as('admin@demo.vn'), kt = await as('ketoan@demo.vn');
     const pr = await adm.ok('app_project_save', { company_id: CO, slug: 'cong-trinh-x', name: 'Công trình X', department_id: HC, status: 'planned', description: 'Mô tả', start_date: '2030-01-01', end_date: '2030-06-30' });

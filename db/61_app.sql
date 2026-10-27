@@ -351,6 +351,11 @@ BEGIN
     'approvals', CASE WHEN r.id IS NULL THEN '[]'::jsonb ELSE coalesce((SELECT jsonb_agg(jsonb_build_object('step_no', d.step_no, 'step_name', d.step_name, 'decision', d.decision,
                     'decided_by', d.decided_by, 'decided_at', d.decided_at, 'note', d.note) ORDER BY d.step_no)
                     FROM core.approval_decisions d WHERE d.request_id = r.id AND d.round = r.round), '[]') END,
+    'checklist', coalesce((SELECT jsonb_agg(jsonb_build_object('id', ci.id, 'title', ci.title, 'done', ci.done) ORDER BY ci.position) FROM work.checklist_items ci WHERE ci.task_id = t.id), '[]'),
+    'watchers', coalesce((SELECT jsonb_agg(w.user_id) FROM work.task_watchers w JOIN core.users u ON u.id = w.user_id WHERE w.task_id = t.id), '[]'),
+    'activity', coalesce((SELECT jsonb_agg(jsonb_build_object('at', x.at, 'summary', x.summary, 'ai', x.actor LIKE 'agent:%',
+                  'who', CASE WHEN x.actor LIKE 'user:%' THEN (SELECT name FROM core.users WHERE id = substring(x.actor from 6)::uuid) WHEN x.actor LIKE 'agent:%' THEN (SELECT g2.name FROM agent.agents g2 WHERE g2.code = substring(x.actor from 7)) ELSE 'Hệ thống' END) ORDER BY x.at DESC)
+                  FROM (SELECT * FROM core.audit_log al WHERE al.entity_type = 'task' AND al.entity_id = t.id::text ORDER BY al.at DESC, al.id DESC LIMIT 30) x), '[]'),
     'approval_state', r.state,
     'can_approve', can_appr AND t.status = 'in_review',
     'can_edit', agent._can_edit(me.id, t),
@@ -369,7 +374,7 @@ END $$;
 CREATE OR REPLACE FUNCTION agent.app_task_save(p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
 DECLARE me core.users := agent._web_me(); t work.tasks; cid uuid; v_title text; v_desc text; v_dept uuid; v_asg uuid; v_proj uuid; v_flow uuid; v_parent bigint;
-        v_due date; v_start date; v_imp boolean; v_urg boolean; v_prio work.task_priority; v_agent uuid; v_status work.task_status; ag_code text; new_id bigint;
+        v_due date; v_start date; v_imp boolean; v_urg boolean; v_est int; chg text[] := '{}'; sl jsonb := '{"todo":"Chờ làm","in_progress":"Đang làm","blocked":"Vướng","in_review":"Chờ duyệt","done":"Xong","cancelled":"Đã hủy"}'; v_prio work.task_priority; v_agent uuid; v_status work.task_status; ag_code text; new_id bigint;
 BEGIN
   IF (p->>'id') IS NOT NULL THEN
     SELECT * INTO t FROM work.tasks WHERE id = (p->>'id')::bigint FOR UPDATE;
@@ -393,6 +398,8 @@ BEGIN
   v_start  := CASE WHEN p ? 'start_date' THEN nullif(btrim(coalesce(p->>'start_date', '')), '')::date ELSE t.start_date END;
   IF v_start IS NOT NULL AND v_due IS NOT NULL AND v_due < v_start THEN RAISE EXCEPTION 'Hạn chót phải sau hoặc bằng ngày bắt đầu'; END IF;
   -- Ma trận Eisenhower: Quan trọng / Khẩn cấp (ai sửa được việc thì đặt được cờ; kéo thả ô Eisenhower cũng đi qua đây)
+  v_est    := CASE WHEN p ? 'est_minutes' THEN nullif(btrim(coalesce(p->>'est_minutes', '')), '')::int ELSE t.est_minutes END;
+  IF v_est IS NOT NULL AND v_est NOT BETWEEN 1 AND 43200 THEN RAISE EXCEPTION 'Thời lượng từ 1 phút đến 30 ngày'; END IF;
   v_imp    := CASE WHEN p ? 'important' THEN coalesce((p->>'important')::boolean, false) ELSE coalesce(t.important, false) END;
   v_urg    := CASE WHEN p ? 'urgent'    THEN coalesce((p->>'urgent')::boolean, false)    ELSE coalesce(t.urgent, false) END;
   v_prio   := CASE WHEN p ? 'priority' THEN (p->>'priority')::work.task_priority WHEN t.id IS NULL THEN 'medium' ELSE t.priority END;
@@ -415,8 +422,8 @@ BEGIN
 
   IF t.id IS NULL THEN
     IF v_agent IS NOT NULL AND v_asg IS NULL THEN v_asg := me.id; END IF;
-    INSERT INTO work.tasks (company_id, department_id, project_id, parent_id, title, description, priority, assignee_id, agent_id, agent_role, approval_flow_id, due_date, start_date, important, urgent, created_by)
-    VALUES (cid, v_dept, v_proj, v_parent, v_title, v_desc, v_prio, v_asg, v_agent, ag_code, v_flow, v_due, v_start, v_imp, v_urg, me.id) RETURNING id INTO new_id;
+    INSERT INTO work.tasks (company_id, department_id, project_id, parent_id, title, description, priority, assignee_id, agent_id, agent_role, approval_flow_id, due_date, start_date, important, urgent, est_minutes, created_by)
+    VALUES (cid, v_dept, v_proj, v_parent, v_title, v_desc, v_prio, v_asg, v_agent, ag_code, v_flow, v_due, v_start, v_imp, v_urg, v_est, me.id) RETURNING id INTO new_id;
     PERFORM agent._audit(cid, me.id, 'create', 'task', new_id::text, 'Giao việc T-' || new_id || CASE WHEN ag_code IS NOT NULL THEN ' cho agent ' || ag_code ELSE '' END);
     RETURN jsonb_build_object('id', new_id);
   END IF;
@@ -435,10 +442,19 @@ BEGIN
     v_status := (p->>'status')::work.task_status;
   END IF;
   UPDATE work.tasks SET title = v_title, description = v_desc, department_id = v_dept, assignee_id = v_asg, project_id = v_proj, approval_flow_id = v_flow,
-         due_date = v_due, start_date = v_start, important = v_imp, urgent = v_urg, priority = v_prio, agent_id = v_agent, agent_role = coalesce(ag_code, CASE WHEN v_agent IS NULL THEN NULL ELSE agent_role END),
+         due_date = v_due, start_date = v_start, important = v_imp, urgent = v_urg, est_minutes = v_est, priority = v_prio, agent_id = v_agent, agent_role = coalesce(ag_code, CASE WHEN v_agent IS NULL THEN NULL ELSE agent_role END),
          status = v_status, waiting_on_human = CASE WHEN v_status IS DISTINCT FROM t.status THEN false ELSE waiting_on_human END, updated_at = now()
    WHERE id = t.id;
-  PERFORM agent._audit(cid, me.id, 'update', 'task', t.id::text, 'Sửa T-' || t.id);
+  IF v_title IS DISTINCT FROM t.title THEN chg := array_append(chg, 'tên việc'::text); END IF;
+  IF v_status IS DISTINCT FROM t.status THEN chg := array_append(chg, ('trạng thái ' || (sl->>t.status::text) || ' → ' || (sl->>v_status::text))::text); END IF;
+  IF v_asg IS DISTINCT FROM t.assignee_id THEN chg := array_append(chg, ('người phụ trách → ' || coalesce((SELECT name FROM core.users WHERE id = v_asg), 'chưa giao'))::text); END IF;
+  IF v_due IS DISTINCT FROM t.due_date THEN chg := array_append(chg, ('hạn ' || coalesce(to_char(t.due_date, 'DD/MM'), 'không') || ' → ' || coalesce(to_char(v_due, 'DD/MM'), 'không'))::text); END IF;
+  IF v_prio IS DISTINCT FROM t.priority THEN chg := array_append(chg, ('ưu tiên ' || t.priority || ' → ' || v_prio)::text); END IF;
+  IF v_imp IS DISTINCT FROM t.important OR v_urg IS DISTINCT FROM t.urgent THEN chg := array_append(chg, 'ma trận Eisenhower'::text); END IF;
+  IF v_proj IS DISTINCT FROM t.project_id THEN chg := array_append(chg, 'dự án'::text); END IF;
+  IF v_est IS DISTINCT FROM t.est_minutes THEN chg := array_append(chg, 'thời lượng'::text); END IF;
+  IF v_desc IS DISTINCT FROM t.description OR v_dept IS DISTINCT FROM t.department_id OR v_start IS DISTINCT FROM t.start_date OR v_flow IS DISTINCT FROM t.approval_flow_id OR v_agent IS DISTINCT FROM t.agent_id THEN chg := array_append(chg, 'chi tiết khác'::text); END IF;
+  PERFORM agent._audit(cid, me.id, 'update', 'task', t.id::text, 'Sửa T-' || t.id || CASE WHEN cardinality(chg) > 0 THEN ': ' || array_to_string(chg, '; ') ELSE '' END);
   RETURN jsonb_build_object('id', t.id);
 END $$;
 

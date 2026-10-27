@@ -1,7 +1,9 @@
--- 0027 · Việc định kỳ: recur_next, run_recurrences (job ngày), app_recurrences/save/set; _task_json trả recurrence_id.
+-- 0027 · Việc định kỳ: cột est_minutes, recur_next, run_recurrences (job ngày), app_recurrences/save/set; _task_json trả recurrence_id và est_minutes.
 -- Nguồn chính: db/63_features.sql (PHẦN B). Idempotent.
 BEGIN;
-
+ALTER TABLE work.tasks ADD COLUMN IF NOT EXISTS est_minutes int;
+ALTER TABLE work.tasks DROP CONSTRAINT IF EXISTS tasks_est_minutes_check;
+ALTER TABLE work.tasks ADD CONSTRAINT tasks_est_minutes_check CHECK (est_minutes IS NULL OR est_minutes BETWEEN 1 AND 43200);
 -- ==== PHẦN B: VIỆC ĐỊNH KỲ ====
 -- Bảng work.recurrences có sẵn từ lược đồ gốc. Mỗi lần chạy sinh MỘT việc cho lần xuất hiện gần nhất đến hạn (không dồn đống sau khi hệ thống ngừng); job ngày: scripts/housekeeping.sh.
 CREATE OR REPLACE FUNCTION agent._task_json(t work.tasks) RETURNS jsonb
@@ -9,7 +11,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = agent, work, core, public
   SELECT jsonb_build_object(
     'id', t.id, 'company_id', t.company_id, 'title', t.title, 'description', t.description, 'status', t.status, 'priority', t.priority,
     'assignee_id', t.assignee_id, 'department_id', t.department_id, 'project_id', t.project_id, 'parent_id', t.parent_id,
-    'due_date', t.due_date, 'start_date', t.start_date, 'important', t.important, 'urgent', t.urgent, 'recurrence_id', t.recurrence_id, 'created_by', t.created_by, 'created_by_agent', t.created_by_agent, 'waiting_on_human', t.waiting_on_human,
+    'due_date', t.due_date, 'start_date', t.start_date, 'important', t.important, 'urgent', t.urgent, 'recurrence_id', t.recurrence_id, 'est_minutes', t.est_minutes, 'created_by', t.created_by, 'created_by_agent', t.created_by_agent, 'waiting_on_human', t.waiting_on_human,
     'agent_role', (SELECT g.code FROM agent.agents g WHERE g.id = t.agent_id), 'attempts', t.attempts, 'approval_flow_id', t.approval_flow_id, 'approval_status', t.approval_status,
     'claimed_by', t.claimed_by, 'progress', t.progress, 'result', t.result, 'completed_at', t.completed_at, 'created_at', t.created_at, 'updated_at', t.updated_at,
     'current_step', (SELECT r.current_step FROM core.approval_requests r WHERE r.entity_type = 'task' AND r.entity_id = t.id AND r.state = 'pending' ORDER BY r.id DESC LIMIT 1))

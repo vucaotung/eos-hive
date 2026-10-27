@@ -140,7 +140,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = agent, work, core, public
   SELECT jsonb_build_object(
     'id', t.id, 'company_id', t.company_id, 'title', t.title, 'description', t.description, 'status', t.status, 'priority', t.priority,
     'assignee_id', t.assignee_id, 'department_id', t.department_id, 'project_id', t.project_id, 'parent_id', t.parent_id,
-    'due_date', t.due_date, 'start_date', t.start_date, 'important', t.important, 'urgent', t.urgent, 'recurrence_id', t.recurrence_id, 'created_by', t.created_by, 'created_by_agent', t.created_by_agent, 'waiting_on_human', t.waiting_on_human,
+    'due_date', t.due_date, 'start_date', t.start_date, 'important', t.important, 'urgent', t.urgent, 'recurrence_id', t.recurrence_id, 'est_minutes', t.est_minutes, 'created_by', t.created_by, 'created_by_agent', t.created_by_agent, 'waiting_on_human', t.waiting_on_human,
     'agent_role', (SELECT g.code FROM agent.agents g WHERE g.id = t.agent_id), 'attempts', t.attempts, 'approval_flow_id', t.approval_flow_id, 'approval_status', t.approval_status,
     'claimed_by', t.claimed_by, 'progress', t.progress, 'result', t.result, 'completed_at', t.completed_at, 'created_at', t.created_at, 'updated_at', t.updated_at,
     'current_step', (SELECT r.current_step FROM core.approval_requests r WHERE r.entity_type = 'task' AND r.entity_id = t.id AND r.state = 'pending' ORDER BY r.id DESC LIMIT 1))
@@ -291,6 +291,112 @@ BEGIN
 END $$;
 -- ==== HẾT PHẦN B ====
 
+-- ==== PHẦN C: CHI TIẾT VIỆC (checklist, mẫu, người theo dõi) ====
+-- app_task trả thêm checklist, watchers, activity (nhật ký thay đổi cụ thể); app_task_save nhận est_minutes và ghi nhật ký "đổi gì" (bản ở db/61_app.sql).
+CREATE OR REPLACE FUNCTION agent._task_editor(p_task bigint) RETURNS work.tasks
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); t work.tasks;
+BEGIN
+  SELECT * INTO t FROM work.tasks WHERE id = p_task;
+  IF t.id IS NULL OR NOT agent._can_see(me.id, t) THEN RAISE EXCEPTION 'Không tìm thấy việc hoặc bạn không có quyền xem' USING ERRCODE = '42501'; END IF;
+  IF NOT (t.assignee_id = me.id OR t.created_by = me.id OR agent._can_edit(me.id, t)) THEN RAISE EXCEPTION 'Bạn không có quyền sửa phần này của T-%', t.id USING ERRCODE = '42501'; END IF;
+  RETURN t;
+END $$;
+
+-- Thay toàn bộ checklist của việc (giữ người/ngày đã tick của mục đã tick từ trước nếu tên không đổi)
+CREATE OR REPLACE FUNCTION agent.app_checklist_save(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); t work.tasks := agent._task_editor((p->>'task')::bigint); it jsonb; i int := 0; olds jsonb; keep jsonb; d int := 0; ttl text;
+BEGIN
+  IF jsonb_typeof(p->'items') <> 'array' OR jsonb_array_length(p->'items') > 50 THEN RAISE EXCEPTION 'Checklist tối đa 50 mục'; END IF;
+  olds := coalesce((SELECT jsonb_agg(jsonb_build_object('title', title, 'by', done_by, 'at', done_at)) FROM work.checklist_items WHERE task_id = t.id AND done), '[]');
+  DELETE FROM work.checklist_items WHERE task_id = t.id;
+  FOR it IN SELECT * FROM jsonb_array_elements(p->'items') LOOP
+    ttl := btrim(coalesce(it->>'title', ''));
+    IF length(ttl) < 1 OR length(ttl) > 300 THEN RAISE EXCEPTION 'Mỗi mục checklist từ 1 đến 300 ký tự'; END IF;
+    keep := (SELECT o FROM jsonb_array_elements(olds) o WHERE o->>'title' = ttl LIMIT 1);
+    INSERT INTO work.checklist_items (task_id, position, title, done, done_by, done_at)
+    VALUES (t.id, i, ttl, coalesce((it->>'done')::boolean, false), CASE WHEN coalesce((it->>'done')::boolean, false) THEN coalesce((keep->>'by')::uuid, me.id) END,
+            CASE WHEN coalesce((it->>'done')::boolean, false) THEN coalesce((keep->>'at')::timestamptz, now()) END);
+    IF coalesce((it->>'done')::boolean, false) THEN d := d + 1; END IF;
+    i := i + 1;
+  END LOOP;
+  PERFORM agent._audit(t.company_id, me.id, 'checklist', 'task', t.id::text, 'Cập nhật checklist T-' || t.id || ' (' || d || '/' || i || ' xong)');
+  RETURN jsonb_build_object('items', i, 'done', d);
+END $$;
+
+CREATE OR REPLACE FUNCTION agent.app_checklist_templates(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); cid uuid := agent._uuid(p, 'company_id');
+BEGIN
+  PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager','member']);
+  RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id', x.id, 'name', x.name, 'items', to_jsonb(x.items), 'uses', x.uses) ORDER BY x.uses DESC, x.name) FROM work.checklist_templates x WHERE x.company_id = cid), '[]');
+END $$;
+
+CREATE OR REPLACE FUNCTION agent.app_checklist_template_save(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); cid uuid := agent._uuid(p, 'company_id'); tid uuid := agent._uuid(p, 'id'); nm text := btrim(coalesce(p->>'name', '')); its text[];
+BEGIN
+  IF tid IS NOT NULL THEN SELECT company_id INTO cid FROM work.checklist_templates WHERE id = tid; IF cid IS NULL THEN RAISE EXCEPTION 'Không tìm thấy mẫu'; END IF; END IF;
+  PERFORM agent._need_role(me.id, cid, ARRAY['owner','admin','manager']);
+  SELECT array_agg(btrim(x)) INTO its FROM jsonb_array_elements_text(coalesce(p->'items', '[]')) x WHERE btrim(x) <> '';
+  IF length(nm) < 2 OR length(nm) > 120 THEN RAISE EXCEPTION 'Tên mẫu từ 2 đến 120 ký tự'; END IF;
+  IF its IS NULL OR cardinality(its) NOT BETWEEN 1 AND 50 THEN RAISE EXCEPTION 'Mẫu cần từ 1 đến 50 mục'; END IF;
+  IF EXISTS (SELECT 1 FROM unnest(its) x WHERE length(x) > 300) THEN RAISE EXCEPTION 'Mỗi mục tối đa 300 ký tự'; END IF;
+  IF tid IS NULL THEN INSERT INTO work.checklist_templates (company_id, name, items, created_by) VALUES (cid, nm, its, me.id) RETURNING id INTO tid;
+  ELSE UPDATE work.checklist_templates SET name = nm, items = its WHERE id = tid; END IF;
+  RETURN jsonb_build_object('id', tid);
+EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'Đã có mẫu tên "%"', nm;
+END $$;
+
+CREATE OR REPLACE FUNCTION agent.app_checklist_template_delete(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); x work.checklist_templates;
+BEGIN
+  SELECT * INTO x FROM work.checklist_templates WHERE id = agent._uuid(p, 'id');
+  IF x.id IS NULL THEN RAISE EXCEPTION 'Không tìm thấy mẫu'; END IF;
+  PERFORM agent._need_role(me.id, x.company_id, ARRAY['owner','admin','manager']);
+  DELETE FROM work.checklist_templates WHERE id = x.id;
+  RETURN jsonb_build_object('deleted', true);
+END $$;
+
+-- Chèn mẫu vào việc (thêm vào cuối hoặc thay thế); tăng số lần dùng
+CREATE OR REPLACE FUNCTION agent.app_checklist_apply(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); t work.tasks := agent._task_editor((p->>'task')::bigint); x work.checklist_templates; base int; n int;
+BEGIN
+  SELECT * INTO x FROM work.checklist_templates WHERE id = agent._uuid(p, 'template_id') AND company_id = t.company_id;
+  IF x.id IS NULL THEN RAISE EXCEPTION 'Không tìm thấy mẫu trong công ty này'; END IF;
+  IF coalesce(p->>'mode', 'append') = 'replace' THEN DELETE FROM work.checklist_items WHERE task_id = t.id; END IF;
+  SELECT coalesce(max(position) + 1, 0) INTO base FROM work.checklist_items WHERE task_id = t.id;
+  IF base + cardinality(x.items) > 50 THEN RAISE EXCEPTION 'Checklist tối đa 50 mục'; END IF;
+  INSERT INTO work.checklist_items (task_id, position, title) SELECT t.id, base + (o - 1), it FROM unnest(x.items) WITH ORDINALITY u(it, o);
+  GET DIAGNOSTICS n = ROW_COUNT;
+  UPDATE work.checklist_templates SET uses = uses + 1 WHERE id = x.id;
+  PERFORM agent._audit(t.company_id, me.id, 'checklist', 'task', t.id::text, 'Chèn mẫu checklist "' || x.name || '" vào T-' || t.id);
+  RETURN jsonb_build_object('added', n);
+END $$;
+
+-- Người theo dõi (thay toàn bộ danh sách; người mới thêm được báo)
+CREATE OR REPLACE FUNCTION agent.app_watchers_set(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); t work.tasks := agent._task_editor((p->>'task')::bigint); ids uuid[]; u uuid; added int := 0;
+BEGIN
+  SELECT coalesce(array_agg(DISTINCT x::uuid), '{}') INTO ids FROM jsonb_array_elements_text(coalesce(p->'user_ids', '[]')) x;
+  IF cardinality(ids) > 20 THEN RAISE EXCEPTION 'Tối đa 20 người theo dõi'; END IF;
+  IF EXISTS (SELECT 1 FROM unnest(ids) x WHERE NOT EXISTS (SELECT 1 FROM core.memberships m JOIN core.users us ON us.id = m.user_id WHERE m.user_id = x AND m.company_id = t.company_id AND m.active AND us.kind = 'person' AND us.active)) THEN
+    RAISE EXCEPTION 'Người theo dõi phải là thành viên (người) của công ty';
+  END IF;
+  FOREACH u IN ARRAY ids LOOP
+    INSERT INTO work.task_watchers (task_id, user_id) VALUES (t.id, u) ON CONFLICT DO NOTHING;
+    IF FOUND AND u IS DISTINCT FROM me.id THEN added := added + 1; PERFORM agent._notify_from(t.company_id, u, 'watching', me.name || ' thêm bạn vào theo dõi: ' || t.title, NULL, t.id, 'user:' || me.id, false); END IF;
+  END LOOP;
+  DELETE FROM work.task_watchers WHERE task_id = t.id AND NOT (user_id = ANY (ids));
+  RETURN jsonb_build_object('watchers', cardinality(ids), 'added', added);
+END $$;
+-- ==== HẾT PHẦN C ====
+
 -- Quyền
-GRANT EXECUTE ON FUNCTION agent.app_notifications(jsonb), agent.app_notifications_read(jsonb), agent.app_recurrences(jsonb), agent.app_recurrence_save(jsonb), agent.app_recurrence_set(jsonb) TO web_svc;
+GRANT EXECUTE ON FUNCTION agent.app_notifications(jsonb), agent.app_notifications_read(jsonb), agent.app_recurrences(jsonb), agent.app_recurrence_save(jsonb), agent.app_recurrence_set(jsonb),
+  agent.app_checklist_save(jsonb), agent.app_checklist_templates(jsonb), agent.app_checklist_template_save(jsonb), agent.app_checklist_template_delete(jsonb), agent.app_checklist_apply(jsonb), agent.app_watchers_set(jsonb) TO web_svc;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent FROM PUBLIC;   -- hàm mới không mặc định chạy được bởi PUBLIC (xem kiểm thử "PUBLIC còn chạy được")

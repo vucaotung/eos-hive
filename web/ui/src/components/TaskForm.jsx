@@ -9,7 +9,7 @@ import { useMedia } from "./ui.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
 const blank = (dept) => ({ title: "", description: "", department_id: dept || null, assignee_id: null, due_date: "", priority: "medium",
-  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "", repeat: "none" });
+  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "", est: "", repeat: "none" });
 
 // Tạo hoặc sửa việc. task = null → tạo mới; parent → việc con
 export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved }) {
@@ -24,7 +24,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
     if (!isOpen) return;
     setError(null); setMore(!!task || !!parent);
     if (task) setF({ title: task.title, description: task.description || "", department_id: task.department_id, assignee_id: task.assignee_id,
-      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "" });
+      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "", est: task.est_minutes ? String(task.est_minutes) : "" });
     else setF({ ...blank(parent?.department_id || membership?.department_id), project_id: parent?.project_id || null });
   }, [isOpen, task, parent, membership]);
 
@@ -41,7 +41,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
     try {
       let saved;
       const fields = { title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "",
-        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "" };
+        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "", est_minutes: f.est ? Number(f.est) : "" };
       if (!task && !parent && f.repeat !== "none") {   // chọn "Lặp lại": lưu thành việc định kỳ (việc đầu tiên tạo ngay nếu đến hạn)
         const start = f.due_date || new Date().toISOString().slice(0, 10);
         saved = await rpc("app_recurrence_save", { company_id: companyId, title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "", project_id: f.project_id || "", priority: f.priority, freq: f.repeat, start });
@@ -98,6 +98,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
                   options={org.departments.filter((d) => d.active).map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
                 {!task && !parent && <SelectField label="Lặp lại" value={f.repeat} onChange={set("repeat")} options={[{ value: "none", label: "Không lặp" }, { value: "daily", label: "Hằng ngày" }, { value: "weekly", label: "Hằng tuần (thứ của ngày bắt đầu)" }, { value: "monthly", label: "Hằng tháng (ngày của ngày bắt đầu)" }]} />}
                 <TextInput label="Ngày bắt đầu" type="date" value={f.start_date} onChange={set("start_date")} description="Thanh Timeline chạy từ ngày này đến hạn chót." />
+                <TextInput label="Thời lượng ước tính (phút)" type="number" value={f.est} onChange={set("est")} description="Ví dụ 90 = 1 giờ 30 phút; để trống nếu chưa rõ." />
                 {f.approval_flow_id && (
                   <SelectField label="Ai duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} isDisabled={locked}
                     options={flows.map((fl) => ({ value: fl.id, label: `${fl.name}${fl.steps?.length > 1 ? ` (${fl.steps.length} bước)` : ""}` }))} />
