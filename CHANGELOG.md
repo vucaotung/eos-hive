@@ -3,6 +3,9 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.2.9 — Giao diện Nocturne 2b/2c: Eisenhower và Lịch (chưa triển khai; cần migration 0025)
+- Cờ Quan trọng/Khẩn cấp + ngày bắt đầu (migration 0025: `work.tasks.important/urgent`, `app_task_save`, `_task_json`); trang Eisenhower kéo thả/menu đổi cờ; trang Lịch Tháng/Tuần/Timeline; form giao việc có hai cờ và ngày bắt đầu. Thêm test DB và web e2e (22 bước).
+
 ## 0.2.8 — Giao diện Nocturne giai đoạn 2a: chi tiết việc và form giao việc (chưa triển khai)
 - Panel chi tiết việc theo thiết kế (820px, chip, cột phải, trao đổi dạng chat có nhãn AI, việc con có tiến độ, đánh dấu bị chặn, hủy việc); việc mở đồng bộ URL (`?t=`), sao chép link.
 - Form giao việc: "Thêm chi tiết", Ctrl+Enter, phím N. Không đổi CSDL/API. Chi tiết và phần còn thiếu: docs/18.

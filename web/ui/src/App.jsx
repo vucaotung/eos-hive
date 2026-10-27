@@ -11,10 +11,12 @@ import Reports from "./pages/Reports.jsx";
 import Admin from "./pages/Admin.jsx";
 import Me from "./pages/Me.jsx";
 import More from "./pages/More.jsx";
+import Eisenhower from "./pages/Eisenhower.jsx";
+import Calendar from "./pages/Calendar.jsx";
 import DriveSetup from "./pages/DriveSetup.jsx";
 import { ErrorBox } from "./components/ui.jsx";
 
-const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me, more: More };
+const PAGES = { today: Today, tasks: Tasks, projects: Projects, approvals: Approvals, reports: Reports, admin: Admin, me: Me, more: More, eisenhower: Eisenhower, calendar: Calendar };
 
 function Gate() {
   const { me, meError, loadMe, route, signOut } = useApp();

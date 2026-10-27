@@ -5,7 +5,7 @@ import { LinkSimple, Prohibit, CalendarBlank } from "@phosphor-icons/react";
 import { useApp } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { KIND, PRIORITY, STATUS, ago, ddmmyyyy, isOpen, parseDate } from "../lib/format.js";
-import { AgentChip, DueText, ErrorBox, Person, PriorityMark, Seal, SelectField, StatusBadge, TextAreaInput, TextInput, useMedia } from "./ui.jsx";
+import { AgentChip, DueText, ErrorBox, FlagMarks, Person, PriorityMark, Seal, SelectField, StatusBadge, TextAreaInput, TextInput, useMedia } from "./ui.jsx";
 import { TaskList } from "./TaskRow.jsx";
 import TaskForm from "./TaskForm.jsx";
 
@@ -97,7 +97,7 @@ export default function TaskDrawer() {
 
                 <div className="flex flex-wrap items-center gap-2" aria-label="Thông tin chính">
                   <StatusBadge status={t.status} waiting={t.waiting_on_human} />
-                  <PriorityMark priority={t.priority} />
+                  <PriorityMark priority={t.priority} /><FlagMarks task={t} />
                   {t.agent_role && <AgentChip name={agentName(t.agent_role)} size={22} />}
                   <Person user={lookups.person[t.assignee_id]} />
                   {t.due_date && <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px]" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}><CalendarBlank size={14} aria-hidden="true" />{ddmmyyyy(parseDate(t.due_date))} <DueText task={t} className="ml-1" /></span>}

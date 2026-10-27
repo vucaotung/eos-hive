@@ -3,11 +3,12 @@ import { Button, Modal, toast } from "@heroui/react";
 import { useApp } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
 import { PRIORITY } from "../lib/format.js";
-import { CaretDown, CaretUp } from "@phosphor-icons/react";
+import { CaretDown, CaretUp, Star, Lightning } from "@phosphor-icons/react";
+import { quadOf } from "../pages/Eisenhower.jsx";
 import { SelectField, TextAreaInput, TextInput, ErrorBox } from "./ui.jsx";
 
 const blank = (dept) => ({ title: "", description: "", department_id: dept || null, assignee_id: null, due_date: "", priority: "medium",
-  project_id: null, approval_flow_id: null, agent_role: null });
+  project_id: null, approval_flow_id: null, agent_role: null, important: false, urgent: false, start_date: "" });
 
 // Tạo hoặc sửa việc. task = null → tạo mới; parent → việc con
 export default function TaskForm({ isOpen, onClose, task = null, parent = null, onSaved }) {
@@ -21,7 +22,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
     if (!isOpen) return;
     setError(null); setMore(!!task || !!parent);
     if (task) setF({ title: task.title, description: task.description || "", department_id: task.department_id, assignee_id: task.assignee_id,
-      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role });
+      due_date: task.due_date || "", priority: task.priority, project_id: task.project_id, approval_flow_id: task.approval_flow_id, agent_role: task.agent_role, important: !!task.important, urgent: !!task.urgent, start_date: task.start_date || "" });
     else setF({ ...blank(parent?.department_id || membership?.department_id), project_id: parent?.project_id || null });
   }, [isOpen, task, parent, membership]);
 
@@ -38,7 +39,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
     try {
       let saved;
       const fields = { title: f.title, description: f.description, department_id: f.department_id || "", assignee_id: f.assignee_id || "",
-        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "" };
+        due_date: f.due_date || "", priority: f.priority, project_id: f.project_id || "", approval_flow_id: f.approval_flow_id || "", agent_role: f.agent_role || "", important: !!f.important, urgent: !!f.urgent, start_date: f.start_date || "" };
       if (task) {
         saved = await rpc("app_task_save", { id: task.id, ...fields });
         toast.success(`Đã lưu T-${task.id}`);
@@ -70,6 +71,14 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
               <SelectField label="Duyệt kết quả" value={f.approval_flow_id ? "yes" : "no"} isDisabled={locked}
                 onChange={(v) => set("approval_flow_id")(v === "yes" ? (defaultFlow?.id || null) : null)}
                 options={[{ value: "no", label: "Không cần duyệt (nộp là xong)" }, { value: "yes", label: "Phải duyệt (chờ duyệt, được duyệt mới hoàn thành)" }]} />
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <span className="text-sm font-medium">Ma trận Eisenhower</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" aria-pressed={f.important} onClick={() => set("important")(!f.important)} className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-medium ${f.important ? "bg-wn-bg text-warning" : "text-muted hover:bg-surface-secondary"}`} style={{ boxShadow: `inset 0 0 0 1px ${f.important ? "var(--warning)" : "var(--border)"}` }}><Star size={15} weight={f.important ? "fill" : "regular"} />Quan trọng</button>
+                  <button type="button" aria-pressed={f.urgent} onClick={() => set("urgent")(!f.urgent)} className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-medium ${f.urgent ? "bg-dg-bg text-danger" : "text-muted hover:bg-surface-secondary"}`} style={{ boxShadow: `inset 0 0 0 1px ${f.urgent ? "var(--danger)" : "var(--border)"}` }}><Lightning size={15} weight={f.urgent ? "fill" : "regular"} />Khẩn cấp</button>
+                  <span className="text-sm text-muted">Ô: <b className="font-medium text-foreground">{quadOf(f)?.title}</b></span>
+                </div>
+              </div>
               <div className="sm:col-span-2">
                 <button type="button" aria-expanded={more} onClick={() => setMore((v) => !v)} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-[13.5px] font-medium text-act hover:bg-accent-soft">
                   {more ? <CaretUp size={14} weight="bold" /> : <CaretDown size={14} weight="bold" />}{more ? "Ẩn chi tiết" : "Thêm chi tiết"}
@@ -81,6 +90,7 @@ export default function TaskForm({ isOpen, onClose, task = null, parent = null, 
                   placeholder={"Mục tiêu, kết quả cần nộp, tài liệu liên quan"} /></div>
                 <SelectField label="Phòng ban" value={f.department_id} onChange={set("department_id")} allowEmpty emptyLabel="Chung công ty"
                   options={org.departments.filter((d) => d.active).map((d) => ({ value: d.id, label: `${d.code} · ${d.name}` }))} />
+                <TextInput label="Ngày bắt đầu" type="date" value={f.start_date} onChange={set("start_date")} description="Thanh Timeline chạy từ ngày này đến hạn chót." />
                 {f.approval_flow_id && (
                   <SelectField label="Ai duyệt" value={f.approval_flow_id} onChange={set("approval_flow_id")} isDisabled={locked}
                     options={flows.map((fl) => ({ value: fl.id, label: `${fl.name}${fl.steps?.length > 1 ? ` (${fl.steps.length} bước)` : ""}` }))} />
