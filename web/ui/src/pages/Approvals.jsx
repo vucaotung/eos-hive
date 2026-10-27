@@ -40,7 +40,7 @@ function Slip({ item, onDone }) {
         <span>{review ? item.step_name : `Bước ${item.step_no}/${item.steps}: ${item.step_name}`}</span>
         <span>T-{t.id}</span>{t.attempts > 0 && <span>Nộp lần {t.attempts + 1}</span>}<DueText task={t} />
       </div>
-      <h3 className="text-xl font-extrabold leading-tight tracking-tight text-balance">
+      <h3 className="text-xl font-semibold leading-tight tracking-tight text-balance">
         <button type="button" className="text-left hover:underline" onClick={() => openTask(t.id)}>{t.title}</button>
       </h3>
       <div className="rounded-lg bg-background px-3.5 py-3">

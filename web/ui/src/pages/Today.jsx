@@ -28,9 +28,9 @@ export default function Today() {
   const lead = parts.length ? `${first ? first + ", bạn" : "Bạn"} có ${parts.join(", ")}.` : "Không có việc nào đang chờ bạn.";
   const drive = me?.user?.drive_status;
 
-  const count = (n, label, onPress) => (
-    <button type="button" onClick={onPress} className="flex shrink-0 items-baseline gap-2 rounded-full bg-surface px-4 py-2.5 hover:bg-surface-secondary">
-      <b className={`text-xl font-extrabold leading-none ${n ? "" : "text-muted"}`}>{n}</b><span className="text-sm font-semibold text-muted">{label}</span>
+  const count = (n, label, onPress, tone = "var(--accent)") => (
+    <button type="button" onClick={onPress} className="flex min-w-[150px] shrink-0 flex-col gap-1 rounded-[14px] bg-surface px-4 py-3 text-left hover:bg-surface-secondary" style={{ boxShadow: `0 0 0 1px var(--separator), inset 0 2px 0 ${n ? tone : "transparent"}` }}>
+      <span className="text-xs font-medium text-muted">{label}</span><b className={`text-[28px] font-medium leading-none tabular-nums ${n ? "" : "text-faint"}`}>{n}</b>
     </button>
   );
 
@@ -38,7 +38,7 @@ export default function Today() {
     <div className="flex flex-col gap-8">
       <div>
         <p className="text-sm font-medium text-muted">{longDate()}</p>
-        <h1 className={`mt-1 max-w-[22ch] text-3xl font-extrabold leading-[1.1] tracking-tight text-balance sm:text-4xl ${parts.length ? "" : "text-muted"}`}>{lead}</h1>
+        <h1 className={`mt-1 max-w-[28ch] text-[26px] font-medium leading-[1.25] tracking-tight text-balance sm:text-[36px] ${parts.length ? "" : "text-muted"}`}>{lead}</h1>
       </div>
 
       {(drive === "none" || drive === "error") && (
@@ -55,10 +55,10 @@ export default function Today() {
       <ErrorBox error={error} />
 
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
-        {count(approve.length, "chờ tôi duyệt", () => go("approvals"))}
-        {count(asks.length, "agent hỏi", () => go("tasks", { f: "ask" }))}
-        {count(myOpen.length, "việc của tôi", () => go("tasks", { f: "mine" }))}
-        {count(late.length, "quá hạn", () => go("tasks", { f: "late" }))}
+        {count(approve.length, "Chờ tôi duyệt", () => go("approvals"), "var(--warning)")}
+        {count(asks.length, "Agent hỏi", () => go("tasks", { f: "ask" }), "var(--ai)")}
+        {count(myOpen.length, "Việc của tôi", () => go("tasks", { f: "mine" }), "var(--info)")}
+        {count(late.length, "Quá hạn", () => go("tasks", { f: "late" }), "var(--danger)")}
       </div>
 
       {loading && !data ? <LoadingList rows={4} /> : (

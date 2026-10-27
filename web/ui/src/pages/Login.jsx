@@ -34,10 +34,10 @@ export default function Login() {
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="flex items-center gap-3">
           <Logo className="size-16" />
-          <span className="flex flex-col leading-tight"><span className="text-2xl font-extrabold tracking-tight">Enterprise OS</span><span className="text-sm font-semibold text-muted">AI agent and Human collab platform</span></span>
+          <span className="flex flex-col leading-tight"><span className="text-2xl font-semibold tracking-tight">Enterprise OS</span><span className="text-sm font-semibold text-muted">AI agent and Human collab platform</span></span>
         </div>
         <div>
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-balance">Con người và AI agent cùng làm việc trong một nơi.</h1>
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-balance">Con người và AI agent cùng làm việc trong một nơi.</h1>
           <p className="mt-2 text-muted">Đăng nhập bằng tài khoản Google của bạn. Lần đầu vào cần mã mời từ quản trị công ty.</p>
         </div>
         <Card className="gap-5 p-5">

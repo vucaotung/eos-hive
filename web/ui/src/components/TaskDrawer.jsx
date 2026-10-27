@@ -78,7 +78,7 @@ export default function TaskDrawer() {
                     <StatusBadge status={t.status} waiting={t.waiting_on_human} /><span>T-{t.id}</span>
                     {t.attempts > 0 && <span>Nộp lần {t.attempts + 1}</span>}
                   </div>
-                  <Drawer.Heading className="text-xl font-extrabold leading-snug tracking-tight [overflow-wrap:anywhere]">{t.title}</Drawer.Heading>
+                  <Drawer.Heading className="text-xl font-semibold leading-snug tracking-tight [overflow-wrap:anywhere]">{t.title}</Drawer.Heading>
                 </div>
               ) : <Drawer.Heading>{error ? "Không mở được việc" : "Đang tải"}</Drawer.Heading>}
             </Drawer.Header>
@@ -109,7 +109,7 @@ export default function TaskDrawer() {
                   const text = report?.summary || t.result;
                   return (
                     <section className="flex flex-col gap-3 rounded-xl bg-surface p-4">
-                      <h3 className="font-extrabold">Kết quả</h3>
+                      <h3 className="font-semibold">Kết quả</h3>
                       {text ? <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{text}</p>
                         : !outs.length && <p className="text-muted">Việc này chưa có kết quả nào được ghi nhận (không có tóm tắt, tài liệu hay link). {t.status === "done" ? "Nếu cần làm lại, tạo việc mới hoặc việc con." : ""}</p>}
                       {outs.length > 0 && (
@@ -125,7 +125,7 @@ export default function TaskDrawer() {
 
                 {d.workflow && (
                   <section className="flex flex-col gap-2">
-                    <h3 className="font-extrabold">Phạm vi trong quy trình dự án</h3>
+                    <h3 className="font-semibold">Phạm vi trong quy trình dự án</h3>
                     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-xl bg-surface px-4 py-3 text-sm">
                       {d.workflow.skill && <><dt className="text-muted">Kỹ năng</dt><dd className="font-medium">{d.workflow.skill}</dd></>}
                       {Object.entries(d.workflow.scope || {}).filter(([k]) => k !== "agent").map(([k, v]) => (
@@ -163,7 +163,7 @@ export default function TaskDrawer() {
                 {/* Kết quả agent nộp: người giao xem trước */}
                 {report && (t.status === "in_review" || t.status === "done") && (
                   <section className="flex flex-col gap-2">
-                    <h3 className="font-extrabold">Chi tiết báo cáo của agent</h3>
+                    <h3 className="font-semibold">Chi tiết báo cáo của agent</h3>
                     <div className="flex flex-col gap-2 rounded-xl bg-surface p-4">
                       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                         {report.confidence && <span>Độ tin cậy: {report.confidence}</span>}
@@ -198,14 +198,14 @@ export default function TaskDrawer() {
                 {/* Duyệt */}
                 {d.approvals.length > 0 && (
                   <section className="flex flex-col gap-2">
-                    <h3 className="font-extrabold">Các bước duyệt</h3>
+                    <h3 className="font-semibold">Các bước duyệt</h3>
                     <ol className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
                       {d.approvals.map((a) => {
                         const current = t.status === "in_review" && a.step_no === t.current_step;
                         const tone = a.decision === "approved" ? "text-success" : a.decision === "rejected" ? "text-danger" : current ? "text-foreground" : "text-muted";
                         return (
                           <li key={a.step_no} className={`flex items-start gap-3 bg-surface px-4 py-3 ${current ? "shadow-[inset_3px_0_0_var(--seal)]" : ""}`}>
-                            <span className={`font-extrabold ${tone}`}>{a.step_no}</span>
+                            <span className={`font-semibold ${tone}`}>{a.step_no}</span>
                             <span className="flex min-w-0 flex-1 flex-col">
                               <span className="font-semibold">{a.step_name}</span>
                               <span className={`text-sm ${tone}`}>
@@ -253,7 +253,7 @@ export default function TaskDrawer() {
 
                 {/* Tài liệu */}
                 <section className="flex flex-col gap-2">
-                  <h3 className="font-extrabold">Tài liệu</h3>
+                  <h3 className="font-semibold">Tài liệu</h3>
                   {(d.links.length > 0 || d.files.length > 0) ? (
                     <ul className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
                       {d.links.map((l) => (
@@ -281,13 +281,13 @@ export default function TaskDrawer() {
                 </section>
 
                 {d.children.length > 0 && (
-                  <section className="flex flex-col gap-2"><h3 className="font-extrabold">Việc con</h3><TaskList tasks={d.children} showDept={false} /></section>
+                  <section className="flex flex-col gap-2"><h3 className="font-semibold">Việc con</h3><TaskList tasks={d.children} showDept={false} /></section>
                 )}
 
                 <Separator />
                 {/* Trao đổi */}
                 <section className="flex flex-col gap-2">
-                  <h3 className="font-extrabold">Trao đổi</h3>
+                  <h3 className="font-semibold">Trao đổi</h3>
                   {d.comments.length ? (
                     <ol className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
                       {d.comments.map((c) => (

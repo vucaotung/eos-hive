@@ -194,7 +194,7 @@ function ResultsDialog({ project, isOpen, onClose }) {
                 <Tabs.Panel id="overview" className="flex flex-col gap-4 pt-4">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[[D.records.length, "hồ sơ trong danh mục"], [D.files.length, "báo cáo và tài liệu"], [D.kb?.sources ?? 0, "tài liệu trong kho tri thức"], [D.tasks.filter((t) => t.status === "done").length + "/" + D.tasks.length, "việc đã xong"]].map(([n, l]) => (
-                      <div key={l} className="flex flex-col gap-0.5 rounded-xl bg-surface-secondary px-4 py-3"><b className="text-2xl font-extrabold tracking-tight">{n}</b><span className="text-sm font-semibold text-muted">{l}</span></div>
+                      <div key={l} className="flex flex-col gap-0.5 rounded-xl bg-surface-secondary px-4 py-3"><b className="text-2xl font-semibold tracking-tight">{n}</b><span className="text-sm font-semibold text-muted">{l}</span></div>
                     ))}
                   </div>
                   {D.run && <p className="flex flex-wrap gap-x-4 text-sm text-muted">{link(D.run.source_url, "Thư mục Drive nguồn")}{link(D.run.md_url, "Thư mục Markdown")}</p>}
@@ -216,12 +216,12 @@ function ResultsDialog({ project, isOpen, onClose }) {
                 <Tabs.Panel id="records" className="flex flex-col gap-5 pt-4">
                   {cats.length ? cats.map((c) => (
                     <section key={c.name} className="flex flex-col gap-2">
-                      <h3 className="font-extrabold">{c.name} <span className="font-semibold text-muted">{c.items.length}</span></h3>
+                      <h3 className="font-semibold">{c.name} <span className="font-semibold text-muted">{c.items.length}</span></h3>
                       <div className="flex flex-col gap-0.5 overflow-hidden rounded-xl">
                         {c.items.map((r) => (
                           <div key={r.id} className="flex flex-col gap-1 bg-surface-secondary px-4 py-3">
                             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                              {r.record_no && <code className="text-sm font-bold">{r.record_no}</code>}
+                              {r.record_no && <code className="text-sm font-semibold">{r.record_no}</code>}
                               <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">{r.title}</span>
                               {r.issued_on && <span className="text-sm text-muted">{ddmmyyyy(parseDate(r.issued_on))}</span>}
                               {r.contract_value != null && <span className="text-sm font-semibold">{money(r.contract_value)}</span>}
@@ -292,7 +292,7 @@ export default function Projects() {
             <div key={p.id} className={`flex flex-col gap-3 rounded-xl bg-surface p-4 ${p.active ? "" : "opacity-60"}`}>
               <button type="button" onClick={() => go("tasks", { p: p.id })} className="flex flex-col gap-3 text-left">
                 <span className="flex flex-col gap-0.5">
-                  <b className="text-lg font-extrabold leading-snug">{p.name}</b>
+                  <b className="text-lg font-semibold leading-snug">{p.name}</b>
                   <span className="text-sm text-muted">{lookups.dept[p.department_id]?.name || "Chung công ty"} · {STATUS[p.status] || p.status}</span>
                 </span>
                 {p.description && <span className="line-clamp-2 text-sm text-muted">{p.description}</span>}

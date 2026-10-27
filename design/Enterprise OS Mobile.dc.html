@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/styles.css">
+<script src="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/_ds_bundle.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+body{margin:0;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);
+--bg:var(--color-bg);--sf:var(--color-surface);--sf2:oklch(0.30 0.02 277);--ln:var(--color-divider);--ln2:color-mix(in srgb,var(--color-text) 9%,transparent);
+--tx:var(--color-text);--mu:var(--color-neutral-400);--fa:var(--color-neutral-500);--ac:var(--color-accent);--act:var(--color-accent-300);--acbg:var(--color-accent-900);
+--ok:oklch(0.76 0.13 155);--okbg:oklch(0.30 0.05 155);--wn:oklch(0.82 0.13 80);--wnbg:oklch(0.31 0.05 80);--dg:oklch(0.72 0.15 25);--dgbg:oklch(0.30 0.07 25);--in:oklch(0.76 0.10 240);--inbg:oklch(0.30 0.05 240);--ai:var(--color-accent-400);--aibg:var(--color-accent-900);--scrim:oklch(0.12 0.02 277 / .62)}
+body.light{--color-bg:oklch(0.955 0.008 277);--color-surface:oklch(0.99 0.003 277);--color-text:#161826;--color-accent:#6a5db3;--color-divider:color-mix(in srgb,#161826 15%,transparent);
+--sf2:oklch(0.965 0.006 277);--mu:#595d6c;--fa:#6b6f80;--act:#4f4590;--acbg:#ecebfd;--ok:oklch(0.48 0.12 155);--okbg:oklch(0.94 0.04 155);--wn:oklch(0.52 0.12 70);--wnbg:oklch(0.95 0.05 85);--dg:oklch(0.52 0.17 25);--dgbg:oklch(0.95 0.03 25);--in:oklch(0.50 0.12 245);--inbg:oklch(0.95 0.03 245);--ai:#5d5294;--aibg:#ecebfd;--scrim:oklch(0.2 0.02 277 / .4)}
+a{color:var(--ac)}a:hover{color:var(--act)}
+button{font-family:inherit;color:inherit}
+.btn,.seg-opt{white-space:nowrap}
+</style>
+</helmet>
+<div style="padding:48px;display:flex;flex-direction:column;gap:28px;background:color-mix(in srgb,var(--bg) 80%,black);min-height:100vh;font-size:14px;line-height:1.5;color:var(--tx)">
+  <div style="max-width:900px"><div style="font-size:13px;color:var(--mu)">Enterprise OS · Mobile 390 × 844</div><h1 style="font-size:32px;line-height:1.25;margin:4px 0 6px">Bộ màn hình di động</h1><div style="color:var(--mu);font-size:14px;line-height:1.55">Thiết kế riêng cho thao tác một tay: tab dưới 5 mục, vuốt để xử lý nhanh, form dạng bottom sheet. Vùng chạm tối thiểu 44px, chừa 47px tai thỏ và 34px thanh home.</div></div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+  <div id="m1" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M1</span><span style="font-weight:500">Hôm nay · vuốt dòng</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="padding:8px 16px 10px;display:flex;align-items:flex-end;justify-content:space-between">
+        <div><div style="font-size:13px;color:var(--mu)">Thứ Hai, 26/10</div><div style="font-size:30px;font-weight:500;line-height:1.25">Hôm nay</div></div>
+        <div style="display:flex;gap:4px"><button class="btn btn-icon" aria-label="Tìm" style="width:44px;height:44px;color:var(--mu)"><i class="ph ph-magnifying-glass" style="font-size:22px"></i></button><button class="btn btn-icon" aria-label="Thông báo" style="width:44px;height:44px;color:var(--mu);position:relative"><i class="ph ph-bell" style="font-size:22px"></i><span style="position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--dg)"></span></button></div>
+      </div>
+      <div style="display:flex;gap:8px;padding:0 16px 12px;overflow:hidden">
+        <span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--ac);color:var(--ac);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Của tôi · 6</span>
+        <span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--ln);color:var(--mu);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Đội nhóm · 8</span>
+        <span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--ln);color:var(--mu);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Chưa giao</span>
+      </div>
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 16px;font-size:13px;font-weight:500;color:var(--dg)"><i class="ph-fill ph-flag"></i>Quá hạn<span style="color:var(--mu);font-weight:400">3</span></div>
+        <div style="position:relative;height:72px;overflow:hidden">
+          <div style="position:absolute;inset:0;background:var(--ok);display:flex;align-items:center;padding-left:22px;gap:8px;color:var(--bg);font-weight:600;font-size:14px"><i class="ph-bold ph-check" style="font-size:20px"></i>Hoàn thành</div>
+          <div style="position:absolute;inset:0;transform:translateX(128px);background:var(--bg);display:flex;align-items:center;gap:6px;padding:0 16px 0 6px;box-shadow:inset 3px 0 0 var(--dg),-8px 0 16px rgba(0,0,0,.35)">
+            <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--fa);flex:none"><i class="ph ph-circle"></i></span>
+            <div style="min-width:0;flex:1"><div style="font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Khắc phục sự cố API 502</div><div style="font-size:12.5px;color:var(--dg);font-weight:600">24/10 · trễ 2 ngày</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:72px;padding:0 16px 0 6px;border-top:1px solid var(--ln2);box-shadow:inset 3px 0 0 var(--dg)">
+          <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--fa);flex:none"><i class="ph ph-circle"></i></span>
+          <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-weight:500;font-size:15px;line-height:1.4">Đối chiếu công nợ nhà cung cấp tháng 9 <i class="ph-fill ph-star" style="color:var(--wn)"></i></div><div style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--mu)"><span style="color:var(--dg);font-weight:600"><i class="ph-bold ph-warning-circle"></i> trễ 1 ngày</span><span>Báo cáo tài chính Q3</span></div></div>
+          <span style="width:28px;height:28px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:10.5px;font-weight:600;flex:none">TV</span>
+        </div>
+        <div style="position:relative;height:72px;overflow:hidden;border-top:1px solid var(--ln2)">
+          <div style="position:absolute;inset:0;display:flex;justify-content:flex-end">
+            <div style="width:88px;background:var(--wn);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:600;gap:2px"><i class="ph-bold ph-clock-clockwise" style="font-size:20px"></i>Hoãn 1 ngày</div>
+            <div style="width:88px;background:var(--in);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:600;gap:2px"><i class="ph-bold ph-calendar-dots" style="font-size:20px"></i>Đổi hạn</div>
+          </div>
+          <div style="position:absolute;inset:0;transform:translateX(-176px);background:var(--bg);display:flex;align-items:center;gap:6px;padding:0 16px 0 6px;box-shadow:inset 3px 0 0 var(--dg),8px 0 16px rgba(0,0,0,.35)">
+            <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--wn);flex:none"><i class="ph-fill ph-pause-circle"></i></span>
+            <div style="min-width:0;flex:1"><div style="font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Gửi biên bản nghiệm thu móng block B</div><div style="font-size:12.5px;color:var(--dg);font-weight:600">23/10 · trễ 3 ngày</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:14px 16px 6px;font-size:13px;font-weight:500"><i class="ph ph-sun-horizon" style="color:var(--act)"></i>Trong ngày<span style="color:var(--mu);font-weight:400">5</span></div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:72px;padding:0 16px 0 6px;border-top:1px solid var(--ln2)">
+          <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--fa);flex:none"><i class="ph ph-circle"></i></span>
+          <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-weight:500;font-size:15px;line-height:1.4">Rà soát hợp đồng hợp tác đầu tư (bản 3) <i class="ph-fill ph-lightning" style="color:var(--dg)"></i></div><div style="display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--mu);font-variant-numeric:tabular-nums"><span style="color:var(--tx)"><i class="ph ph-clock"></i> 14:00</span><span style="color:var(--in)"><i class="ph-fill ph-circle-half"></i> Đang làm</span><span><i class="ph ph-tree-structure"></i> 3/5</span><span><i class="ph ph-chat-circle"></i> 8</span></div></div>
+          <span style="width:28px;height:28px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:10.5px;font-weight:600;flex:none">QT</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:72px;padding:0 16px 0 6px;border-top:1px solid var(--ln2)">
+          <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--fa);flex:none"><i class="ph ph-circle"></i></span>
+          <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-weight:500;font-size:15px;line-height:1.4">Tổng hợp báo cáo tiến độ tuần 43</div><div style="display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--mu)"><span style="color:var(--tx)"><i class="ph ph-clock"></i> 16:30</span><span style="color:var(--ai)"><i class="ph-fill ph-sparkle"></i> Hermes đang xử lý</span></div></div>
+          <span style="width:28px;height:28px;border-radius:8px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center;flex:none"><i class="ph-fill ph-sparkle"></i></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:72px;padding:0 16px 0 6px;border-top:1px solid var(--ln2)">
+          <span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--ok);flex:none"><i class="ph-fill ph-check-circle"></i></span>
+          <div style="min-width:0;flex:1"><div style="font-size:15px;color:var(--fa);text-decoration:line-through">Họp giao ban phòng Kỹ thuật</div><div style="font-size:12.5px;color:var(--fa)">09:00 · xong 10:12</div></div>
+        </div>
+      </div>
+      <button aria-label="Hỏi Hermes" style="position:absolute;right:16px;bottom:108px;width:52px;height:52px;border-radius:14px;background:var(--sf);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center;box-shadow:var(--shadow-md)"><i class="ph-fill ph-sparkle" style="font-size:22px"></i></button>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Bản cũ là web thu nhỏ với sidebar dạng menu. Nay: dòng cao 72px, nút tick 44px. Dòng 1 đang vuốt phải → Hoàn thành; dòng 3 vuốt trái → Hoãn 1 ngày / Đổi hạn. Nhấn giữ để vào chế độ chọn nhiều (thanh hành động thay tab bar). Hermes là nút nổi vuông, khác hình nút tạo.</div>
+  </div>
+
+  <div id="m2" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M2</span><span style="font-weight:500">Tạo nhanh · bottom sheet</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="padding:8px 16px;opacity:.5"><div style="font-size:13px;color:var(--mu)">Thứ Hai, 26/10</div><div style="font-size:30px;font-weight:500;line-height:1.25">Hôm nay</div></div>
+      <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:var(--sf);border-radius:20px 20px 0 0;border-top:1px solid var(--ln);box-shadow:var(--shadow-lg);padding:8px 16px 34px;display:flex;flex-direction:column;gap:14px">
+        <div style="width:36px;height:5px;border-radius:3px;background:var(--ln);align-self:center"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-weight:500;font-size:16px">Task mới</span><span style="display:flex;gap:4px"><span style="height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--ai);color:var(--ai);display:inline-flex;align-items:center;white-space:nowrap;gap:5px;font-size:12.5px"><i class="ph-fill ph-sparkle"></i>Tạo bằng AI</span></span></div>
+        <div style="min-height:48px;display:flex;align-items:center;font-size:18px;border-bottom:1.5px solid var(--ac);caret-color:var(--ac)">Gửi hồ sơ thẩm duyệt PCCC block C<span style="width:2px;height:22px;background:var(--ac);margin-left:2px"></span></div>
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--mu)">Hạn</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="height:40px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;font-size:14px">Hôm nay</span>
+            <span style="height:40px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--ac);color:var(--ac);display:inline-flex;align-items:center;white-space:nowrap;gap:6px;font-size:14px;box-shadow:inset 0 0 0 1px var(--ac)"><i class="ph-bold ph-check"></i>Mai 27/10</span>
+            <span style="height:40px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;font-size:14px">T6 30/10</span>
+            <span style="height:40px;padding:0 12px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:6px;font-size:14px;color:var(--mu)"><i class="ph ph-calendar-blank"></i>Chọn</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--mu)">Người làm</span>
+          <div style="display:flex;gap:8px;overflow:hidden">
+            <span style="height:40px;padding:0 12px 0 6px;border-radius:999px;border:1px solid var(--ac);display:inline-flex;align-items:center;white-space:nowrap;gap:8px;font-size:14px;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--ac)"><span style="width:28px;height:28px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:10.5px;font-weight:600">LT</span>Lan Trần</span>
+            <span style="height:40px;padding:0 12px 0 6px;border-radius:999px;border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:8px;font-size:14px;white-space:nowrap"><span style="width:28px;height:28px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:10.5px;font-weight:600">VT</span>Tôi</span>
+            <span style="height:40px;padding:0 12px 0 6px;border-radius:999px;border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:8px;font-size:14px;white-space:nowrap"><span style="width:28px;height:28px;border-radius:8px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle"></i></span>Hermes</span>
+          </div>
+        </div>
+        <button style="min-height:44px;display:flex;align-items:center;gap:8px;background:none;border:0;color:var(--act);font-size:14px;padding:0"><i class="ph ph-caret-down"></i>Thêm chi tiết<span style="color:var(--fa);font-size:12.5px">dự án, ưu tiên, việc con, lặp lại…</span></button>
+        <div style="display:flex;gap:10px"><button class="btn btn-secondary" style="flex:1;min-height:48px;font-size:15px">Huỷ</button><button class="btn btn-primary" style="flex:2;min-height:48px;font-size:15px"><i class="ph ph-check"></i>Tạo task</button></div>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Bản cũ mở form đầy đủ 15 trường. Nay sheet chỉ hỏi 3 thứ: tên, hạn (chip ngày nhanh), người làm (người hay giao gần đây xếp trước). “Thêm chi tiết” kéo sheet lên toàn màn hình với các trường còn lại. Nút chính nằm trong tầm ngón cái.</div>
+  </div>
+
+  <div id="m3" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M3</span><span style="font-weight:500">Chi tiết task + trao đổi</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;padding:0 4px;height:48px"><button class="btn btn-icon" aria-label="Quay lại" style="width:44px;height:44px"><i class="ph ph-caret-left" style="font-size:22px"></i></button><span style="flex:1;font-size:13px;color:var(--mu);text-align:center">Hồ sơ pháp lý KĐT Phú Mỹ</span><button class="btn btn-icon" aria-label="Thêm thao tác" style="width:44px;height:44px"><i class="ph ph-dots-three" style="font-size:22px"></i></button></div>
+      <div style="flex:1;overflow:hidden;padding:4px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:21px;font-weight:500;line-height:1.35">Rà soát hợp đồng hợp tác đầu tư (bản 3)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="height:30px;padding:0 10px;border-radius:999px;border:1px solid var(--in);color:var(--in);display:inline-flex;align-items:center;white-space:nowrap;gap:5px;font-size:13px"><i class="ph-fill ph-circle-half"></i>Đang làm</span>
+          <span style="height:30px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:5px;font-size:13px"><i class="ph-bold ph-caret-double-up" style="color:var(--dg)"></i>Cao</span>
+          <span style="height:30px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:5px;font-size:13px;font-variant-numeric:tabular-nums"><i class="ph ph-clock"></i>Hôm nay 14:00</span>
+          <span style="height:30px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;gap:5px;font-size:13px">QT · Tuấn</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ln2);border-radius:var(--radius-md);overflow:hidden">
+          <span style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;border-right:1px solid var(--ln2)">Chi tiết</span>
+          <span style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;color:var(--ac);box-shadow:inset 0 -2px 0 var(--ac);border-right:1px solid var(--ln2)">Trao đổi · 8</span>
+          <span style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px">Nhật ký</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:8px"><span style="width:28px;height:28px;flex:none;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:10.5px;font-weight:600">VT</span><div><div style="font-size:12px;color:var(--mu)"><span style="color:var(--tx);font-weight:500">Vũ Cao Tùng</span> · 25/10 21:10</div><div style="margin-top:3px;padding:8px 12px;border-radius:4px 12px 12px 12px;background:var(--sf);font-size:14px;line-height:1.5"><span style="color:var(--act);font-weight:500">@Nguyễn Quốc Tuấn</span> chú ý mục 7.2 phạt chậm góp vốn nhé.</div></div></div>
+          <div style="display:flex;gap:8px"><span style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle"></i></span><div><div style="font-size:12px;color:var(--mu);display:flex;gap:5px;align-items:center"><span style="color:var(--tx);font-weight:500">Hermes</span><span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px">AI</span>· 07:00</div><div style="margin-top:3px;padding:8px 12px;border-radius:4px 12px 12px 12px;background:color-mix(in srgb,var(--ai) 8%,var(--sf));border:1px solid color-mix(in srgb,var(--ai) 40%,transparent);font-size:14px;line-height:1.5">Bản 3 có 11 thay đổi so với bản 2, trong đó 3 thay đổi ảnh hưởng nghĩa vụ tài chính.</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 10px;border:1px solid var(--ln);border-radius:var(--radius-md);font-size:13px"><i class="ph ph-file-xls" style="font-size:20px;color:var(--mu)"></i>So-sanh-ban-2-3.xlsx<span style="color:var(--fa);font-size:12px">48 KB</span></div></div></div>
+          <div style="display:flex;gap:8px;flex-direction:row-reverse"><div style="max-width:80%"><div style="font-size:12px;color:var(--mu);text-align:right">Bạn · 08:15</div><div style="margin-top:3px;padding:8px 12px;border-radius:12px 4px 12px 12px;background:var(--acbg);border:1px solid color-mix(in srgb,var(--ac) 40%,transparent);font-size:14px;line-height:1.5"><span style="color:var(--act);font-weight:500">@Hermes</span> gửi bản so sánh dạng PDF để in nhé.</div></div></div>
+        </div>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:8px 10px 34px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:6px;overflow:hidden"><span style="height:30px;padding:0 10px;border-radius:999px;background:var(--sf2);display:inline-flex;align-items:center;white-space:nowrap;font-size:12.5px;white-space:nowrap">@Lan Trần</span><span style="height:30px;padding:0 10px;border-radius:999px;background:var(--sf2);display:inline-flex;align-items:center;white-space:nowrap;font-size:12.5px;white-space:nowrap">@Vũ Cao Tùng</span><span style="height:30px;padding:0 10px;border-radius:999px;background:var(--aibg);color:var(--ai);display:inline-flex;align-items:center;white-space:nowrap;gap:4px;font-size:12.5px;white-space:nowrap"><i class="ph-fill ph-sparkle"></i>@Hermes</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><button class="btn btn-icon" aria-label="Đính kèm" style="width:44px;height:44px;color:var(--mu)"><i class="ph ph-paperclip" style="font-size:22px"></i></button><div style="flex:1;min-height:44px;border:1px solid var(--ln);border-radius:22px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--fa)">Nhắn cho nhóm… gõ @ để nhắc</div><button class="btn btn-primary" aria-label="Gửi" style="width:44px;height:44px;padding:0;border-radius:22px"><i class="ph ph-paper-plane-tilt" style="font-size:20px"></i></button></div>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Chi tiết chia 3 tab để trao đổi không bị đẩy xuống cuối trang dài. Ô nhập dính đáy, có hàng gợi ý @nhắc tên ngay trên bàn phím. Tin của Hermes có viền tím + nhãn AI; tin của bạn căn phải. Đánh dấu bị chặn, sửa, lưu trữ, xoá nằm trong menu “…”.</div>
+  </div>
+
+  <div id="m4" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M4</span><span style="font-weight:500">Kanban · mỗi cột một trang</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;padding:0 4px;height:48px"><button class="btn btn-icon" aria-label="Quay lại" style="width:44px;height:44px"><i class="ph ph-caret-left" style="font-size:22px"></i></button><span style="flex:1;font-weight:500;font-size:16px">Enterprise OS v1.3</span><button class="btn btn-icon" aria-label="Lọc" style="width:44px;height:44px;color:var(--mu)"><i class="ph ph-funnel" style="font-size:21px"></i></button></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 16px 4px">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;font-size:11px;color:var(--mu)"><span><i class="ph ph-circle-dashed"></i> Chưa làm 3</span><span style="height:3px;width:100%;border-radius:2px;background:var(--ln)"></span></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;font-size:11.5px;color:var(--in);font-weight:600"><span><i class="ph-fill ph-circle-half"></i> Đang làm 4</span><span style="height:3px;width:100%;border-radius:2px;background:var(--in)"></span></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;font-size:11px;color:var(--mu)"><span><i class="ph-fill ph-pause-circle"></i> Tạm dừng 1</span><span style="height:3px;width:100%;border-radius:2px;background:var(--ln)"></span></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;font-size:11px;color:var(--mu)"><span><i class="ph-fill ph-check-circle"></i> Xong 2</span><span style="height:3px;width:100%;border-radius:2px;background:var(--ln)"></span></span>
+      </div>
+      <div style="flex:1;overflow:hidden;position:relative;display:flex;gap:10px;padding:10px 0 0 16px">
+        <div style="flex:none;width:340px;display:flex;flex-direction:column;gap:8px">
+          <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-md);padding:12px;box-shadow:inset 3px 0 0 var(--dg);display:flex;flex-direction:column;gap:8px"><div style="font-weight:500;font-size:15px;line-height:1.4">Khắc phục sự cố API giao việc trả lỗi 502 <i class="ph-fill ph-lightning" style="color:var(--dg)"></i></div><span style="align-self:flex-start;display:inline-flex;align-items:center;white-space:nowrap;gap:3px;font-size:11.5px;font-weight:600;color:var(--dg);border:1px solid var(--dg);border-radius:4px;padding:0 6px"><i class="ph-bold ph-prohibit"></i>Bị chặn</span><div style="display:flex;gap:10px;font-size:12.5px;color:var(--mu);align-items:center"><span style="width:24px;height:24px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--tx)">ĐD</span><span style="color:var(--dg);font-weight:600">trễ 2 ngày</span><span style="margin-left:auto"><i class="ph ph-tree-structure"></i> 2/4</span></div></div>
+          <div style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--radius-md);padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow-md);transform:scale(1.02)"><div style="font-weight:500;font-size:15px;line-height:1.4">Tự động đánh số &amp; ký hiệu văn bản theo NĐ 30</div><div style="display:flex;gap:10px;font-size:12.5px;color:var(--mu);align-items:center"><span style="width:24px;height:24px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--tx)">MN</span><span><i class="ph ph-calendar-blank"></i> 29/10</span><span style="margin-left:auto"><i class="ph ph-tree-structure"></i> 1/3</span></div></div>
+          <div style="background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;margin-left:40px;width:260px">
+            <div style="padding:8px 14px;font-size:12px;color:var(--fa)">Chuyển sang</div>
+            <div style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--ln2);font-size:14.5px"><i class="ph ph-circle-dashed" style="color:var(--mu);font-size:18px"></i>Chưa làm</div>
+            <div style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--ln2);font-size:14.5px;color:var(--fa)"><i class="ph-fill ph-circle-half" style="color:var(--in);font-size:18px"></i>Đang làm · hiện tại</div>
+            <div style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--ln2);font-size:14.5px"><i class="ph-fill ph-pause-circle" style="color:var(--wn);font-size:18px"></i>Tạm dừng</div>
+            <div style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--ln2);font-size:14.5px"><i class="ph-fill ph-check-circle" style="color:var(--ok);font-size:18px"></i>Hoàn thành</div>
+            <div style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--ln2);font-size:14.5px;color:var(--dg)"><i class="ph-bold ph-prohibit" style="font-size:18px"></i>Đánh dấu bị chặn</div>
+          </div>
+        </div>
+        <div style="flex:none;width:340px;display:flex;flex-direction:column;gap:8px;opacity:.6"><div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-md);padding:12px;font-weight:500;font-size:15px">Chuyển dữ liệu Ever Teams…</div></div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px;padding:10px 0"><span style="width:6px;height:6px;border-radius:50%;background:var(--ln)"></span><span style="width:18px;height:6px;border-radius:3px;background:var(--in)"></span><span style="width:6px;height:6px;border-radius:50%;background:var(--ln)"></span><span style="width:6px;height:6px;border-radius:50%;background:var(--ln)"></span></div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Bản cũ cuộn ngang 4 cột hẹp, kéo thả khó trên cảm ứng. Nay mỗi cột chiếm gần hết chiều rộng, vuốt ngang có snap, cột kế bên ló 30px để gợi ý. Chỉ báo cột ở trên (có số đếm) và chấm dưới. Nhấn giữ thẻ mở menu “Chuyển sang” thay cho kéo thả.</div>
+  </div>
+
+  <div id="m5" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M5</span><span style="font-weight:500">Lịch · tháng chấm màu + danh sách ngày</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px 8px">
+        <div><div style="font-size:24px;font-weight:500;line-height:1.25">Tháng 10, 2026</div><div style="font-size:12px;color:var(--mu)"><i class="ph ph-google-logo"></i> Đồng bộ Google Calendar · 2 phút trước</div></div>
+        <div class="seg"><label class="seg-opt" style="min-height:36px"><input type="radio" name="cv">Tuần</label><label class="seg-opt" style="min-height:36px"><input type="radio" name="cv" checked>Tháng</label></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 10px;font-size:11px;color:var(--fa);text-align:center"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:2px 10px 8px;row-gap:2px">
+        <sc-for list="{{ month }}" as="c" hint-placeholder-count="35">
+          <div style="height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+            <span style="width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-variant-numeric:tabular-nums;color:{{ c.fg }};border:1px solid {{ c.bd }};background:{{ c.bg }}">{{ c.n }}</span>
+            <span style="display:flex;gap:2px;height:5px"><sc-for list="{{ c.dots }}" as="dt" hint-placeholder-count="1"><span style="width:5px;height:5px;border-radius:50%;background:{{ dt.c }}"></span></sc-for></span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1;overflow:hidden;border-top:1px solid var(--ln2);background:var(--sf);border-radius:16px 16px 0 0;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:500">Thứ Hai 26/10</span><span style="font-size:12px;color:var(--mu)">5 việc · 1 sự kiện lịch</span></div>
+        <sc-for list="{{ agenda }}" as="a" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:48px 1fr;gap:10px;min-height:48px;align-items:center">
+            <span style="font-size:12.5px;color:var(--mu);font-variant-numeric:tabular-nums">{{ a.time }}</span>
+            <div style="padding:8px 10px;border-radius:var(--radius-md);background:var(--bg);box-shadow:inset 3px 0 0 {{ a.c }};display:flex;align-items:center;gap:8px;opacity:{{ a.op }}"><i class="{{ a.icon }}" style="color:{{ a.c }}"></i><span style="flex:1;font-size:14px;text-decoration:{{ a.strike }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.t }}</span><span style="font-size:11.5px;color:var(--fa)">{{ a.who }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Lưới tháng của bản web không đọc được ở 390px. Nay ô tháng chỉ có số + tối đa 3 chấm (đỏ = có việc quá hạn, xanh = sự kiện Google, tím = dự án). Chạm ngày → danh sách ngày bên dưới. Chế độ Tuần thu lưới thành một dải 7 ngày vuốt ngang.</div>
+  </div>
+
+  <div id="m6" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M6</span><span style="font-weight:500">Dự án · danh sách + Gantt chỉ xem</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px"><div style="font-size:30px;font-weight:500;line-height:1.25">Dự án</div><button style="height:36px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--ln);border-radius:var(--radius-md);background:none;font-size:13px;white-space:nowrap">EOS Holdings<i class="ph ph-caret-down"></i></button></div>
+      <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+          <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:{{ p.c }}"></span><span style="font-weight:500;font-size:15px;flex:1">{{ p.n }}</span><i class="ph ph-caret-right" style="color:var(--fa)"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;font-variant-numeric:tabular-nums"><div style="flex:1;height:5px;border-radius:3px;background:var(--ln2);overflow:hidden"><div style="width:{{ p.w }};height:100%;background:var(--ac)"></div></div><span>{{ p.pct }}%</span><sc-if value="{{ p.over }}"><span style="color:var(--dg);font-weight:600"><i class="ph-fill ph-flag"></i> {{ p.over }}</span></sc-if><span style="color:var(--mu)">hạn {{ p.due }}</span></div>
+          </div>
+        </sc-for>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--ln2)"><span style="font-weight:500;font-size:14px">Gantt · Enterprise OS v1.3</span><span style="font-size:11.5px;color:var(--mu)"><i class="ph ph-hand-pinching"></i> Chụm để phóng · chỉ xem</span></div>
+          <div style="overflow:hidden;position:relative">
+            <div style="display:grid;grid-template-columns:repeat(10,44px);font-size:10.5px;color:var(--fa);text-align:center;padding:6px 0;font-variant-numeric:tabular-nums"><span>22</span><span>23</span><span>24</span><span>25</span><span style="color:var(--ac);font-weight:600">26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span></div>
+            <div style="position:absolute;left:176px;top:0;bottom:0;width:44px;background:var(--acbg);opacity:.55"></div>
+            <div style="position:relative;display:flex;flex-direction:column;gap:6px;padding:4px 0 12px">
+              <div style="margin-left:0;width:172px;height:24px;border-radius:5px;border:1px solid var(--ok);background:color-mix(in srgb,var(--ok) 22%,transparent);font-size:11px;line-height:22px;padding:0 8px;white-space:nowrap;overflow:hidden">Sổ đăng ký văn bản</div>
+              <div style="margin-left:88px;width:216px;height:24px;border-radius:5px;border:1px solid var(--in);background:color-mix(in srgb,var(--in) 22%,transparent);box-shadow:inset 3px 0 0 var(--dg);font-size:11px;line-height:22px;padding:0 8px;white-space:nowrap;overflow:hidden">API 502 · ĐD</div>
+              <div style="margin-left:132px;width:304px;height:24px;border-radius:5px;border:1px solid var(--in);background:color-mix(in srgb,var(--in) 22%,transparent);font-size:11px;line-height:22px;padding:0 8px;white-space:nowrap;overflow:hidden">Đánh số văn bản · MN</div>
+              <div style="margin-left:220px;width:172px;height:24px;border-radius:5px;border:1px solid var(--mu);background:color-mix(in srgb,var(--mu) 18%,transparent);font-size:11px;line-height:22px;padding:0 8px;white-space:nowrap;overflow:hidden">Hướng dẫn đăng nhập</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Thẻ dự án gọn một dòng tiến độ + số quá hạn. Trong trang dự án, Kanban/Danh sách sửa được; Gantt và Mindmap là bản chỉ xem: cuộn ngang, chụm để phóng, vạch tím đánh dấu hôm nay. Muốn sửa lịch trình thì mở trên web.</div>
+  </div>
+
+  <div id="m7" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M7</span><span style="font-weight:500">Hermes · toàn màn hình</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 4px 10px 16px;border-bottom:1px solid var(--ln2)"><span style="width:34px;height:34px;border-radius:9px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:18px"></i></span><div style="flex:1;line-height:1.3"><div style="font-weight:500">Hermes</div><div style="font-size:12px;color:var(--mu)">AI Agent · EOS Holdings</div></div><button class="btn btn-icon" aria-label="Đóng" style="width:44px;height:44px"><i class="ph ph-x" style="font-size:22px"></i></button></div>
+      <div style="flex:1;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:12px;font-size:14.5px">
+        <div style="align-self:flex-end;padding:8px 12px;border-radius:12px 4px 12px 12px;background:var(--sf2);white-space:nowrap">Ai đang rảnh?</div>
+        <div style="line-height:1.55">Tuần này <b style="font-weight:600">Minh Nguyễn</b> còn trống nhiều nhất (2 việc mở, đều đúng hạn). Lan Trần và Nguyễn Quốc Tuấn đang Bận.</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border:1px solid var(--ln2);border-radius:var(--radius-md);background:var(--sf)"><span style="width:30px;height:30px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:11px;font-weight:600">MN</span><span style="flex:1">Minh Nguyễn</span><span style="font-size:12px;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:0 8px;white-space:nowrap"><i class="ph ph-coffee"></i> Rảnh</span></div>
+          <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border:1px solid var(--ln2);border-radius:var(--radius-md);background:var(--sf)"><span style="width:30px;height:30px;border-radius:50%;background:var(--sf2);display:grid;place-items:center;font-size:11px;font-weight:600">TV</span><span style="flex:1">Thảo Vũ</span><span style="font-size:12px;color:var(--in);border:1px solid var(--in);border-radius:999px;padding:0 8px;white-space:nowrap"><i class="ph ph-gauge"></i> Vừa sức</span></div>
+        </div>
+        <div style="align-self:flex-end;padding:8px 12px;border-radius:12px 4px 12px 12px;background:var(--sf2);white-space:nowrap">Việc quá hạn</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border:1px solid var(--ln2);border-radius:var(--radius-md);background:var(--sf);box-shadow:inset 3px 0 0 var(--dg)"><i class="ph-fill ph-circle-half" style="color:var(--in)"></i><span style="flex:1;min-width:0"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Khắc phục sự cố API 502</span><span style="font-size:12px;color:var(--dg)">ĐD · trễ 2 ngày</span></span><i class="ph ph-caret-right" style="color:var(--fa)"></i></div>
+          <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border:1px solid var(--ln2);border-radius:var(--radius-md);background:var(--sf);box-shadow:inset 3px 0 0 var(--dg)"><i class="ph ph-circle-dashed" style="color:var(--mu)"></i><span style="flex:1;min-width:0"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Đối chiếu công nợ NCC tháng 9</span><span style="font-size:12px;color:var(--dg)">TV · trễ 1 ngày</span></span><i class="ph ph-caret-right" style="color:var(--fa)"></i></div>
+        </div>
+      </div>
+      <div style="flex:none;background:var(--sf);border-top:1px solid var(--ln2);padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:6px;overflow:hidden"><span style="height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Việc hôm nay</span><span style="height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Tóm tắt tuần</span><span style="height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--ln);display:inline-flex;align-items:center;white-space:nowrap;font-size:13px;white-space:nowrap">Giao việc cho…</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><button class="btn btn-icon" aria-label="Nói" style="width:44px;height:44px;color:var(--mu)"><i class="ph ph-microphone" style="font-size:22px"></i></button><div style="flex:1;min-height:44px;border:1px solid var(--ai);border-radius:22px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--fa)">Hỏi hoặc giao việc cho Hermes…</div><button class="btn btn-primary" aria-label="Gửi" style="width:44px;height:44px;padding:0;border-radius:22px"><i class="ph ph-arrow-up" style="font-size:20px"></i></button></div>
+      </div>
+      <div style="flex:none;height:250px;background:var(--sf2);border-top:1px solid var(--ln2);display:grid;place-items:center;color:var(--fa);font-size:12.5px;padding-bottom:34px">Bàn phím hệ thống</div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Mở từ nút nổi, chiếm toàn màn hình. Ô nhập và gợi ý nhanh dính ngay trên bàn phím. Kết quả trả về là thẻ task bấm được (có cờ quá hạn, trạng thái), không phải đoạn văn. Viền ô nhập màu AI để phân biệt với chat của người.</div>
+  </div>
+
+  <div id="m9" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M9</span><span style="font-weight:500">Thêm · các góc nhìn còn lại</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="padding:6px 16px 10px;display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:14px;font-weight:600">VT</span><div style="flex:1;line-height:1.35"><div style="font-weight:500;font-size:16px">Vũ Cao Tùng</div><div style="font-size:12.5px;color:var(--mu)">EOS Holdings · Quản trị viên</div></div><button style="height:36px;padding:0 10px;border:1px solid var(--ln);border-radius:var(--radius-md);background:none;font-size:12.5px;display:flex;align-items:center;gap:4px;white-space:nowrap">Đổi công ty<i class="ph ph-caret-up-down"></i></button></div>
+      <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:14px">
+        <sc-for list="{{ moreGroups }}" as="mg" hint-placeholder-count="3">
+          <div>
+            <div style="font-size:11.5px;color:var(--fa);letter-spacing:.05em;margin:0 4px 6px">{{ mg.label }}</div>
+            <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden">
+              <sc-for list="{{ mg.items }}" as="mi" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-top:1px solid var(--ln2)"><i class="{{ mi.icon }}" style="font-size:20px;color:var(--mu)"></i><span style="flex:1;font-size:15px">{{ mi.n }}</span><sc-if value="{{ mi.alert }}"><span style="font-size:11.5px;font-weight:600;color:var(--dg);background:var(--dgbg);border-radius:5px;padding:1px 6px;white-space:nowrap"><i class="ph-fill ph-flag"></i> {{ mi.alert }}</span></sc-if><span style="font-size:13px;color:var(--fa);font-variant-numeric:tabular-nums">{{ mi.c }}</span><i class="ph ph-caret-right" style="color:var(--fa)"></i></div></sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Tab “Thêm” thay sidebar: giữ đúng 3 nhóm như web (Việc của tôi / Quản lý / Góc nhìn) nên người dùng hai nền tảng không phải học lại. Mục quản lý chỉ hiện với vai trò Quản lý trở lên. Đổi công ty đặt ngay đầu trang.</div>
+  </div>
+
+  <div id="m10" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M10</span><span style="font-weight:500">Eisenhower · lưới 2×2 thu gọn</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;padding:0 4px;height:48px"><button class="btn btn-icon" aria-label="Quay lại" style="width:44px;height:44px"><i class="ph ph-caret-left" style="font-size:22px"></i></button><span style="flex:1;font-weight:500;font-size:16px">Eisenhower</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px 10px">
+        <sc-for list="{{ mq }}" as="q" hint-placeholder-count="4"><div style="min-height:84px;padding:10px;border-radius:var(--radius-lg);background:var(--sf);border:1px solid {{ q.bd }};box-shadow:inset 0 3px 0 {{ q.c }};display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;white-space:nowrap"><i class="{{ q.icon }}" style="color:{{ q.c }}"></i>{{ q.n }}</span><span style="font-size:26px;font-weight:500;font-variant-numeric:tabular-nums">{{ q.cnt }}</span><span style="font-size:11px;color:var(--fa);white-space:nowrap">{{ q.sub }}</span></div></sc-for>
+      </div>
+      <div style="flex:1;overflow:hidden;background:var(--sf);border-top:1px solid var(--ln2);border-radius:16px 16px 0 0;padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px;font-weight:500"><i class="ph-fill ph-lightning" style="color:var(--dg)"></i>Làm ngay<span style="font-size:12px;color:var(--mu);font-weight:400">Quan trọng · Khẩn cấp</span></div>
+        <sc-for list="{{ mqList }}" as="it" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;min-height:56px;padding:0 10px;border-radius:var(--radius-md);background:var(--bg);box-shadow:inset 3px 0 0 {{ it.bar }}"><i class="{{ it.icon }}" style="color:{{ it.ic }};font-size:18px"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.t }}</span><span style="font-size:12px;color:{{ it.dc }}">{{ it.due }}</span></span><i class="ph ph-dots-six-vertical" style="color:var(--fa)"></i></div></sc-for>
+        <div style="font-size:12px;color:var(--fa);margin-top:4px">Nhấn giữ một việc → chọn ô mới trong menu.</div>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>4 ô thu thành lưới 2×2 chỉ có số đếm + biểu tượng, đóng vai trò tab: chạm ô nào thì danh sách ô đó hiện ở sheet dưới. Đổi ô bằng menu khi nhấn giữ, không kéo thả.</div>
+  </div>
+
+  <div id="m11" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M11</span><span style="font-weight:500">Hôm nay · chọn nhiều</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;padding:0 4px 0 4px;height:56px;background:var(--acbg)"><button class="btn btn-icon" aria-label="Thoát chọn" style="width:44px;height:44px;color:var(--act)"><i class="ph ph-x" style="font-size:22px"></i></button><span style="flex:1;font-weight:500;font-size:16px;color:var(--act)">Đã chọn 3</span><button class="btn btn-ghost" style="font-size:14px;min-height:44px">Chọn tất cả</button></div>
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <sc-for list="{{ selRows }}" as="sr" hint-placeholder-count="6"><div style="display:flex;align-items:center;gap:6px;min-height:68px;padding:0 16px 0 6px;border-top:1px solid var(--ln2);background:{{ sr.bg }};box-shadow:inset 3px 0 0 {{ sr.bar }}"><span style="width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:{{ sr.cc }};flex:none"><i class="{{ sr.ci }}"></i></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sr.t }}</div><div style="font-size:12.5px;color:{{ sr.dc }}">{{ sr.meta }}</div></div></div></sc-for>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;font-size:11.5px;color:var(--ok)"><i class="ph-bold ph-check-circle" style="font-size:24px"></i>Hoàn thành</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;font-size:11.5px"><i class="ph ph-calendar-dots" style="font-size:24px"></i>Đổi hạn</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;font-size:11.5px"><i class="ph ph-user-switch" style="font-size:24px"></i>Giao cho</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;font-size:11.5px"><i class="ph ph-dots-three-circle" style="font-size:24px"></i>Khác</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Nhấn giữ một dòng để vào chế độ chọn: thanh trên đổi sang nền nhấn với số đã chọn, nút tick thành ô chọn, tab bar đổi thành 4 hành động hàng loạt. Thoát bằng ✕ hoặc vuốt lùi.</div>
+  </div>
+
+  <div id="m8" style="display:flex;flex-direction:column;gap:12px;width:390px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--act);border:1px solid var(--ac);border-radius:6px;padding:1px 7px">M8</span><span style="font-weight:500">Tổng quan</span></div>
+    <div style="width:390px;height:844px;border-radius:48px;border:1px solid var(--ln);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 36px;font-size:15px;font-weight:600"><span>9:41</span><span style="display:flex;gap:5px;font-size:16px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-bold ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+      <div style="display:flex;align-items:center;padding:0 4px;height:48px"><button class="btn btn-icon" aria-label="Quay lại" style="width:44px;height:44px"><i class="ph ph-caret-left" style="font-size:22px"></i></button><span style="flex:1;font-weight:500;font-size:16px">Tổng quan</span><button class="btn btn-icon" aria-label="Lọc thành viên" style="width:44px;height:44px;color:var(--mu)"><i class="ph ph-users" style="font-size:21px"></i></button></div>
+      <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ln);border-radius:var(--radius-md);overflow:hidden"><span style="min-height:40px;display:grid;place-items:center;font-size:13.5px;color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac)">Tuần</span><span style="min-height:40px;display:grid;place-items:center;font-size:13.5px;color:var(--mu);border-left:1px solid var(--ln)">Tháng</span><span style="min-height:40px;display:grid;place-items:center;font-size:13.5px;color:var(--mu);border-left:1px solid var(--ln)">Quý</span></div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px">
+          <div style="font-size:12.5px;color:var(--mu)">Tuần này đã hoàn thành</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px"><span style="font-size:40px;line-height:1.1;font-weight:500;font-variant-numeric:tabular-nums">18</span><span style="color:var(--mu);font-variant-numeric:tabular-nums">/ 24 · 75%</span></div>
+          <div style="height:6px;border-radius:3px;background:var(--ln2);margin:10px 0;overflow:hidden"><div style="width:75%;height:100%;background:var(--ac)"></div></div>
+          <div style="display:flex;gap:20px;font-size:12.5px;color:var(--mu)"><span><i class="ph-fill ph-fire" style="color:var(--wn)"></i> <b style="color:var(--tx);font-weight:500">6 ngày</b> liên tục</span><span><b style="color:var(--tx);font-weight:500">89%</b> đúng hạn</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <sc-for list="{{ tiles }}" as="k" hint-placeholder-count="6">
+            <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-md);padding:10px;box-shadow:inset 0 2px 0 {{ k.c }};display:flex;flex-direction:column;gap:2px;min-height:68px">
+              <span style="font-size:11.5px;color:var(--mu);display:flex;align-items:center;gap:4px;white-space:nowrap"><i class="{{ k.icon }}" style="color:{{ k.c }}"></i>{{ k.l }}</span>
+              <span style="font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;color:{{ k.vc }}">{{ k.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:22px;height:22px;border-radius:6px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:12px"></i></span><span style="font-weight:500">Dự báo tuần tới</span><span style="margin-left:auto;color:var(--mu);font-size:12px">22 việc · <span style="color:var(--wn)">3 rủi ro</span></span></div>
+          <div style="font-size:13px;line-height:1.5"><i class="ph-bold ph-warning" style="color:var(--wn)"></i> Nộp hồ sơ chấp thuận chủ trương đầu tư — hạn 30/10, còn 4/9 việc con</div>
+          <div style="font-size:13px;line-height:1.5"><i class="ph-bold ph-warning" style="color:var(--wn)"></i> Khoá sổ BCTC Q3 — phụ thuộc việc đang quá hạn</div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:12px 14px">
+          <div style="font-weight:500;font-size:13.5px;margin-bottom:8px">Theo trạng thái</div>
+          <div style="display:flex;height:12px;gap:2px;border-radius:3px;overflow:hidden"><div style="width:64%;background:var(--ok)"></div><div style="width:19%;background:var(--in)"></div><div style="width:5%;background:var(--wn)"></div><div style="width:12%;background:var(--fa)"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums"><span><i class="ph-fill ph-check-circle" style="color:var(--ok)"></i> 41</span><span><i class="ph-fill ph-circle-half" style="color:var(--in)"></i> 12</span><span><i class="ph-fill ph-pause-circle" style="color:var(--wn)"></i> 3</span><span><i class="ph ph-circle-dashed"></i> 8</span></div>
+        </div>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--ln2);background:var(--sf);padding:6px 8px 34px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-sun-horizon" style="font-size:24px"></i>Hôm nay</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-calendar" style="font-size:24px"></i>Lịch</span>
+        <span style="justify-self:center;width:52px;height:44px;border-radius:12px;border:1.5px solid var(--ac);color:var(--ac);display:grid;place-items:center"><i class="ph-bold ph-plus" style="font-size:22px"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--mu)"><i class="ph ph-folders" style="font-size:24px"></i>Dự án</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:11px;color:var(--ac)"><i class="ph-fill ph-dots-three-circle" style="font-size:24px"></i>Thêm</span>
+      </div>
+      <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--tx)"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--mu);line-height:1.55;padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md)"><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Nằm trong tab “Thêm”. Thứ tự đảo so với web: tiến độ tuần lên đầu (câu hỏi đầu tiên của nhân viên), 6 chỉ số thành lưới 3×2, dự báo rủi ro trước biểu đồ. Biểu đồ theo người, burndown và ưu tiên theo dự án nằm khi cuộn xuống.</div>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+  apply() { document.body.classList.toggle('light', this.props.theme === 'light'); }
+  renderVals() {
+    const D = { 23: ['var(--dg)'], 24: ['var(--dg)', 'var(--ac)'], 25: ['var(--dg)'], 26: ['var(--ac)', 'var(--in)', 'var(--ac)'], 27: ['var(--ac)'], 29: ['var(--ac)', 'var(--in)'], 30: ['var(--ac)'], 2: ['var(--ac)'], 5: ['var(--ac)'], 14: ['var(--in)'], 20: ['var(--ac)'], 21: ['var(--ac)', 'var(--ac)'], 22: ['var(--in)'] };
+    const month = Array.from({ length: 35 }, (_, i) => { const dt = new Date(2026, 8, 28 + i), n = dt.getDate(), inM = dt.getMonth() === 9, today = inM && n === 26; return { n, dots: (inM || n < 8 ? (D[n] || []) : []).map(c => ({ c })), fg: today ? 'var(--ac)' : inM ? 'var(--tx)' : 'var(--fa)', bd: today ? 'var(--ac)' : 'transparent', bg: today ? 'var(--acbg)' : 'transparent' }; });
+    const agenda = [['09:00', 'Họp giao ban phòng Kỹ thuật', 'ĐD', 'var(--ok)', 'ph-fill ph-check-circle', 1], ['10:30', 'Gọi đối tác Phú Mỹ Land (Google)', '', 'var(--in)', 'ph ph-google-logo', 0], ['14:00', 'Rà soát hợp đồng hợp tác đầu tư', 'QT', 'var(--ac)', 'ph-fill ph-circle-half', 0], ['16:30', 'Báo cáo tiến độ tuần 43', 'Hermes', 'var(--ai)', 'ph-fill ph-sparkle', 0], ['17:00', 'Kiểm thử phân quyền', 'LT', 'var(--ac)', 'ph ph-circle-dashed', 0]].map(([time, t, who, c, icon, done]) => ({ time, t, who, c, icon, op: done ? .55 : 1, strike: done ? 'line-through' : 'none' }));
+    const projects = [['Enterprise OS v1.3', 'oklch(0.70 0.11 290)', 58, 2, '25/11'], ['Hồ sơ pháp lý KĐT Phú Mỹ', 'oklch(0.72 0.10 205)', 41, 1, '10/12'], ['Báo cáo tài chính Q3', 'oklch(0.74 0.11 60)', 72, 1, '05/11'], ['Tuyển dụng & đào tạo Q4', 'oklch(0.72 0.11 130)', 30, 0, '20/11']].map(([n, c, pct, over, due]) => ({ n, c, pct, over, due, w: pct + '%' }));
+    const tiles = [['Tổng', 64, 'ph ph-stack', 'var(--ln)', 'var(--tx)'], ['Đã xong', 41, 'ph-fill ph-check-circle', 'var(--ok)', 'var(--tx)'], ['Đang làm', 12, 'ph-fill ph-circle-half', 'var(--in)', 'var(--tx)'], ['Quá hạn', 5, 'ph-fill ph-flag', 'var(--dg)', 'var(--dg)'], ['Hạn 3 ngày', 7, 'ph-bold ph-clock-countdown', 'var(--wn)', 'var(--tx)'], ['Hạn 7 ngày', 11, 'ph ph-calendar-dots', 'var(--ln)', 'var(--tx)']].map(([l, v, icon, c, vc]) => ({ l, v, icon, c, vc }));
+    const I = (n, icon, c, alert) => ({ n, icon: 'ph ' + icon, c, alert });
+    const moreGroups = [
+      { label: 'VIỆC CỦA TÔI', items: [I('Sắp tới', 'ph-calendar-dots', 12), I('Việc định kỳ', 'ph-repeat', 5), I('Bất cứ lúc nào', 'ph-tray', 4), I('Hoàn thành', 'ph-check-square', 41), I('Backlog', 'ph-archive', 6)] },
+      { label: 'QUẢN LÝ', items: [I('Tổng quan', 'ph-chart-line-up', ''), I('Tất cả task', 'ph-list-checks', 64, 5), I('Thành viên', 'ph-users-three', 7), I('Nhân sự', 'ph-identification-card', '')] },
+      { label: 'GÓC NHÌN', items: [I('Kanban', 'ph-kanban', ''), I('Eisenhower', 'ph-squares-four', ''), I('Timeline', 'ph-chart-bar-horizontal', ''), I('Cài đặt', 'ph-gear-six', '')] }
+    ];
+    const mq = [['Làm ngay', 'ph-fill ph-lightning', 'var(--dg)', 2, 'Quan trọng · Khẩn', 1], ['Lên lịch', 'ph ph-calendar-plus', 'var(--in)', 4, 'Quan trọng', 0], ['Giao việc', 'ph ph-user-switch', 'var(--wn)', 1, 'Khẩn', 0], ['Để sau', 'ph ph-hourglass', 'var(--mu)', 6, 'Không gấp', 0]].map(([n, icon, c, cnt, sub, on]) => ({ n, icon, c, cnt, sub, bd: on ? 'var(--ac)' : 'var(--ln2)' }));
+    const mqList = [['Rà soát hợp đồng hợp tác đầu tư (bản 3)', 'Hôm nay 14:00', 'ph-fill ph-circle-half', 'var(--in)', 'var(--tx)', 'transparent'], ['Chuẩn bị nội dung họp HĐQT tháng 11', 'Mai 27/10', 'ph ph-circle-dashed', 'var(--mu)', 'var(--wn)', 'transparent']].map(([t, due, icon, ic, dc, bar]) => ({ t, due, icon, ic, dc, bar }));
+    const selRows = [['Khắc phục sự cố API 502', 'trễ 2 ngày · ĐD', 1, 1], ['Đối chiếu công nợ NCC tháng 9', 'trễ 1 ngày · TV', 1, 1], ['Gửi biên bản nghiệm thu móng block B', 'trễ 3 ngày · LT', 1, 1], ['Rà soát hợp đồng hợp tác đầu tư', '14:00 · QT', 0, 0], ['Kiểm thử phân quyền', '17:00 · LT', 0, 0], ['Duyệt đề xuất tuyển kỹ sư dự toán', 'Trong ngày · VT', 0, 0]].map(([t, meta, sel, over]) => ({ t, meta, bg: sel ? 'color-mix(in srgb,var(--ac) 10%,transparent)' : 'transparent', bar: over ? 'var(--dg)' : 'transparent', ci: sel ? 'ph-fill ph-check-square' : 'ph ph-square', cc: sel ? 'var(--ac)' : 'var(--fa)', dc: over ? 'var(--dg)' : 'var(--mu)' }));
+    return { month, agenda, projects, tiles, moreGroups, mq, mqList, selRows };
+  }
+}
+</script>
+</body>
+</html>

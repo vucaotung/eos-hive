@@ -8,7 +8,7 @@ import { Empty, ErrorBox } from "./ui.jsx";
 // Quản trị hệ thống (chỉ người có is_system_admin): cầu nối Hermes, agent, mã MCP của mọi người, nhật ký gọi MCP
 const Stat = ({ n, label, bad }) => (
   <div className="flex flex-col gap-0.5 rounded-xl bg-surface px-4 py-3">
-    <b className={`text-2xl font-extrabold tracking-tight ${bad ? "text-danger" : ""}`}>{n}</b><span className="text-sm font-semibold text-muted">{label}</span>
+    <b className={`text-2xl font-semibold tracking-tight ${bad ? "text-danger" : ""}`}>{n}</b><span className="text-sm font-semibold text-muted">{label}</span>
   </div>
 );
 const Table = ({ head, children }) => (
@@ -29,7 +29,7 @@ function Overview() {
   const b = ov.bridge || {}, m = ov.mcp || {}, ts = ov.tasks || {};
   return (
     <div className="flex flex-col gap-6">
-      <h3 className="font-extrabold">Cầu nối Hermes</h3>
+      <h3 className="font-semibold">Cầu nối Hermes</h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Stat n={b.outbox_pending ?? 0} label="Lệnh chờ đẩy sang Kanban" bad={b.outbox_pending > 0 && b.outbox_oldest_pending_s > 300} />
         <Stat n={b.outbox_errors ?? 0} label="Lệnh lỗi" bad={b.outbox_errors > 0} />
@@ -37,7 +37,7 @@ function Overview() {
         <Stat n={b.last_card_event ? ago(b.last_card_event) : "–"} label="Sự kiện thẻ gần nhất" />
         <Stat n={ov.confirmations_pending ?? 0} label="Xác nhận L2 đang chờ" />
       </div>
-      <h3 className="font-extrabold">Agent</h3>
+      <h3 className="font-semibold">Agent</h3>
       <Table head={["Mã", "Tên", "Module", "Profile Hermes", "Bật", "Cấp", "Việc mở", "Đang chạy", "Skill", "Mã MCP còn", "Quyền mã"]}>
         {(ov.agents || []).map((a) => (
           <Row key={a.code} dim={!a.active}>
@@ -48,9 +48,9 @@ function Overview() {
           </Row>
         ))}
       </Table>
-      <h3 className="font-extrabold">Việc theo trạng thái</h3>
+      <h3 className="font-semibold">Việc theo trạng thái</h3>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{Object.entries(STATUS).map(([k, l]) => <Stat key={k} n={ts[k] ?? 0} label={l} />)}</div>
-      <h3 className="font-extrabold">MCP trong 24 giờ</h3>
+      <h3 className="font-semibold">MCP trong 24 giờ</h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat n={m.calls_24h ?? 0} label="Lượt gọi" /><Stat n={m.denied_24h ?? 0} label="Bị từ chối" bad={m.denied_24h > 20} /></div>
     </div>
   );

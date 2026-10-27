@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/styles.css">
+<script src="_ds/nocturne-f6b75fa6-32fd-4ce8-9c28-968d074a1d71/_ds_bundle.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+body{margin:0;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);
+--bg:var(--color-bg);--sf:var(--color-surface);--sf2:oklch(0.30 0.02 277);--ln:var(--color-divider);--ln2:color-mix(in srgb,var(--color-text) 9%,transparent);
+--tx:var(--color-text);--mu:var(--color-neutral-400);--fa:var(--color-neutral-500);--ac:var(--color-accent);--act:var(--color-accent-300);--acbg:var(--color-accent-900);
+--ok:oklch(0.76 0.13 155);--okbg:oklch(0.30 0.05 155);--wn:oklch(0.82 0.13 80);--wnbg:oklch(0.31 0.05 80);--dg:oklch(0.72 0.15 25);--dgbg:oklch(0.30 0.07 25);--in:oklch(0.76 0.10 240);--inbg:oklch(0.30 0.05 240);--ai:var(--color-accent-400);--aibg:var(--color-accent-900);--scrim:oklch(0.12 0.02 277 / .62)}
+body.light{--color-bg:oklch(0.955 0.008 277);--color-surface:oklch(0.99 0.003 277);--color-text:#161826;--color-accent:#6a5db3;--color-divider:color-mix(in srgb,#161826 15%,transparent);
+--sf2:oklch(0.965 0.006 277);--mu:#595d6c;--fa:#6b6f80;--act:#4f4590;--acbg:#ecebfd;--ok:oklch(0.48 0.12 155);--okbg:oklch(0.94 0.04 155);--wn:oklch(0.52 0.12 70);--wnbg:oklch(0.95 0.05 85);--dg:oklch(0.52 0.17 25);--dgbg:oklch(0.95 0.03 25);--in:oklch(0.50 0.12 245);--inbg:oklch(0.95 0.03 245);--ai:#5d5294;--aibg:#ecebfd;--scrim:oklch(0.2 0.02 277 / .4)}
+a{color:var(--ac)}a:hover{color:var(--act)}
+button{font-family:inherit;color:inherit}
+.btn,.seg-opt{white-space:nowrap}
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5">
+<aside style="position:sticky;top:0;height:100vh;overflow:auto;background:var(--sf);border-right:1px solid var(--ln2);padding:12px 10px 20px;display:flex;flex-direction:column;gap:1px">
+  <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 14px">
+    <span style="width:30px;height:30px;border-radius:var(--radius-md);border:1px solid var(--ac);color:var(--ac);display:grid;place-items:center;font-weight:600;font-size:12px">EOS</span>
+    <div style="line-height:1.25"><div style="font-weight:500">Enterprise OS</div><div style="font-size:11.5px;color:var(--mu);white-space:nowrap">Giao việc &amp; điều phối</div></div>
+  </div>
+  <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="3">
+    <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fa);padding:14px 10px 6px;font-weight:500">{{ g.label }}</div>
+    <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="5">
+      <button onClick="{{ n.go }}" style="display:flex;align-items:center;gap:10px;min-height:34px;padding:0 10px;border-radius:var(--radius-md);border:0;width:100%;text-align:left;font-size:13.5px;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};box-shadow:{{ n.mark }}" style-hover="background:var(--sf2);color:var(--tx)">
+        <i class="{{ n.icon }}" style="font-size:17px"></i><span style="flex:1">{{ n.label }}</span>
+        <span style="font-size:12px;font-variant-numeric:tabular-nums;color:var(--fa)">{{ n.count }}</span>
+        <sc-if value="{{ n.alert }}"><span style="min-width:20px;height:18px;padding:0 5px;border-radius:5px;background:var(--dgbg);color:var(--dg);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-variant-numeric:tabular-nums"><i class="ph-fill ph-flag" style="font-size:10px"></i>{{ n.alert }}</span></sc-if>
+      </button>
+    </sc-for>
+  </sc-for>
+  <div style="flex:1"></div>
+  <button onClick="{{ goSettings }}" style="display:flex;align-items:center;gap:10px;min-height:34px;padding:0 10px;border-radius:var(--radius-md);border:0;background:none;color:var(--mu);font-size:13.5px;cursor:pointer" style-hover="background:var(--sf2)"><i class="ph ph-gear-six" style="font-size:17px"></i>Cài đặt</button>
+</aside>
+<div style="min-width:0;display:flex;flex-direction:column">
+  <header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;min-height:56px;padding:0 24px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--ln2)">
+    <button onClick="{{ toggleCo }}" aria-label="Chọn công ty" style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 6px;border-radius:var(--radius-md);border:1px solid var(--ln);background:var(--sf);cursor:pointer;font-size:13px" style-hover="border-color:var(--mu)">
+      <span style="width:24px;height:24px;border-radius:6px;background:var(--sf2);display:grid;place-items:center;font-size:10px;font-weight:600">{{ coIni }}</span>
+      <span style="font-weight:500">{{ coName }}</span>
+      
+      <i class="ph ph-caret-up-down" style="color:var(--mu)"></i>
+    </button>
+    <label style="flex:1 1 0;min-width:0;max-width:460px;margin-inline:auto;display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid var(--ln);border-radius:var(--radius-md);background:var(--sf);color:var(--mu)">
+      <i class="ph ph-magnifying-glass" style="font-size:16px"></i>
+      <input placeholder="Tìm task, dự án, người, công văn…" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font:inherit;font-size:13.5px">
+      
+    </label>
+    <button class="btn btn-primary" onClick="{{ openForm }}" style="height:36px;flex:none"><i class="ph ph-plus"></i>Task<span style="font-size:11px;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.75">N</span></button>
+    <button class="btn btn-icon" onClick="{{ toggleNotif }}" aria-label="Thông báo, 5 chưa đọc" style="flex:none;position:relative;color:var(--mu)"><i class="ph ph-bell" style="font-size:19px"></i><span style="position:absolute;top:3px;right:3px;min-width:16px;height:16px;border-radius:8px;background:var(--dg);color:var(--bg);font-size:10px;font-weight:600;display:grid;place-items:center;padding:0 4px">5</span></button>
+    <span style="flex:none;width:32px;height:32px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:11.5px;font-weight:600">VT</span>
+  </header>
+  <main style="padding:20px 28px 110px;max-width:1400px;width:100%;box-sizing:border-box">
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <div style="font-size:12.5px;color:var(--mu);white-space:nowrap">{{ L.eyebrow }}</div>
+          <h1 style="font-size:26px;line-height:1.25;margin:2px 0 4px">{{ L.title }}</h1>
+          <div style="font-size:13px;color:var(--mu);display:flex;gap:14px;flex-wrap:wrap"><sc-for list="{{ L.summary }}" as="sm" hint-placeholder-count="3"><span style="white-space:nowrap;color:{{ sm.c }}"><i class="{{ sm.icon }}" style="color:{{ sm.ic }}"></i> {{ sm.t }}</span></sc-for></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="seg"><label class="seg-opt"><input type="radio" name="sc" checked>Tất cả</label><label class="seg-opt"><input type="radio" name="sc">Của tôi</label><label class="seg-opt"><input type="radio" name="sc">Đội nhóm</label></div>
+          <button class="btn btn-secondary"><i class="ph ph-funnel"></i>Lọc</button>
+          <button class="btn btn-secondary"><i class="ph ph-checks"></i>Chọn nhiều</button>
+        </div>
+      </div>
+      <sc-if value="{{ L.filters }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);margin-bottom:14px">
+          <div style="display:inline-flex;border:1px solid var(--ln);border-radius:var(--radius-md);overflow:hidden"><sc-for list="{{ stFilters }}" as="sf" hint-placeholder-count="5"><button onClick="{{ sf.go }}" style="white-space:nowrap;height:32px;padding:0 11px;border:0;background:transparent;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;color:{{ sf.fg }};box-shadow:{{ sf.sh }}"><i class="{{ sf.icon }}"></i>{{ sf.label }}</button></sc-for></div>
+          <div class="seg"><label class="seg-opt"><input type="radio" name="scope" checked>Đội nhóm</label><label class="seg-opt"><input type="radio" name="scope">Cá nhân</label><label class="seg-opt"><input type="radio" name="scope">Chưa giao</label></div>
+          <button class="btn btn-secondary" style="color:var(--ac);border-color:var(--ac)"><i class="ph ph-users"></i>Người làm: 3<i class="ph ph-caret-down"></i></button>
+          <button class="btn btn-secondary"><i class="ph ph-tag"></i>Danh mục<i class="ph ph-caret-down"></i></button>
+          <button class="btn btn-secondary"><i class="ph ph-calendar-blank"></i>20/10 – 08/11<i class="ph ph-caret-down"></i></button>
+          <button class="btn btn-secondary" style="margin-left:auto"><i class="ph ph-sort-ascending"></i>Sắp xếp: Hạn gần nhất</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi so với bản hiện tại · </span>{{ L.note }}</div></div></sc-if>
+      <sc-if value="{{ L.empty }}" hint-placeholder-val="{{ false }}"><div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><i class="ph ph-funnel-x" style="font-size:30px;color:var(--fa)"></i><div style="font-weight:500">Không có task nào khớp bộ lọc</div><div style="font-size:12.5px;color:var(--mu)">Thử bỏ bớt điều kiện trạng thái hoặc mở rộng khoảng ngày.</div><button class="btn btn-secondary" onClick="{{ clearSt }}" style="margin-top:6px">Xoá lọc trạng thái</button></div></sc-if>
+      <div style="display:flex;flex-wrap:wrap;column-gap:8px;padding:0 15px 6px 9px;font-size:11.5px;color:var(--fa);letter-spacing:.02em">
+        <span style="width:36px;flex:none"></span><span style="flex:1 1 260px">Công việc</span><div style="display:grid;grid-template-columns:150px 124px 76px 112px 104px;gap:8px;margin-left:auto"><span>Người làm</span><span>Hạn</span><span>Ưu tiên</span><span>Trạng thái</span><span style="text-align:right">Con · BL · Tệp</span></div>
+      </div>
+      <sc-for list="{{ L.groups }}" as="grp" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:8px;margin:14px 2px 8px">
+          <i class="{{ grp.icon }}" style="color:{{ grp.color }};font-size:15px"></i>
+          <span style="font-weight:500;font-size:14px;white-space:nowrap">{{ grp.label }}</span>
+          <span style="font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">{{ grp.count }}</span>
+          <sc-if value="{{ grp.action }}"><button class="btn btn-ghost" style="margin-left:auto;font-size:12.5px">{{ grp.action }}</button></sc-if>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden">
+          <sc-for list="{{ grp.rows }}" as="r" hint-placeholder-count="3">
+            <div onClick="{{ r.open }}" tabindex="0" role="button" style="display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:2px;padding:6px 14px 6px 8px;border-top:1px solid var(--ln2);box-shadow:inset 3px 0 0 {{ r.bar }};cursor:pointer;background:{{ r.rowBg }}" style-hover="background:var(--sf2)">
+              <button onClick="{{ r.toggle }}" aria-label="Đánh dấu hoàn thành" style="width:36px;height:36px;display:grid;place-items:center;background:none;border:0;cursor:pointer;color:{{ r.checkColor }};font-size:21px;border-radius:50%" style-hover="color:var(--ok)"><i class="{{ r.checkCls }}"></i></button>
+              <div style="flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:1px">
+                <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                  <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:{{ r.strike }};color:{{ r.titleColor }}">{{ r.t }}</span>
+                  <sc-if value="{{ r.imp }}"><i class="ph-fill ph-star" title="Quan trọng" style="color:var(--wn);flex:none"></i></sc-if>
+                  <sc-if value="{{ r.urg }}"><i class="ph-fill ph-lightning" title="Khẩn cấp" style="color:var(--dg);flex:none"></i></sc-if>
+                  <sc-if value="{{ r.blk }}"><span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--dg);border:1px solid var(--dg);border-radius:4px;padding:0 5px;white-space:nowrap"><i class="ph-bold ph-prohibit"></i>Bị chặn</span></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);min-width:0"><span style="width:8px;height:8px;border-radius:2px;background:{{ r.pc }};flex:none"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.pn }}</span></div>
+              </div>
+              <div style="display:grid;grid-template-columns:150px 124px 76px 112px 104px;gap:8px;align-items:center;margin-left:auto"><div style="display:flex;align-items:center;gap:7px;font-size:12.5px;min-width:0">
+                <sc-if value="{{ r.ai }}"><span title="AI Agent" style="width:24px;height:24px;border-radius:7px;background:var(--aibg);border:1px solid var(--ai);display:grid;place-items:center;color:var(--ai);flex:none"><i class="ph-fill ph-sparkle" style="font-size:13px"></i></span></sc-if>
+                <sc-if value="{{ r.human }}"><span style="width:24px;height:24px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:10px;font-weight:600;flex:none">{{ r.ini }}</span></sc-if>
+                <sc-if value="{{ r.none }}"><span style="width:24px;height:24px;border-radius:50%;border:1px dashed var(--fa);flex:none"></span></sc-if><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.an }}</span>
+                <sc-if value="{{ r.ai }}"><span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px;flex:none">AI</span></sc-if>
+              </div>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:{{ r.dueColor }};font-variant-numeric:tabular-nums;font-weight:{{ r.dueW }};white-space:nowrap"><i class="{{ r.dueIcon }}"></i>{{ r.dueTxt }}</span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12.5px"><i class="{{ r.prIcon }}" style="color:{{ r.prColor }}"></i>{{ r.prLabel }}</span>
+              <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;border:1px solid {{ r.stColor }};color:{{ r.stColor }};font-size:12px;white-space:nowrap"><i class="{{ r.stIcon }}"></i>{{ r.stLabel }}</span>
+              <div style="display:flex;gap:10px;justify-content:flex-end;font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums;white-space:nowrap">
+                <span title="Việc con" style="opacity:{{ r.subOp }}"><i class="ph ph-tree-structure"></i> {{ r.subTxt }}</span>
+                <span title="Bình luận" style="opacity:{{ r.cmtOp }}"><i class="ph ph-chat-circle"></i> {{ r.cmt }}</span>
+                <span title="Đính kèm" style="opacity:{{ r.attOp }}"><i class="ph ph-paperclip"></i> {{ r.att }}</span>
+              </div></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">EOS Holdings · 4 dự án · 7 thành viên</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Tổng quan</h1></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div style="display:inline-flex;border:1px solid var(--ln);border-radius:var(--radius-md);overflow:hidden">
+            <sc-for list="{{ periods }}" as="pp" hint-placeholder-count="3"><button onClick="{{ pp.go }}" style="height:34px;padding:0 14px;border:0;font-size:13px;cursor:pointer;background:transparent;color:{{ pp.fg }};box-shadow:{{ pp.sh }}">{{ pp.label }}</button></sc-for>
+          </div>
+          <button class="btn btn-secondary" style="height:36px"><i class="ph ph-users"></i>Tất cả thành viên<i class="ph ph-caret-down"></i></button>
+        </div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Bỏ khối hero gradient; 6 chỉ số thành một dải ô đồng cỡ, bấm được để lọc. Quá hạn và hạn gần có biểu tượng riêng (cờ, đồng hồ) để không phụ thuộc màu. Dự báo tuần tới chỉ ra cụ thể việc có rủi ro thay vì một con số. Biểu đồ dùng chung một bảng màu trạng thái với pill.</div></div></sc-if>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+        <sc-for list="{{ tiles }}" as="k" hint-placeholder-count="6">
+          <button style="text-align:left;display:flex;flex-direction:column;gap:6px;padding:12px 14px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);cursor:pointer;box-shadow:inset 0 2px 0 {{ k.c }}" style-hover="border-color:var(--ln)">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu)"><i class="{{ k.icon }}" style="color:{{ k.c }};font-size:14px"></i>{{ k.label }}</span>
+            <span style="font-size:28px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums;color:{{ k.vc }}">{{ k.v }}</span>
+            <span style="font-size:11.5px;color:var(--fa)">{{ k.sub }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:12px">
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="font-size:13px;color:var(--mu)">Tuần này đã hoàn thành</div>
+          <div style="display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;margin-top:6px">
+            <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:52px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums">18</span><span style="font-size:16px;color:var(--mu);font-variant-numeric:tabular-nums">/ 24 mục tiêu</span></div>
+            <div style="display:flex;gap:28px;flex-wrap:wrap">
+              <div><div style="font-size:20px;font-weight:500;font-variant-numeric:tabular-nums">75%</div><div style="font-size:12px;color:var(--mu)">Đạt mục tiêu tuần</div></div>
+              <div><div style="font-size:20px;font-weight:500;font-variant-numeric:tabular-nums"><i class="ph-fill ph-fire" style="color:var(--wn);font-size:17px"></i> 6 ngày</div><div style="font-size:12px;color:var(--mu)">Chuỗi ngày liên tục</div></div>
+              <div><div style="font-size:20px;font-weight:500;font-variant-numeric:tabular-nums">89%</div><div style="font-size:12px;color:var(--mu)">Tỷ lệ đúng hạn</div></div>
+            </div>
+          </div>
+          <div style="position:relative;height:8px;border-radius:4px;background:var(--ln2);margin:16px 0 6px;overflow:hidden"><div style="width:75%;height:100%;background:var(--ac);border-radius:4px"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--fa);font-variant-numeric:tabular-nums"><span>T2 20/10</span><span>Còn 6 việc để đạt mục tiêu · 2 ngày làm việc</span><span>CN 26/10</span></div>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:var(--mu)">Dự báo tuần tới · 27/10–02/11</span><span title="Hermes dự báo" style="width:22px;height:22px;border-radius:6px;background:var(--aibg);border:1px solid var(--ai);display:grid;place-items:center;color:var(--ai)"><i class="ph-fill ph-sparkle" style="font-size:12px"></i></span></div>
+          <div style="display:flex;gap:20px"><div><div style="font-size:24px;font-weight:500;font-variant-numeric:tabular-nums">22</div><div style="font-size:12px;color:var(--mu)">việc đến hạn</div></div><div><div style="font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--wn)">3</div><div style="font-size:12px;color:var(--mu)">có rủi ro trễ</div></div></div>
+          <sc-for list="{{ risks }}" as="rk" hint-placeholder-count="3"><div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.45"><i class="ph-bold ph-warning" style="color:var(--wn);margin-top:2px"></i><div><div>{{ rk.t }}</div><div style="color:var(--fa);font-size:11.5px">{{ rk.why }}</div></div></div></sc-for>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="font-weight:500;margin-bottom:12px">Theo trạng thái</div>
+          <div style="display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px">
+            <sc-for list="{{ statusMix }}" as="sm" hint-placeholder-count="4"><div style="width:{{ sm.w }};background:{{ sm.c }}"></div></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:14px">
+            <sc-for list="{{ statusMix }}" as="sm" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><i class="{{ sm.icon }}" style="color:{{ sm.c }}"></i><span style="flex:1">{{ sm.label }}</span><span style="font-variant-numeric:tabular-nums;color:var(--mu)">{{ sm.n }}</span></div></sc-for>
+          </div>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:500">Theo người làm</span><span style="display:flex;gap:12px;font-size:11.5px;color:var(--mu)"><span><i class="ph-fill ph-square" style="color:var(--ok)"></i> Xong</span><span><i class="ph-fill ph-square" style="color:var(--in)"></i> Đang làm</span><span><i class="ph-fill ph-square" style="color:var(--dg)"></i> Quá hạn</span></span></div>
+          <sc-for list="{{ byPerson }}" as="bp" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:140px minmax(0,1fr) 30px;align-items:center;gap:10px;margin-bottom:8px;font-size:12.5px">
+              <span style="display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap">{{ bp.n }}<sc-if value="{{ bp.ai }}"><span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px">AI</span></sc-if></span>
+              <div style="display:flex;height:12px;gap:2px"><div style="width:{{ bp.d }};background:var(--ok);border-radius:2px"></div><div style="width:{{ bp.g }};background:var(--in);border-radius:2px"></div><div style="width:{{ bp.o }};background:var(--dg);border-radius:2px"></div></div>
+              <span style="text-align:right;font-variant-numeric:tabular-nums;color:var(--mu)">{{ bp.tot }}</span>
+            </div>
+          </sc-for>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:500">Burndown 14 ngày</span><span style="display:flex;gap:12px;font-size:11.5px;color:var(--mu)"><span><i class="ph-fill ph-square" style="color:var(--ac)"></i> Còn lại thực tế</span><span>┄ Lý tưởng</span></span></div>
+          <div style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:6px">
+            <div style="display:flex;flex-direction:column;justify-content:space-between;font-size:10.5px;color:var(--fa);font-variant-numeric:tabular-nums;height:150px;text-align:right"><span>48</span><span>24</span><span>0</span></div>
+            <div style="position:relative;height:150px;display:grid;grid-template-columns:repeat(14,1fr);gap:6px;align-items:end;border-bottom:1px solid var(--ln)">
+              <sc-for list="{{ burn }}" as="bn" hint-placeholder-count="14"><div style="position:relative;height:100%;display:flex;align-items:flex-end"><div style="width:100%;height:{{ bn.h }};background:{{ bn.c }};border-radius:3px 3px 0 0"></div><div title="Lý tưởng" style="position:absolute;left:-3px;right:-3px;bottom:{{ bn.ideal }};border-top:2px dashed var(--mu)"></div></div></sc-for>
+            </div>
+            <span></span>
+            <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--fa);font-variant-numeric:tabular-nums"><span>13/10</span><span>20/10</span><span>26/10</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--mu)">Còn 15 việc mở — chậm hơn đường lý tưởng khoảng 3 ngày.</div>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:500">Ưu tiên theo dự án</span><span style="display:flex;gap:10px;font-size:11.5px;color:var(--mu)"><span><i class="ph-bold ph-caret-double-up" style="color:var(--dg)"></i>Cao</span><span><i class="ph-bold ph-caret-up" style="color:var(--wn)"></i>TB</span><span><i class="ph-bold ph-minus"></i>Thấp</span></span></div>
+          <sc-for list="{{ byProject }}" as="bj" hint-placeholder-count="4">
+            <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>{{ bj.n }}</span><span style="color:var(--mu);font-variant-numeric:tabular-nums">{{ bj.h }} · {{ bj.m }} · {{ bj.l }}</span></div>
+            <div style="display:flex;height:10px;gap:2px"><div style="width:{{ bj.hw }};background:var(--dg);border-radius:2px"></div><div style="width:{{ bj.mw }};background:var(--wn);border-radius:2px"></div><div style="width:{{ bj.lw }};background:var(--fa);border-radius:2px"></div></div></div>
+          </sc-for>
+        </section>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isKanban }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">Góc nhìn · Tất cả dự án</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Kanban</h1></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary"><i class="ph ph-folders"></i>Dự án: Tất cả</button><button class="btn btn-secondary"><i class="ph ph-user"></i>Người làm</button><button class="btn btn-secondary"><i class="ph ph-sort-ascending"></i>Theo hạn</button></div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Mỗi cột có biểu tượng trạng thái riêng ở tiêu đề; thẻ quá hạn có dải đỏ + cờ. Thẻ hiển thị tiến độ việc con bằng thanh mảnh thay vì chỉ số. Khi kéo, cột đích sáng viền nhấn. Thả vào “Hoàn thành” tự đánh dấu xong và hiện toast có nút Hoàn tác.</div></div></sc-if>
+    </sc-if>
+    <sc-if value="{{ isProjects }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">EOS Holdings · EOS Xây dựng</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Dự án</h1></div>
+        <button class="btn btn-primary"><i class="ph ph-plus"></i>Dự án mới</button>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Thẻ dự án bỏ viền màu dày phía trên; màu dự án chỉ còn là ô vuông nhận diện. Số quá hạn đặt cạnh tiến độ để thấy ngay dự án nào đáng lo. Bấm thẻ để vào trang dự án.</div></div></sc-if>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+        <sc-for list="{{ projectCards }}" as="pj" hint-placeholder-count="4">
+          <button onClick="{{ pj.open }}" style="text-align:left;display:flex;flex-direction:column;gap:12px;padding:16px 18px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);cursor:pointer;color:var(--tx)" style-hover="border-color:var(--ln)">
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;background:{{ pj.c }}"></span><span style="font-size:12px;color:var(--mu)">{{ pj.co }}</span><span style="margin-left:auto;font-size:12px;color:var(--mu)">Hạn {{ pj.due }}</span></div>
+            <div><div style="font-weight:500;font-size:16px;line-height:1.3">{{ pj.n }}</div><div style="font-size:12.5px;color:var(--mu);margin-top:3px;line-height:1.45">{{ pj.d }}</div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;font-variant-numeric:tabular-nums"><span>{{ pj.pct }}% · {{ pj.doneN }}/{{ pj.tot }} việc</span><sc-if value="{{ pj.over }}"><span style="color:var(--dg);font-weight:600"><i class="ph-fill ph-flag"></i> {{ pj.over }} quá hạn</span></sc-if></div><div style="height:6px;border-radius:3px;background:var(--ln2);overflow:hidden"><div style="width:{{ pj.w }};height:100%;background:var(--ac)"></div></div></div>
+            <div style="display:flex;align-items:center;gap:4px"><sc-for list="{{ pj.mem }}" as="m" hint-placeholder-count="3"><span style="width:26px;height:26px;border-radius:{{ m.r }};background:{{ m.bg }};border:1px solid {{ m.bd }};color:{{ m.fg }};display:grid;place-items:center;font-size:10px;font-weight:600">{{ m.i }}</span></sc-for><span style="margin-left:auto;font-size:12px;color:var(--mu)">{{ pj.memN }} thành viên</span></div>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isProject }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--mu);margin-bottom:6px"><button onClick="{{ backProjects }}" class="btn btn-ghost" style="font-size:12.5px">Dự án</button><i class="ph ph-caret-right"></i><span style="white-space:nowrap">{{ pName }}</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:14px;height:14px;border-radius:3px;background:{{ pColor }}"></span><h1 style="font-size:26px;line-height:1.25;margin:0">{{ pName }}</h1><span style="font-size:12.5px;color:var(--mu);font-variant-numeric:tabular-nums;white-space:nowrap">58% · hạn 25/11</span></div>
+        <div style="display:flex;gap:2px;border-bottom:1px solid var(--ln2)">
+          <sc-for list="{{ ptabs }}" as="pt" hint-placeholder-count="4"><button onClick="{{ pt.go }}" style="white-space:nowrap;display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border:0;background:none;cursor:pointer;font-size:13.5px;color:{{ pt.fg }};box-shadow:{{ pt.sh }}"><i class="{{ pt.icon }}"></i>{{ pt.label }}</button></sc-for>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);margin-bottom:14px">
+        <label style="flex:1 1 220px;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--ln);border-radius:var(--radius-md);color:var(--mu)"><i class="ph ph-magnifying-glass"></i><input placeholder="Tìm trong dự án" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font:inherit;font-size:13px"></label>
+        <button class="btn btn-secondary" style="color:var(--ac);border-color:var(--ac)"><i class="ph-bold ph-check"></i>Của tôi</button>
+        <button class="btn btn-secondary"><i class="ph ph-user"></i>Người làm<i class="ph ph-caret-down"></i></button>
+        <button class="btn btn-secondary"><i class="ph ph-caret-double-up"></i>Ưu tiên<i class="ph ph-caret-down"></i></button>
+        <button class="btn btn-secondary"><i class="ph ph-calendar-blank"></i>Hạn chót<i class="ph ph-caret-down"></i></button>
+        <button class="btn btn-ghost" style="font-size:12.5px">Xoá lọc</button>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>4 tab gom vào một hàng gạch chân, thanh lọc dùng chung cho cả 4 tab nên chuyển tab không mất lọc. Tab Danh sách sửa trạng thái/ưu tiên/người làm/hạn ngay trên dòng bằng control gọn, việc con thụt lề dưới việc cha. Mindmap nhóm theo hạng mục; Gantt có vạch “Hôm nay”.</div></div></sc-if>
+      <sc-if value="{{ isPList }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow-x:auto">
+          <div style="display:grid;grid-template-columns:minmax(260px,1fr) 130px 110px 170px 110px;min-width:820px;gap:10px;padding:8px 14px;font-size:11.5px;color:var(--fa)"><span>Công việc</span><span>Trạng thái</span><span>Ưu tiên</span><span>Người làm</span><span>Hạn</span></div>
+          <sc-for list="{{ pRows }}" as="r" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:minmax(260px,1fr) 130px 110px 170px 110px;min-width:820px;gap:10px;align-items:center;padding:6px 14px;border-top:1px solid var(--ln2);box-shadow:inset 3px 0 0 {{ r.bar }}">
+              <div onClick="{{ r.open }}" style="display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;padding-left:{{ r.indent }}"><sc-if value="{{ r.child }}"><i class="ph ph-arrow-elbow-down-right" style="color:var(--fa)"></i></sc-if><i class="{{ r.stIcon }}" style="color:{{ r.stColor }}"></i><span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:{{ r.strike }}">{{ r.t }}</span></div>
+              <select class="input" defaultValue="{{ r.st }}" onChange="{{ r.setSt }}" style="min-height:30px;padding:2px 6px;font-size:12.5px;color:{{ r.stColor }}"><option value="todo">Chưa làm</option><option value="doing">Đang làm</option><option value="paused">Tạm dừng</option><option value="done">Hoàn thành</option></select>
+              <select class="input" defaultValue="{{ r.pr }}" style="min-height:30px;padding:2px 6px;font-size:12.5px"><option value="high">▲▲ Cao</option><option value="med">▲ TB</option><option value="low">— Thấp</option></select>
+              <select class="input" defaultValue="{{ r.a }}" style="min-height:30px;padding:2px 6px;font-size:12.5px"><option value="duong">Trần Đức Dương</option><option value="minh">Minh Nguyễn</option><option value="lan">Lan Trần</option><option value="tuan">Nguyễn Quốc Tuấn</option><option value="hermes">✦ Hermes (AI)</option></select>
+              <input class="input" defaultValue="{{ r.dueTxt }}" style="min-height:30px;padding:2px 8px;font-size:12.5px;font-variant-numeric:tabular-nums;color:{{ r.dueColor }}">
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isPMind }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:24px;overflow:auto;display:flex;align-items:center;gap:0">
+          <div style="flex:none;padding:12px 16px;border:1px solid var(--ac);border-radius:var(--radius-md);color:var(--act);font-weight:500;background:var(--acbg)">{{ pName }}</div>
+          <div style="flex:none;width:28px;height:1px;background:var(--ln)"></div>
+          <div style="display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--ln);padding:4px 0">
+            <sc-for list="{{ mind }}" as="mb" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center">
+                <div style="width:20px;height:1px;background:var(--ln)"></div>
+                <div style="flex:none;width:200px;padding:8px 12px;border:1px solid var(--ln);border-radius:var(--radius-md);font-weight:500;font-size:13px;background:var(--sf2)">{{ mb.n }}<div style="font-size:11.5px;color:var(--mu);font-weight:400;font-variant-numeric:tabular-nums">{{ mb.meta }}</div></div>
+                <div style="width:20px;height:1px;background:var(--ln)"></div>
+                <div style="display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--ln);padding:2px 0">
+                  <sc-for list="{{ mb.kids }}" as="mk" hint-placeholder-count="2"><div style="display:flex;align-items:center"><div style="width:14px;height:1px;background:var(--ln)"></div><div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--ln2);border-radius:var(--radius-md);font-size:12.5px;white-space:nowrap"><i class="{{ mk.icon }}" style="color:{{ mk.c }}"></i>{{ mk.t }}</div></div></sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isPGantt }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow-x:auto">
+          <div style="display:grid;grid-template-columns:240px 800px;min-width:1040px">
+            <div style="padding:8px 14px;font-size:11.5px;color:var(--fa);border-bottom:1px solid var(--ln2);position:sticky;left:0;background:var(--sf)">Công việc</div>
+            <div style="display:grid;grid-template-columns:repeat(20,40px);border-bottom:1px solid var(--ln2)"><sc-for list="{{ gDays }}" as="gd" hint-placeholder-count="20"><div style="display:flex;flex-direction:column;align-items:center;font-size:10.5px;padding:4px 0;color:{{ gd.c }};background:{{ gd.bg }};font-variant-numeric:tabular-nums;line-height:1.3"><span>{{ gd.w }}</span><span>{{ gd.d }}</span></div></sc-for></div>
+            <sc-for list="{{ gRows }}" as="gr" hint-placeholder-count="8">
+              <div onClick="{{ gr.open }}" style="padding:0 14px;height:38px;display:flex;align-items:center;gap:6px;font-size:12.5px;border-bottom:1px solid var(--ln2);position:sticky;left:0;background:var(--sf);cursor:pointer;overflow:hidden;white-space:nowrap"><i class="{{ gr.stIcon }}" style="color:{{ gr.stColor }}"></i><span style="overflow:hidden;text-overflow:ellipsis">{{ gr.t }}</span></div>
+              <div style="position:relative;height:38px;border-bottom:1px solid var(--ln2)"><div style="position:absolute;left:240px;width:40px;top:0;bottom:0;background:var(--acbg);opacity:.6"></div>
+                <div style="position:absolute;left:{{ gr.x }};width:{{ gr.w }};top:9px;height:20px;border-radius:5px;background:{{ gr.fill }};border:1px solid {{ gr.stColor }};box-shadow:inset 3px 0 0 {{ gr.bar }};font-size:11px;padding:0 8px;line-height:18px;overflow:hidden;white-space:nowrap;color:var(--tx)">{{ gr.an }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+    <sc-if value="{{ showBoard }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(250px,1fr));gap:12px;overflow-x:auto;align-items:start;padding-bottom:8px">
+        <sc-for list="{{ cols }}" as="col" hint-placeholder-count="4">
+          <div onDragOver="{{ col.over }}" onDragLeave="{{ col.leave }}" onDrop="{{ col.drop }}" style="background:color-mix(in srgb,var(--sf) 55%,var(--bg));border:1px solid {{ col.bd }};border-radius:var(--radius-lg);padding:10px;min-height:420px">
+            <div style="display:flex;align-items:center;gap:8px;padding:2px 4px 10px;font-weight:500"><i class="{{ col.icon }}" style="color:{{ col.c }};font-size:16px"></i>{{ col.label }}<span style="margin-left:auto;font-size:12px;color:var(--fa);font-variant-numeric:tabular-nums">{{ col.n }}</span><button class="btn btn-icon" aria-label="Thêm task" style="width:28px;height:28px;color:var(--mu)"><i class="ph ph-plus"></i></button></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="3">
+                <div draggable="true" onDragStart="{{ c.dragStart }}" onClick="{{ c.open }}" style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-md);padding:10px 12px;display:flex;flex-direction:column;gap:7px;cursor:grab;box-shadow:inset 3px 0 0 {{ c.bar }};opacity:{{ c.op }}" style-hover="border-color:var(--ln)">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mu)"><span style="width:7px;height:7px;border-radius:2px;background:{{ c.pc }}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.pn }}</span><i class="{{ c.prIcon }}" title="{{ c.prLabel }}" style="color:{{ c.prColor }}"></i></div>
+                  <div style="font-weight:500;font-size:13.5px;line-height:1.4;text-decoration:{{ c.strike }};color:{{ c.titleColor }}">{{ c.t }}<sc-if value="{{ c.imp }}"> <i class="ph-fill ph-star" style="color:var(--wn)"></i></sc-if><sc-if value="{{ c.urg }}"> <i class="ph-fill ph-lightning" style="color:var(--dg)"></i></sc-if></div>
+                  <sc-if value="{{ c.blk }}"><span style="align-self:flex-start;display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--dg);border:1px solid var(--dg);border-radius:4px;padding:0 5px;white-space:nowrap"><i class="ph-bold ph-prohibit"></i>Bị chặn</span></sc-if>
+                  <sc-if value="{{ c.sub1 }}"><div style="height:3px;border-radius:2px;background:var(--ln2);overflow:hidden"><div style="width:{{ c.subW }};height:100%;background:var(--ok)"></div></div></sc-if>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mu);font-variant-numeric:tabular-nums">
+                    <sc-if value="{{ c.ai }}"><span title="Hermes (AI)" style="width:22px;height:22px;border-radius:6px;background:var(--aibg);border:1px solid var(--ai);display:grid;place-items:center;color:var(--ai)"><i class="ph-fill ph-sparkle" style="font-size:12px"></i></span></sc-if>
+                    <sc-if value="{{ c.human }}"><span title="{{ c.an }}" style="width:22px;height:22px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln);display:grid;place-items:center;font-size:9.5px;font-weight:600;color:var(--tx)">{{ c.ini }}</span></sc-if>
+                    <span style="color:{{ c.dueColor }};font-weight:{{ c.dueW }};white-space:nowrap"><i class="{{ c.dueIcon }}"></i> {{ c.dueTxt }}</span>
+                    <span style="margin-left:auto;opacity:{{ c.subOp }}"><i class="ph ph-tree-structure"></i> {{ c.subTxt }}</span><span style="opacity:{{ c.cmtOp }}"><i class="ph ph-chat-circle"></i> {{ c.cmt }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isHR }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">Tháng 10/2026 · cơ sở tính KPI</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Nhân sự</h1></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-secondary"><i class="ph ph-buildings"></i>Tất cả phòng ban<i class="ph ph-caret-down"></i></button><button class="btn btn-secondary"><i class="ph ph-download-simple"></i>Xuất KPI</button></div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Mức tải hiển thị bằng thước 4 nấc + nhãn chữ (Rảnh / Vừa sức / Bận / Quá tải), không chỉ bằng màu. Thẻ người nêu thẳng việc đang chặn hoặc chậm để quản lý ra quyết định ngay. Hermes được tính riêng, không lẫn vào KPI nhân viên.</div></div></sc-if>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px">
+        <sc-for list="{{ hrTiles }}" as="k" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);box-shadow:inset 0 2px 0 {{ k.c }}">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu)"><i class="{{ k.icon }}" style="color:{{ k.c }};font-size:14px"></i>{{ k.label }}</span>
+            <span style="font-size:28px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums">{{ k.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:14px"><span style="font-weight:500">Task hoàn thành theo người · tháng 10</span><span style="font-size:12px;color:var(--mu);white-space:nowrap"><i class="ph-fill ph-square" style="color:var(--ok)"></i> Đúng hạn <i class="ph-fill ph-square" style="color:var(--wn);margin-left:8px"></i> Trễ hạn</span></div>
+        <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:end;height:170px">
+          <sc-for list="{{ hrBars }}" as="hb" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">
+              <span style="font-size:12px;font-variant-numeric:tabular-nums;color:var(--mu)">{{ hb.tot }}</span>
+              <div style="width:44px;display:flex;flex-direction:column;gap:2px"><div style="height:{{ hb.lh }};background:var(--wn);border-radius:3px 3px 0 0"></div><div style="height:{{ hb.oh }};background:var(--ok);border-radius:0 0 3px 3px"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;margin-top:6px"><sc-for list="{{ hrBars }}" as="hb" hint-placeholder-count="6"><span style="text-align:center;font-size:12px;color:var(--mu);line-height:1.35">{{ hb.n }}</span></sc-for></div>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+        <sc-for list="{{ people }}" as="pe" hint-placeholder-count="6">
+          <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:38px;height:38px;border-radius:{{ pe.r }};background:{{ pe.abg }};border:1px solid {{ pe.abd }};color:{{ pe.afg }};display:grid;place-items:center;font-size:13px;font-weight:600"><i class="{{ pe.aicon }}"></i>{{ pe.i }}</span>
+              <div style="flex:1;min-width:0;line-height:1.35"><div style="font-weight:500">{{ pe.n }}</div><div style="font-size:12px;color:var(--mu)">{{ pe.dept }}</div></div>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:{{ pe.lc }};border:1px solid {{ pe.lc }};border-radius:999px;padding:1px 9px"><i class="{{ pe.licon }}"></i>{{ pe.load }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px"><sc-for list="{{ pe.meter }}" as="mt" hint-placeholder-count="4"><div style="height:5px;border-radius:2px;background:{{ mt.c }}"></div></sc-for></div>
+            <div style="display:flex;gap:16px;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--mu)"><span><b style="color:var(--tx);font-weight:500">{{ pe.open }}</b> đang mở</span><span><b style="color:var(--tx);font-weight:500">{{ pe.doneM }}</b> xong tháng này</span><span><b style="color:var(--tx);font-weight:500">{{ pe.ontime }}</b> đúng hạn</span></div>
+            <sc-if value="{{ pe.issue }}"><div style="display:flex;gap:6px;align-items:flex-start;font-size:12px;color:{{ pe.ic }};line-height:1.45"><i class="{{ pe.iicon }}" style="margin-top:2px"></i>{{ pe.issue }}</div></sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isEisen }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">Góc nhìn · việc chưa xong</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Ma trận Eisenhower</h1></div>
+        <div class="seg"><label class="seg-opt"><input type="radio" name="es" checked>Của tôi</label><label class="seg-opt"><input type="radio" name="es">Đội nhóm</label></div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Mỗi ô có biểu tượng + câu hành động (Làm ngay / Lên lịch / Giao việc / Để sau) thay vì chỉ màu nền. Trục ghi rõ bằng chữ. Kéo thả giữa các ô sẽ tự bật/tắt cờ Quan trọng, Khẩn cấp của task.</div></div></sc-if>
+      <div style="display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(260px,auto) minmax(260px,auto);gap:10px">
+        <span></span><span style="font-size:11.5px;color:var(--fa);text-align:center;letter-spacing:.04em">KHẨN CẤP</span><span style="font-size:11.5px;color:var(--fa);text-align:center;letter-spacing:.04em">KHÔNG KHẨN</span>
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11.5px;color:var(--fa);text-align:center;letter-spacing:.04em;grid-row:2;grid-column:1">QUAN TRỌNG</span>
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11.5px;color:var(--fa);text-align:center;letter-spacing:.04em;grid-row:3;grid-column:1;white-space:nowrap">KHÔNG QUAN TRỌNG</span>
+        <sc-for list="{{ quads }}" as="q" hint-placeholder-count="4">
+          <div onDragOver="{{ q.over }}" onDrop="{{ q.drop }}" style="grid-row:{{ q.row }};grid-column:{{ q.col }};background:var(--sf);border:1px solid {{ q.bd }};border-radius:var(--radius-lg);padding:12px;box-shadow:inset 0 3px 0 {{ q.c }};display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><i class="{{ q.icon }}" style="color:{{ q.c }};font-size:17px"></i><span style="font-weight:500;font-size:15px;white-space:nowrap">{{ q.label }}</span><span style="font-size:12px;color:var(--mu);white-space:nowrap">{{ q.sub }}</span><span style="margin-left:auto;font-size:12px;color:var(--fa);font-variant-numeric:tabular-nums">{{ q.n }}</span></div>
+            <sc-for list="{{ q.items }}" as="it" hint-placeholder-count="3">
+              <div draggable="true" onDragStart="{{ it.dragStart }}" onClick="{{ it.open }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);background:var(--bg);border:1px solid var(--ln2);box-shadow:inset 3px 0 0 {{ it.bar }};cursor:grab;opacity:{{ it.op }}" style-hover="border-color:var(--ln)">
+                <i class="{{ it.stIcon }}" style="color:{{ it.stColor }}"></i>
+                <span style="flex:1;min-width:0;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.t }}</span>
+                <span style="font-size:11.5px;color:{{ it.dueColor }};font-weight:{{ it.dueW }};white-space:nowrap;font-variant-numeric:tabular-nums">{{ it.dueTxt }}</span>
+                <span style="width:22px;height:22px;border-radius:{{ it.avR }};background:{{ it.avBg }};border:1px solid {{ it.avBd }};color:{{ it.avFg }};display:grid;place-items:center;font-size:9.5px;font-weight:600;flex:none">{{ it.avTxt }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap"><i class="ph ph-google-logo"></i> Đồng bộ Google Calendar · 2 phút trước</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">{{ calTitle }}</h1></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;gap:2px"><button class="btn btn-icon" aria-label="Trước"><i class="ph ph-caret-left"></i></button><button class="btn btn-secondary">Hôm nay</button><button class="btn btn-icon" aria-label="Sau"><i class="ph ph-caret-right"></i></button></div>
+          <div style="display:inline-flex;border:1px solid var(--ln);border-radius:var(--radius-md);overflow:hidden"><sc-for list="{{ calTabs }}" as="ct" hint-placeholder-count="4"><button onClick="{{ ct.go }}" style="white-space:nowrap;height:34px;padding:0 13px;border:0;background:transparent;font-size:13px;cursor:pointer;color:{{ ct.fg }};box-shadow:{{ ct.sh }}">{{ ct.label }}</button></sc-for></div>
+        </div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>{{ calNote }}</div></div></sc-if>
+      <sc-if value="{{ isMonth }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--ln2)"><sc-for list="{{ wdays }}" as="wd" hint-placeholder-count="7"><span style="padding:8px 10px;font-size:11.5px;color:var(--fa)">{{ wd }}</span></sc-for></div>
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">
+            <sc-for list="{{ mCells }}" as="mc" hint-placeholder-count="35">
+              <div style="min-height:112px;padding:6px;border-right:1px solid var(--ln2);border-bottom:1px solid var(--ln2);display:flex;flex-direction:column;gap:3px;background:{{ mc.bg }};min-width:0">
+                <span style="align-self:flex-start;min-width:24px;height:24px;padding:0 5px;border-radius:12px;display:grid;place-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;color:{{ mc.fg }};border:1px solid {{ mc.bd }}">{{ mc.n }}</span>
+                <sc-for list="{{ mc.ev }}" as="e" hint-placeholder-count="0">
+                  <div onClick="{{ e.open }}" style="display:flex;align-items:center;gap:4px;font-size:11.5px;line-height:1.3;padding:2px 6px;border-radius:4px;background:var(--bg);box-shadow:inset 2px 0 0 {{ e.c }};cursor:pointer;opacity:{{ e.op }};min-width:0"><i class="{{ e.icon }}" style="color:{{ e.ic }};flex:none;font-size:11px"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:{{ e.strike }}">{{ e.t }}</span></div>
+                </sc-for>
+                <sc-if value="{{ mc.more }}"><span style="font-size:11px;color:var(--mu);padding-left:4px">+{{ mc.more }} việc nữa</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isWeek }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:8px;overflow-x:auto;padding-bottom:6px">
+          <sc-for list="{{ wCols }}" as="wc" hint-placeholder-count="7">
+            <div style="background:var(--sf);border:1px solid {{ wc.bd }};border-radius:var(--radius-lg);padding:10px;min-height:380px;display:flex;flex-direction:column;gap:6px;box-shadow:{{ wc.sh }}">
+              <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px"><span style="font-size:11.5px;color:var(--fa)">{{ wc.w }}</span><span style="font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;color:{{ wc.fg }}">{{ wc.n }}</span><span style="margin-left:auto;font-size:11.5px;color:var(--fa);white-space:nowrap">{{ wc.cnt }}</span></div>
+              <sc-for list="{{ wc.ev }}" as="e" hint-placeholder-count="2">
+                <div onClick="{{ e.open }}" style="padding:7px 8px;border-radius:var(--radius-md);background:var(--bg);box-shadow:inset 3px 0 0 {{ e.c }};cursor:pointer;opacity:{{ e.op }};display:flex;flex-direction:column;gap:2px"><span style="font-size:12.5px;font-weight:500;line-height:1.35;text-decoration:{{ e.strike }}">{{ e.t }}</span><span style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px;white-space:nowrap"><i class="{{ e.icon }}" style="color:{{ e.ic }}"></i>{{ e.meta }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isDay }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px 10px 68px;border-bottom:1px solid var(--ln2)">
+            <sc-for list="{{ allday }}" as="e" hint-placeholder-count="3"><button onClick="{{ e.open }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:var(--radius-md);border:1px solid var(--ln2);background:var(--bg);box-shadow:inset 3px 0 0 {{ e.c }};cursor:pointer;font-size:12.5px;max-width:320px"><i class="{{ e.icon }}" style="color:{{ e.ic }}"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.t }}</span></button></sc-for>
+          </div>
+          <div style="position:relative;height:728px;margin-left:56px;border-left:1px solid var(--ln2)">
+            <sc-for list="{{ hours }}" as="h" hint-placeholder-count="13"><div style="position:absolute;left:0;right:0;top:{{ h.top }};border-top:1px solid var(--ln2)"><span style="position:absolute;left:-52px;top:-8px;font-size:11px;color:var(--fa);font-variant-numeric:tabular-nums">{{ h.h }}</span></div></sc-for>
+            <div style="position:absolute;left:-4px;right:0;top:182px;border-top:2px solid var(--dg)"><span style="position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--dg)"></span></div>
+            <sc-for list="{{ timed }}" as="e" hint-placeholder-count="5">
+              <div onClick="{{ e.open }}" style="position:absolute;left:10px;right:16px;top:{{ e.top }};height:{{ e.h }};border-radius:var(--radius-md);background:{{ e.bg }};border:1px solid var(--ln2);box-shadow:inset 3px 0 0 {{ e.c }};padding:5px 10px;cursor:pointer;opacity:{{ e.op }};overflow:hidden;display:flex;gap:10px;align-items:flex-start">
+                <i class="{{ e.icon }}" style="color:{{ e.ic }};margin-top:2px"></i><div style="min-width:0"><div style="font-size:13px;font-weight:500;text-decoration:{{ e.strike }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.t }}</div><div style="font-size:11.5px;color:var(--mu);white-space:nowrap">{{ e.meta }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isTL }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow-x:auto">
+          <div style="display:grid;grid-template-columns:260px 800px;min-width:1060px">
+            <div style="padding:8px 14px;font-size:11.5px;color:var(--fa);border-bottom:1px solid var(--ln2);position:sticky;left:0;background:var(--sf);z-index:1">Dự án / công việc</div>
+            <div style="display:grid;grid-template-columns:repeat(20,40px);border-bottom:1px solid var(--ln2)"><sc-for list="{{ gDays }}" as="gd" hint-placeholder-count="20"><div style="display:flex;flex-direction:column;align-items:center;font-size:10.5px;padding:4px 0;color:{{ gd.c }};background:{{ gd.bg }};font-variant-numeric:tabular-nums;line-height:1.3"><span>{{ gd.w }}</span><span>{{ gd.d }}</span></div></sc-for></div>
+            <sc-for list="{{ tlGroups }}" as="tg" hint-placeholder-count="4">
+              <div style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--sf2);font-weight:500;font-size:13px;position:sticky;left:0"><i class="ph ph-caret-down" style="color:var(--mu)"></i><span style="width:10px;height:10px;border-radius:3px;background:{{ tg.c }}"></span>{{ tg.n }}</div>
+              <sc-for list="{{ tg.bars }}" as="gr" hint-placeholder-count="3">
+                <div onClick="{{ gr.open }}" style="padding:0 14px 0 34px;height:36px;display:flex;align-items:center;gap:6px;font-size:12.5px;border-bottom:1px solid var(--ln2);position:sticky;left:0;background:var(--sf);cursor:pointer;overflow:hidden;white-space:nowrap;z-index:1"><i class="{{ gr.stIcon }}" style="color:{{ gr.stColor }}"></i><span style="overflow:hidden;text-overflow:ellipsis">{{ gr.t }}</span></div>
+                <div style="position:relative;height:36px;border-bottom:1px solid var(--ln2)"><div style="position:absolute;left:240px;width:40px;top:0;bottom:0;background:var(--acbg);opacity:.6"></div><div style="position:absolute;left:{{ gr.x }};width:{{ gr.w }};top:8px;height:20px;border-radius:5px;background:{{ gr.fill }};border:1px solid {{ gr.stColor }};box-shadow:inset 3px 0 0 {{ gr.bar }};font-size:11px;padding:0 8px;line-height:18px;overflow:hidden;white-space:nowrap">{{ gr.an }}</div></div>
+              </sc-for>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+    <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">EOS Holdings · 6 người + 1 AI Agent</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Thành viên</h1></div>
+        <button class="btn btn-primary" onClick="{{ genCode }}"><i class="ph ph-ticket"></i>Tạo mã mời</button>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Mỗi vai trò có thẻ mô tả quyền bằng câu ngắn, để đổi vai trò không phải đoán. AI Agent là loại thành viên riêng: không đăng nhập, không tính KPI, quyền giới hạn theo phạm vi được cấp. Mã mời có hạn dùng và giới hạn số lượt.</div></div></sc-if>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px">
+        <sc-for list="{{ roles }}" as="ro" hint-placeholder-count="4">
+          <div style="background:var(--sf);border:1px solid {{ ro.bd }};border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px"><i class="{{ ro.icon }}" style="color:{{ ro.c }};font-size:18px"></i><span style="font-weight:500">{{ ro.n }}</span><span style="margin-left:auto;font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">{{ ro.cnt }}</span></div>
+            <sc-for list="{{ ro.perms }}" as="pm" hint-placeholder-count="3"><div style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;color:var(--mu);line-height:1.45"><i class="ph-bold ph-check" style="color:var(--ok);margin-top:3px;flex:none"></i><span style="flex:1;min-width:0">{{ pm }}</span></div></sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:start">
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);overflow-x:auto">
+          <div style="display:grid;grid-template-columns:minmax(220px,1fr) 150px 170px 90px 44px;gap:10px;padding:8px 14px;font-size:11.5px;color:var(--fa);min-width:640px"><span>Thành viên</span><span>Phòng ban</span><span>Vai trò</span><span>Hoạt động</span><span></span></div>
+          <sc-for list="{{ memberRows }}" as="mr" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:minmax(220px,1fr) 150px 170px 90px 44px;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--ln2);min-width:640px">
+              <div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:32px;height:32px;flex:none;border-radius:{{ mr.r }};background:{{ mr.abg }};border:1px solid {{ mr.abd }};color:{{ mr.afg }};display:grid;place-items:center;font-size:11px;font-weight:600"><i class="{{ mr.aicon }}"></i>{{ mr.i }}</span><div style="min-width:0;line-height:1.35"><div style="font-weight:500;display:flex;gap:6px;align-items:center">{{ mr.n }}<sc-if value="{{ mr.ai }}"><span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px">AI</span></sc-if></div><div style="font-size:12px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ mr.email }}</div></div></div>
+              <span style="font-size:13px;color:var(--mu)">{{ mr.dept }}</span>
+              <select class="input" defaultValue="{{ mr.role }}" disabled="{{ mr.ai }}" style="min-height:32px;padding:2px 8px;font-size:12.5px"><option value="admin">Quản trị viên</option><option value="manager">Quản lý</option><option value="member">Thành viên</option><option value="agent">AI Agent</option></select>
+              <span style="font-size:12px;color:var(--mu);white-space:nowrap;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:{{ mr.dot }}"></span>{{ mr.seen }}</span>
+              <button class="btn btn-icon" aria-label="Thêm thao tác" style="color:var(--mu)"><i class="ph ph-dots-three"></i></button>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-weight:500">Mã mời</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px dashed var(--ac);border-radius:var(--radius-md);font-size:18px;font-weight:500;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--act)">{{ inviteCode }}<button class="btn btn-icon" aria-label="Sao chép" style="margin-left:auto;color:var(--mu)"><i class="ph ph-copy"></i></button></div>
+          <div class="field"><label>Vai trò khi tham gia</label><select class="input"><option>Thành viên</option><option>Quản lý</option></select></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field"><label>Hết hạn</label><select class="input"><option>7 ngày</option><option>30 ngày</option></select></div><div class="field"><label>Số lượt</label><input class="input" defaultValue="5"></div></div>
+          <div style="font-size:12px;color:var(--mu);line-height:1.5">Người được mời đăng nhập bằng Google rồi nhập mã. Mã cũ <span style="font-variant-numeric:tabular-nums">EOS-7K2Q</span> còn 2 lượt, hết hạn 30/10.</div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-bottom:14px"><div style="font-size:12.5px;color:var(--mu);white-space:nowrap">Áp dụng cho tài khoản Vũ Cao Tùng</div><h1 style="font-size:26px;line-height:1.25;margin:2px 0 0">Cài đặt</h1></div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:10px;padding:10px 14px;border:1px dashed var(--ln);border-radius:var(--radius-md);margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:1.55"><i class="ph ph-note-pencil" style="font-size:16px;color:var(--act);margin-top:2px"></i><div><span style="color:var(--tx);font-weight:500">Thay đổi · </span>Gom về một trang chia khối rõ ràng: Giao diện, Mục tiêu, Mẫu checklist. Màu chủ đạo chỉ cho chọn trong các tông đã kiểm tra tương phản AA ở cả hai chế độ, thay cho bảng chọn màu tự do.</div></div></sc-if>
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:820px">
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px;display:grid;grid-template-columns:200px 1fr;gap:16px 20px;align-items:center">
+          <div style="grid-column:1/-1;font-weight:500">Giao diện</div>
+          <span style="font-size:13px;color:var(--mu)">Chế độ</span>
+          <div class="seg" style="justify-self:start"><label class="seg-opt"><input type="radio" name="thm" checked><i class="ph ph-moon"></i>Tối</label><label class="seg-opt"><input type="radio" name="thm"><i class="ph ph-sun"></i>Sáng</label><label class="seg-opt"><input type="radio" name="thm"><i class="ph ph-desktop"></i>Theo hệ thống</label></div>
+          <span style="font-size:13px;color:var(--mu)">Màu chủ đạo</span>
+          <div style="display:flex;gap:10px;align-items:center"><sc-for list="{{ accents }}" as="acc" hint-placeholder-count="4"><button onClick="{{ acc.go }}" aria-label="{{ acc.n }}" aria-pressed="{{ acc.on }}" style="width:32px;height:32px;border-radius:50%;background:{{ acc.c }};border:2px solid var(--sf);box-shadow:{{ acc.ring }};cursor:pointer"></button></sc-for><span style="font-size:12.5px;color:var(--mu);white-space:nowrap">{{ accentName }}</span></div>
+          <span style="font-size:13px;color:var(--mu)">Mật độ danh sách</span>
+          <div class="seg" style="justify-self:start"><label class="seg-opt"><input type="radio" name="den" checked>Vừa</label><label class="seg-opt"><input type="radio" name="den">Gọn</label></div>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px;display:grid;grid-template-columns:200px 1fr;gap:16px 20px;align-items:center">
+          <div style="grid-column:1/-1;font-weight:500">Mục tiêu</div>
+          <span style="font-size:13px;color:var(--mu)">Mục tiêu tuần</span>
+          <div style="display:flex;align-items:center;gap:12px"><input type="range" min="5" max="60" defaultValue="24" style="flex:1;max-width:280px;accent-color:var(--ac)"><span style="font-size:15px;font-weight:500;font-variant-numeric:tabular-nums">24 task</span></div>
+          <span style="font-size:13px;color:var(--mu)">Ngày làm việc</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ workdays }}" as="wd" hint-placeholder-count="7"><span style="width:40px;height:36px;border-radius:var(--radius-md);display:grid;place-items:center;font-size:12.5px;border:1px solid {{ wd.bd }};color:{{ wd.fg }}">{{ wd.n }}</span></sc-for></div>
+        </section>
+        <section style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center"><span style="font-weight:500">Mẫu checklist</span><button class="btn btn-secondary" style="margin-left:auto"><i class="ph ph-plus"></i>Mẫu mới</button></div>
+          <sc-for list="{{ templates }}" as="tp" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid var(--ln2)"><i class="ph ph-list-checks" style="color:var(--mu);font-size:18px"></i><div style="flex:1;line-height:1.35"><div style="font-size:13.5px">{{ tp.n }}</div><div style="font-size:12px;color:var(--mu)">{{ tp.items }}</div></div><span style="font-size:12px;color:var(--fa);white-space:nowrap">{{ tp.used }}</span><button class="btn btn-icon" aria-label="Sửa mẫu" style="color:var(--mu)"><i class="ph ph-pencil-simple"></i></button></div></sc-for>
+        </section>
+      </div>
+    </sc-if>
+    <!--SCREENS-->
+    <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:440px;margin:12vh auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px">
+        <i class="ph ph-compass-tool" style="font-size:36px;color:var(--fa)"></i>
+        <div style="font-size:17px;font-weight:500">Màn hình này chưa nằm trong đợt thiết kế này</div>
+        <div style="font-size:13.5px;color:var(--mu);line-height:1.55">Đợt 1 gồm Tổng quan, Hôm nay, Kanban, Dự án, Nhân sự, Chi tiết task và Form. Các góc nhìn còn lại dùng chung bộ component trong Design System.</div>
+        <button class="btn btn-primary" onClick="{{ goToday }}" style="margin-top:6px">Về Hôm nay</button>
+      </div>
+    </sc-if>
+  </main>
+</div>
+<sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeDetail }}" style="position:fixed;inset:0;background:var(--scrim);z-index:40"></div>
+  <aside role="dialog" aria-label="Chi tiết task" style="position:fixed;top:0;right:0;bottom:0;width:min(820px,calc(100vw - 260px));background:var(--bg);border-left:1px solid var(--ln);box-shadow:var(--shadow-lg);z-index:41;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;border-bottom:1px solid var(--ln2);font-size:12.5px;color:var(--mu)">
+      <span style="width:8px;height:8px;border-radius:2px;background:{{ d.pc }}"></span><span style="white-space:nowrap">{{ d.pn }}</span><i class="ph ph-caret-right"></i><span style="font-variant-numeric:tabular-nums;white-space:nowrap">EOS-142</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-icon" aria-label="Mở toàn trang" title="Mở toàn trang" style="color:var(--mu)"><i class="ph ph-arrows-out-simple" style="font-size:17px"></i></button>
+      <button class="btn btn-icon" aria-label="Sao chép link" style="color:var(--mu)"><i class="ph ph-link" style="font-size:17px"></i></button>
+      <button class="btn btn-icon" onClick="{{ closeDetail }}" aria-label="Đóng (Esc)" style="color:var(--mu)"><i class="ph ph-x" style="font-size:18px"></i></button>
+    </div>
+    <div style="flex:1;overflow:auto;display:grid;grid-template-columns:minmax(0,1fr) 230px">
+      <div style="padding:18px 22px 40px;display:flex;flex-direction:column;gap:18px;min-width:0;border-right:1px solid var(--ln2)">
+        <div>
+          <h2 style="font-size:22px;line-height:1.3;margin:0 0 10px">{{ d.t }}</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;white-space:nowrap;border-radius:999px;border:1px solid {{ d.stColor }};color:{{ d.stColor }};font-size:12.5px"><i class="{{ d.stIcon }}"></i>{{ d.stLabel }}<i class="ph ph-caret-down"></i></span>
+            <span style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;white-space:nowrap;border-radius:var(--radius-md);border:1px solid var(--ln);font-size:12.5px"><i class="{{ d.prIcon }}" style="color:{{ d.prColor }}"></i>Ưu tiên {{ d.prLabel }}</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;white-space:nowrap;border-radius:var(--radius-md);border:1px solid var(--ln);font-size:12.5px"><i class="ph ph-user"></i>{{ d.an }}</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;white-space:nowrap;border-radius:var(--radius-md);border:1px solid var(--ln);font-size:12.5px;font-variant-numeric:tabular-nums;color:{{ d.dueColor }}"><i class="ph ph-calendar-blank"></i>22/10 → {{ d.dueTxt }}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn btn-secondary" style="color:var(--dg);border-color:color-mix(in srgb,var(--dg) 50%,transparent)"><i class="ph-bold ph-prohibit"></i>Đánh dấu bị chặn</button>
+            <button class="btn btn-secondary"><i class="ph ph-pencil-simple"></i>Sửa</button>
+            <button class="btn btn-secondary"><i class="ph ph-archive"></i>Lưu trữ</button>
+            <button class="btn btn-ghost" style="color:var(--dg)"><i class="ph ph-trash"></i>Xoá</button>
+          </div>
+        </div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:4px">Mô tả</div><div style="font-size:14px;line-height:1.6">Rà soát bản 3 hợp đồng hợp tác đầu tư với đối tác Phú Mỹ Land. Tập trung điều khoản góp vốn theo tiến độ (mục 5), phạt chậm góp vốn (mục 7.2) và cơ chế phân chia sản phẩm. Gửi ý kiến pháp chế trước 14:00 để kịp họp HĐQT.</div></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-weight:500">Việc con</span><span style="font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">3/5</span><div style="flex:1;max-width:120px;height:4px;border-radius:2px;background:var(--ln2);overflow:hidden"><div style="width:60%;height:100%;background:var(--ok)"></div></div><button class="btn btn-ghost" style="margin-left:auto;font-size:12.5px"><i class="ph ph-plus"></i>Thêm</button></div>
+          <sc-for list="{{ subtasks }}" as="s" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:10px;min-height:36px;border-top:1px solid var(--ln2);font-size:13.5px"><i class="{{ s.icon }}" style="color:{{ s.c }};font-size:18px"></i><span style="flex:1;text-decoration:{{ s.strike }};color:{{ s.tc }}">{{ s.t }}</span><span style="font-size:12px;color:var(--mu)">{{ s.who }}</span><span style="font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">{{ s.due }}</span></div></sc-for>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:6px">Checklist <span style="font-size:12px;color:var(--mu);font-weight:400">2/4</span></div>
+          <sc-for list="{{ checklist }}" as="ck" hint-placeholder-count="4"><label style="display:flex;align-items:center;gap:10px;min-height:32px;font-size:13.5px;cursor:pointer"><input type="checkbox" defaultChecked="{{ ck.on }}" style="width:16px;height:16px;accent-color:var(--ac)">{{ ck.t }}</label></sc-for>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:6px">Tài liệu đính kèm</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--ln);border-radius:var(--radius-md);text-decoration:none;color:var(--tx)"><i class="ph ph-google-drive-logo" style="font-size:20px;color:var(--mu)"></i><span style="min-width:0;line-height:1.35"><span style="display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">HĐ HTĐT Phú Mỹ – bản 3</span><span style="font-size:11.5px;color:var(--mu)">Google Drive · sửa 25/10</span></span></a>
+            <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--ln);border-radius:var(--radius-md);text-decoration:none;color:var(--tx)"><i class="ph ph-file-pdf" style="font-size:20px;color:var(--mu)"></i><span style="min-width:0;line-height:1.35"><span style="display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Phu-luc-gop-von.pdf</span><span style="font-size:11.5px;color:var(--mu)">2,4 MB · Lan Trần</span></span></a>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-secondary" style="font-size:12.5px"><i class="ph ph-link"></i>Thêm link Drive</button><button class="btn btn-secondary" style="font-size:12.5px"><i class="ph ph-upload-simple"></i>Tải file (tối đa 5 MB)</button></div>
+          <div style="margin-top:12px;font-size:12px;color:var(--fa)">Link kết quả</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:13px"><i class="ph ph-seal-check" style="color:var(--ok)"></i><a href="#">drive.google.com/…/y-kien-phap-che-v3</a></div>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:10px">Trao đổi <span style="font-size:12px;color:var(--mu);font-weight:400">8</span></div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ chat }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <span style="width:28px;height:28px;flex:none;border-radius:{{ m.r }};background:{{ m.abg }};border:1px solid {{ m.abd }};color:{{ m.afg }};display:grid;place-items:center;font-size:10.5px;font-weight:600"><i class="{{ m.aicon }}"></i>{{ m.i }}</span>
+                <div style="min-width:0;flex:1">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu)"><span style="color:var(--tx);font-weight:500">{{ m.n }}</span><sc-if value="{{ m.ai }}"><span style="font-size:10px;font-weight:600;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 4px">AI</span></sc-if><span style="font-variant-numeric:tabular-nums">{{ m.ts }}</span></div>
+                  <div style="margin-top:3px;padding:8px 12px;border-radius:var(--radius-md);background:{{ m.bg }};border:1px solid {{ m.bd }};font-size:13.5px;line-height:1.55"><sc-if value="{{ m.at }}"><span style="color:var(--act);font-weight:500">{{ m.at }}</span> </sc-if>{{ m.text }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:relative;margin-top:12px">
+            <div style="position:absolute;bottom:calc(100% + 6px);left:0;width:240px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:4px;font-size:13px;display:{{ mentionDisplay }}">
+              <div style="padding:4px 8px;font-size:11px;color:var(--fa)">Nhắc tên</div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--acbg)">QT · Nguyễn Quốc Tuấn</div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px"><i class="ph-fill ph-sparkle" style="color:var(--ai)"></i>Hermes <span style="font-size:10px;color:var(--ai)">AI</span></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid var(--ln);border-radius:var(--radius-md);background:var(--sf)">
+              <button class="btn btn-icon" aria-label="Đính kèm" style="color:var(--mu)"><i class="ph ph-paperclip" style="font-size:18px"></i></button>
+              <textarea onInput="{{ onChatInput }}" rows="1" placeholder="Nhập trao đổi… gõ @ để nhắc tên" style="flex:1;border:0;outline:0;resize:none;background:transparent;color:var(--tx);font:inherit;font-size:13.5px;padding:8px 0;min-height:36px"></textarea>
+              <button class="btn btn-primary" style="height:36px"><i class="ph ph-paper-plane-tilt"></i>Gửi</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:6px">Nhật ký thay đổi</div>
+          <sc-for list="{{ log }}" as="lg" hint-placeholder-count="4"><div style="display:flex;gap:8px;font-size:12.5px;color:var(--mu);padding:4px 0;line-height:1.45"><i class="{{ lg.icon }}" style="color:{{ lg.c }};margin-top:3px"></i><span style="flex:1"><span style="color:var(--tx)">{{ lg.who }}</span> {{ lg.what }}</span><span style="font-variant-numeric:tabular-nums;color:var(--fa)">{{ lg.ts }}</span></div></sc-for>
+        </div>
+      </div>
+      <div style="padding:18px 16px;display:flex;flex-direction:column;gap:16px;font-size:13px">
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Người theo dõi</div><div style="display:flex;flex-direction:column;gap:6px"><span>VT · Vũ Cao Tùng</span><span>LT · Lan Trần</span><span style="color:var(--ai)"><i class="ph-fill ph-sparkle"></i> Hermes</span><button class="btn btn-ghost" style="align-self:flex-start;font-size:12.5px"><i class="ph ph-plus"></i>Thêm</button></div></div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Cờ</div><div style="display:flex;flex-direction:column;gap:6px"><span><i class="ph-fill ph-star" style="color:var(--wn)"></i> Quan trọng</span><span><i class="ph-fill ph-lightning" style="color:var(--dg)"></i> Khẩn cấp</span></div></div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Lặp lại</div><span style="color:var(--mu)">Không lặp</span></div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Danh mục</div><span>Pháp lý &amp; Hồ sơ</span></div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Người tạo</div><span>Vũ Cao Tùng</span><div style="font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">20/10/2026 08:30</div></div>
+        <div><div style="font-size:12px;color:var(--fa);margin-bottom:6px">Thời lượng</div><span style="font-variant-numeric:tabular-nums">90 phút · 14:00–15:30</span></div>
+        <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="padding:10px 12px;border:1px dashed var(--ln);border-radius:var(--radius-md);font-size:12px;color:var(--mu);line-height:1.55"><span style="color:var(--tx);font-weight:500">Đề xuất · </span>Panel trượt rộng 820px giữ danh sách phía sau để xử lý liên tiếp nhiều việc; nút “Mở toàn trang” cho khi cần tập trung hoặc chia sẻ link. Tin nhắn và nhật ký của Hermes có viền tím + nhãn AI.</div></sc-if>
+      </div>
+    </div>
+  </aside>
+</sc-if>
+<sc-if value="{{ form }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeForm }}" style="position:fixed;inset:0;background:var(--scrim);z-index:50"></div>
+  <div role="dialog" aria-label="Tạo task" style="position:fixed;top:6vh;left:50%;transform:translateX(-50%);width:min(720px,94vw);max-height:88vh;display:flex;flex-direction:column;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:51">
+    <div style="display:flex;align-items:center;gap:4px;padding:10px 12px 0 16px;border-bottom:1px solid var(--ln2)">
+      <sc-for list="{{ formTabs }}" as="ft" hint-placeholder-count="2"><button onClick="{{ ft.go }}" style="display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border:0;background:none;cursor:pointer;font-size:14px;color:{{ ft.fg }};box-shadow:{{ ft.sh }}"><i class="{{ ft.icon }}"></i>{{ ft.label }}</button></sc-for>
+      <span style="flex:1"></span><button class="btn btn-icon" onClick="{{ closeForm }}" aria-label="Đóng" style="color:var(--mu)"><i class="ph ph-x" style="font-size:18px"></i></button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+      <sc-if value="{{ isManual }}" hint-placeholder-val="{{ true }}">
+        <input class="input" placeholder="Tên task — ví dụ: Nộp hồ sơ đo đạc địa chính" style="font-size:17px;min-height:44px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div class="seg"><label class="seg-opt"><input type="radio" name="ftype" defaultChecked="{{ true }}"><i class="ph ph-briefcase"></i>Công việc</label><label class="seg-opt"><input type="radio" name="ftype"><i class="ph ph-user"></i>Cá nhân</label></div>
+          <button onClick="{{ toggleImp }}" aria-pressed="{{ fImp }}" class="btn btn-secondary" style="color:{{ impFg }};border-color:{{ impBd }}"><i class="ph-fill ph-star"></i>Quan trọng</button>
+          <button onClick="{{ toggleUrg }}" aria-pressed="{{ fUrg }}" class="btn btn-secondary" style="color:{{ urgFg }};border-color:{{ urgBd }}"><i class="ph-fill ph-lightning"></i>Khẩn cấp</button>
+          <span style="font-size:12px;color:var(--mu)">→ <span style="color:var(--tx)">{{ quadrant }}</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field"><label>Hạn chót</label><input class="input" defaultValue="28/10/2026" style="font-variant-numeric:tabular-nums"></div>
+          <div class="field"><label>Người làm</label><select class="input"><option>Nguyễn Quốc Tuấn</option><option>Lan Trần</option><option>Trần Đức Dương</option><option>✦ Hermes (AI)</option><option>Chưa giao</option></select></div>
+          <div class="field"><label>Dự án</label><select class="input"><option>Hồ sơ pháp lý KĐT Phú Mỹ</option><option>Enterprise OS v1.3</option><option>Báo cáo tài chính Q3</option><option>Không thuộc dự án</option></select></div>
+          <div class="field"><label>Danh mục</label><select class="input"><option>Pháp lý &amp; Hồ sơ</option><option>Tài chính &amp; Kế toán</option><option>Kỹ thuật &amp; Hệ thống</option><option>Nhân sự</option></select></div>
+          <div class="field"><label>Trạng thái</label><select class="input"><option>Chưa làm</option><option>Đang làm</option><option>Tạm dừng</option></select></div>
+          <div class="field"><label>Ưu tiên</label><select class="input"><option>▲▲ Cao</option><option selected>▲ Trung bình</option><option>— Thấp</option></select></div>
+        </div>
+        <div class="field"><label>Người theo dõi</label><div style="display:flex;gap:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--ln);border-radius:var(--radius-md);min-height:40px">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 10px;border-radius:999px;background:var(--sf2);font-size:12.5px">Vũ Cao Tùng<button aria-label="Bỏ" style="border:0;background:none;color:var(--mu);cursor:pointer;width:20px;height:20px"><i class="ph ph-x"></i></button></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 10px;border-radius:999px;background:var(--aibg);color:var(--ai);font-size:12.5px"><i class="ph-fill ph-sparkle"></i>Hermes<button aria-label="Bỏ" style="border:0;background:none;color:inherit;cursor:pointer;width:20px;height:20px"><i class="ph ph-x"></i></button></span>
+          <button class="btn btn-ghost" style="font-size:12.5px"><i class="ph ph-plus"></i>Thêm người</button>
+        </div></div>
+        <sc-if value="{{ notMore }}" hint-placeholder-val="{{ true }}"><button onClick="{{ showMore }}" class="btn btn-secondary" style="align-self:flex-start"><i class="ph ph-caret-down"></i>Thêm chi tiết · lịch trình, lặp lại, việc con, đính kèm</button></sc-if>
+        <sc-if value="{{ more }}" hint-placeholder-val="{{ false }}">
+          <div class="field"><label>Lịch trình</label><div class="seg"><sc-for list="{{ scheds }}" as="sd" hint-placeholder-count="3"><label class="seg-opt"><input type="radio" name="sched" checked="{{ sd.on }}" onChange="{{ sd.go }}">{{ sd.label }}</label></sc-for></div></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+            <div class="field"><label>Bắt đầu</label><input class="input" defaultValue="26/10" style="font-variant-numeric:tabular-nums"></div>
+            <div class="field"><label>Giờ</label><input class="input" defaultValue="14:00" style="font-variant-numeric:tabular-nums"></div>
+            <div class="field"><label>Thời lượng</label><select class="input"><option>30 phút</option><option selected>90 phút</option><option>Cả ngày</option></select></div>
+            <div class="field"><label>Lặp lại</label><select class="input"><option>Không lặp</option><option>Hằng ngày</option><option>Hằng tuần (T2)</option><option>Hằng tháng (ngày 25)</option></select></div>
+          </div>
+          <div class="field"><label>Việc con</label>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;min-height:32px"><i class="ph ph-circle" style="color:var(--fa)"></i>Chuẩn bị bản đồ hiện trạng 1/500</div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;min-height:32px"><i class="ph ph-circle" style="color:var(--fa)"></i>Xin xác nhận ranh giới của UBND xã</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:6px"><button class="btn btn-secondary" style="font-size:12.5px"><i class="ph ph-plus"></i>Thêm việc con</button><button class="btn btn-secondary" style="font-size:12.5px"><i class="ph ph-copy"></i>Chèn từ mẫu “Hồ sơ đất đai”</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>Đính kèm</label><button class="btn btn-secondary" style="width:100%;justify-content:flex-start;border-style:dashed;min-height:36px"><i class="ph ph-paperclip"></i>Link Drive hoặc file ≤ 5 MB</button></div>
+            <div class="field"><label>Link kết quả</label><input class="input" placeholder="https://"></div>
+          </div>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ isAI }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mu)"><span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--ac);color:var(--ac);font-variant-numeric:tabular-nums">1</span>Mô tả<span style="width:32px;height:1px;background:var(--ln)"></span><span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid {{ step2c }};color:{{ step2c }}">2</span>Xem &amp; sửa<span style="width:32px;height:1px;background:var(--ln)"></span><span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--ln);color:var(--fa)">3</span>Xác nhận</div>
+        <sc-if value="{{ aiStep1 }}" hint-placeholder-val="{{ true }}">
+          <textarea class="input" style="min-height:120px;font-size:15px;line-height:1.55">Tuần sau chị Lan chuẩn bị hồ sơ xin giấy phép xây dựng block C, cần xong trước 06/11, gồm bản vẽ, thẩm duyệt PCCC và văn bản thoả thuận đấu nối điện nước.</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:var(--fa);align-self:center">Thử:</span><button class="btn btn-secondary" style="font-size:12px">Họp giao ban thứ Hai hằng tuần lúc 9h</button><button class="btn btn-secondary" style="font-size:12px">Thảo khoá sổ tháng 10 trước ngày 05/11</button></div>
+        </sc-if>
+        <sc-if value="{{ aiStep2 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--ai) 40%,transparent);background:color-mix(in srgb,var(--ai) 7%,var(--sf));border-radius:var(--radius-md);font-size:12.5px;line-height:1.5"><i class="ph-fill ph-sparkle" style="color:var(--ai);margin-top:2px"></i><span>Hermes đề xuất bên dưới. Mọi trường đều sửa được — chưa có gì được lưu cho đến khi bạn bấm Xác nhận.</span></div>
+          <div class="field"><label>Tiêu đề</label><input class="input" defaultValue="Chuẩn bị hồ sơ xin giấy phép xây dựng block C"></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div class="field"><label>Người làm</label><select class="input"><option>Lan Trần</option></select></div>
+            <div class="field"><label>Ưu tiên</label><select class="input"><option>▲▲ Cao</option><option>▲ Trung bình</option></select></div>
+            <div class="field"><label>Hạn</label><input class="input" defaultValue="06/11/2026"></div>
+          </div>
+          <div class="field"><label>Việc con đề xuất · 4</label>
+            <sc-for list="{{ aiSubs }}" as="as" hint-placeholder-count="4"><label style="display:flex;align-items:center;gap:10px;min-height:36px;border-top:1px solid var(--ln2);font-size:13.5px"><input type="checkbox" defaultChecked="{{ true }}" style="width:16px;height:16px;accent-color:var(--ac)"><span style="flex:1">{{ as.t }}</span><span style="font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums">{{ as.d }}</span></label></sc-for>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--ln2)">
+      <span style="font-size:12px;color:var(--fa)">Esc để đóng · Ctrl Enter để lưu</span><span style="flex:1"></span>
+      <sc-if value="{{ aiStep2 }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" onClick="{{ aiBack }}">Quay lại</button></sc-if>
+      <button class="btn btn-secondary" onClick="{{ closeForm }}">Huỷ</button>
+      <button class="btn btn-primary" onClick="{{ formPrimary }}"><i class="{{ primaryIcon }}"></i>{{ primaryLabel }}</button>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ popOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closePop }}" style="position:fixed;inset:0;z-index:35"></div></sc-if>
+<sc-if value="{{ popNotif }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-label="Thông báo" style="position:fixed;top:56px;right:64px;width:400px;max-height:calc(100vh - 80px);overflow:auto;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:36">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--ln2)"><span style="font-weight:500">Thông báo</span><span style="font-size:12px;color:var(--mu)">5 chưa đọc</span><button class="btn btn-ghost" style="margin-left:auto;font-size:12.5px">Đánh dấu đã đọc</button></div>
+    <div style="display:flex;gap:4px;padding:8px 10px 0"><span style="height:30px;padding:0 10px;border-radius:999px;border:1px solid var(--ac);color:var(--ac);display:inline-flex;align-items:center;font-size:12.5px;white-space:nowrap">Tất cả</span><span style="height:30px;padding:0 10px;border-radius:999px;border:1px solid var(--ln);color:var(--mu);display:inline-flex;align-items:center;font-size:12.5px;white-space:nowrap">Nhắc tên tôi</span><span style="height:30px;padding:0 10px;border-radius:999px;border:1px solid var(--ln);color:var(--mu);display:inline-flex;align-items:center;font-size:12.5px;white-space:nowrap">Từ Hermes</span></div>
+    <sc-for list="{{ notifs }}" as="nt" hint-placeholder-count="6">
+      <button onClick="{{ nt.open }}" style="display:flex;gap:10px;width:100%;text-align:left;padding:10px 14px;border:0;border-bottom:1px solid var(--ln2);background:{{ nt.bg }};cursor:pointer" style-hover="background:var(--sf2)">
+        <span style="width:30px;height:30px;flex:none;border-radius:{{ nt.r }};background:{{ nt.abg }};border:1px solid {{ nt.abd }};color:{{ nt.afg }};display:grid;place-items:center;font-size:10.5px;font-weight:600"><i class="{{ nt.icon }}"></i>{{ nt.i }}</span>
+        <span style="flex:1;min-width:0;font-size:13px;line-height:1.45"><span style="color:var(--tx);font-weight:500">{{ nt.who }}</span> {{ nt.what }} <span style="color:var(--act)">{{ nt.task }}</span><span style="display:block;font-size:11.5px;color:var(--fa);font-variant-numeric:tabular-nums">{{ nt.ts }}</span></span>
+        <sc-if value="{{ nt.unread }}"><span style="width:8px;height:8px;border-radius:50%;background:var(--ac);margin-top:6px;flex:none"></span></sc-if>
+      </button>
+    </sc-for>
+  </div>
+</sc-if>
+<sc-if value="{{ popCo }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-label="Chọn công ty" style="position:fixed;top:56px;left:264px;width:320px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:36;padding:6px">
+    <div style="padding:6px 10px;font-size:11.5px;color:var(--fa)">Công ty của bạn</div>
+    <sc-for list="{{ companies }}" as="co" hint-placeholder-count="3">
+      <button onClick="{{ co.go }}" style="display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 10px;border:0;border-radius:var(--radius-md);background:{{ co.bg }};cursor:pointer;text-align:left" style-hover="background:var(--sf2)">
+        <span style="width:30px;height:30px;border-radius:7px;background:var(--sf2);display:grid;place-items:center;font-size:11px;font-weight:600">{{ co.i }}</span>
+        <span style="flex:1;line-height:1.35"><span style="display:block;font-size:13.5px;font-weight:500">{{ co.n }}</span><span style="font-size:12px;color:var(--mu)">{{ co.meta }}</span></span>
+        <sc-if value="{{ co.over }}"><span style="font-size:11px;font-weight:600;color:var(--dg);white-space:nowrap"><i class="ph-fill ph-flag"></i> {{ co.over }}</span></sc-if>
+        <sc-if value="{{ co.on }}"><i class="ph-bold ph-check" style="color:var(--ac)"></i></sc-if>
+      </button>
+    </sc-for>
+    <div style="border-top:1px solid var(--ln2);margin-top:6px;padding-top:6px;display:flex;flex-direction:column"><button class="btn btn-ghost" style="justify-content:flex-start;min-height:40px;padding:0 10px"><i class="ph ph-squares-four"></i>Xem gộp tất cả công ty</button><button class="btn btn-ghost" style="justify-content:flex-start;min-height:40px;padding:0 10px"><i class="ph ph-plus"></i>Tạo công ty mới</button></div>
+  </div>
+</sc-if>
+<sc-if value="{{ hermes }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-label="Trợ lý Hermes" style="position:fixed;right:24px;bottom:92px;width:400px;height:min(580px,calc(100vh - 140px));display:flex;flex-direction:column;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:45">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ln2)"><span style="width:30px;height:30px;border-radius:8px;background:var(--aibg);border:1px solid var(--ai);color:var(--ai);display:grid;place-items:center"><i class="ph-fill ph-sparkle"></i></span><div style="line-height:1.3;flex:1"><div style="font-weight:500">Hermes</div><div style="font-size:11.5px;color:var(--mu)">AI Agent · chỉ đọc dữ liệu bạn được xem</div></div><button class="btn btn-icon" onClick="{{ toggleHermes }}" aria-label="Đóng" style="color:var(--mu)"><i class="ph ph-x"></i></button></div>
+    <div style="flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;font-size:13.5px">
+      <div style="align-self:flex-end;max-width:80%;white-space:nowrap;padding:8px 12px;border-radius:var(--radius-md);background:var(--sf2)">Việc quá hạn</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="line-height:1.55">Có <b style="font-weight:600;color:var(--dg)">3 việc quá hạn</b> trong EOS Holdings. Việc lâu nhất trễ 3 ngày:</div>
+        <sc-for list="{{ hermesList }}" as="h" hint-placeholder-count="3"><button onClick="{{ h.open }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--ln2);border-radius:var(--radius-md);background:var(--bg);cursor:pointer;box-shadow:inset 3px 0 0 var(--dg)" style-hover="border-color:var(--ln)"><i class="{{ h.stIcon }}" style="color:{{ h.stColor }}"></i><span style="flex:1;min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ h.t }}</span><span style="font-size:11.5px;color:var(--mu)">{{ h.an }} · <span style="color:var(--dg)">{{ h.dueTxt }}</span></span></span><i class="ph ph-caret-right" style="color:var(--fa)"></i></button></sc-for>
+        <div style="color:var(--mu);font-size:12.5px">Gợi ý: “Biên bản nghiệm thu” đang Tạm dừng vì chờ chữ ký tư vấn giám sát — tôi có thể nhắc Lan Trần.</div>
+        <div style="display:flex;gap:6px"><button class="btn btn-secondary" style="font-size:12.5px">Nhắc người làm</button><button class="btn btn-secondary" style="font-size:12.5px">Dời hạn sang 28/10</button></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0"><sc-for list="{{ quick }}" as="q" hint-placeholder-count="4"><button class="btn btn-secondary" style="font-size:12px;padding:4px 10px">{{ q }}</button></sc-for></div>
+    <div style="display:flex;gap:8px;padding:10px 14px 14px"><input class="input" placeholder="Hỏi Hermes hoặc giao việc…"><button class="btn btn-primary" aria-label="Gửi"><i class="ph ph-paper-plane-tilt"></i></button></div>
+  </div>
+</sc-if>
+<button onClick="{{ toggleHermes }}" aria-label="Mở trợ lý Hermes" style="white-space:nowrap;position:fixed;right:24px;bottom:24px;z-index:44;display:flex;align-items:center;gap:8px;height:52px;padding:0 18px 0 14px;border-radius:14px;background:var(--sf);border:1px solid var(--ai);color:var(--ai);box-shadow:var(--shadow-md);cursor:pointer;font-size:14px;font-weight:500" style-hover="background:var(--aibg)"><i class="ph-fill ph-sparkle" style="font-size:20px"></i>Hỏi Hermes</button>
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}"><div role="status" style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--radius-md);box-shadow:var(--shadow-md);font-size:13.5px;max-width:560px"><i class="ph-fill ph-check-circle" style="color:var(--ok);font-size:18px"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ toast }}</span><button class="btn btn-ghost" style="font-size:13px">Hoàn tác</button></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'today', done: { t8: true }, detail: null, form: false, formTab: 'manual', aiStep: 1, more: false, hermes: false, period: 'week', ptab: 'kanban', project: null, kb: {}, drag: null, over: null, toast: null };
+  componentDidMount() {
+    this.applyTheme();
+    this.onKey = e => {
+      const tag = (e.target.tagName || '');
+      if ((e.key === 'n' || e.key === 'N') && !/INPUT|TEXTAREA|SELECT/.test(tag) && !e.metaKey && !e.ctrlKey) { e.preventDefault(); this.setState({ form: true }); }
+      if (e.key === 'Escape') this.setState({ detail: null, form: false, hermes: false });
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  componentDidUpdate() { this.applyTheme(); }
+  applyTheme() {
+    const light = this.props.theme === 'light', b = document.body;
+    b.classList.toggle('light', light);
+    const A = [null, ['oklch(0.70 0.10 240)', 'oklch(0.48 0.11 245)'], ['oklch(0.72 0.09 185)', 'oklch(0.46 0.08 190)'], ['oklch(0.72 0.09 60)', 'oklch(0.50 0.09 55)']][this.state.acc || 0];
+    if (A) { b.style.setProperty('--color-accent', A[light ? 1 : 0]); b.style.setProperty('--act', light ? A[1] : 'color-mix(in srgb,' + A[0] + ' 70%,white)'); b.style.setProperty('--acbg', 'color-mix(in srgb,' + A[light ? 1 : 0] + ' 16%,var(--color-surface))'); }
+    else ['--color-accent', '--act', '--acbg'].forEach(p => b.style.removeProperty(p));
+    if (this.state.toast && this.state.toast !== this._lt) { this._lt = this.state.toast; clearTimeout(this.tt2); this.tt2 = setTimeout(() => this.setState({ toast: null }), 3500); }
+  }
+  U = { tung: ['Vũ Cao Tùng', 'VT'], tuan: ['Nguyễn Quốc Tuấn', 'QT'], duong: ['Trần Đức Dương', 'ĐD'], lan: ['Lan Trần', 'LT'], minh: ['Minh Nguyễn', 'MN'], thao: ['Thảo Vũ', 'TV'], hermes: ['Hermes', 'AI', true] };
+  P = { eos: ['Enterprise OS v1.3', 'oklch(0.70 0.11 290)'], phap: ['Hồ sơ pháp lý KĐT Phú Mỹ', 'oklch(0.72 0.10 205)'], tc: ['Báo cáo tài chính Q3', 'oklch(0.74 0.11 60)'], ts: ['Tuyển dụng & đào tạo Q4', 'oklch(0.72 0.11 130)'] };
+  ST = { todo: ['Chưa làm', 'ph ph-circle-dashed', 'var(--mu)'], doing: ['Đang làm', 'ph-fill ph-circle-half', 'var(--in)'], paused: ['Tạm dừng', 'ph-fill ph-pause-circle', 'var(--wn)'], done: ['Hoàn thành', 'ph-fill ph-check-circle', 'var(--ok)'] };
+  PR = { high: ['Cao', 'ph-bold ph-caret-double-up', 'var(--dg)'], med: ['TB', 'ph-bold ph-caret-up', 'var(--wn)'], low: ['Thấp', 'ph-bold ph-minus', 'var(--mu)'] };
+  T = [
+    { id: 't1', t: 'Khắc phục sự cố API giao việc trả lỗi 502', p: 'eos', a: 'duong', g: 'over', due: '24/10', late: 2, pr: 'high', st: 'doing', urg: 1, blk: 1, sub: [2, 4], cmt: 6, att: 1 },
+    { id: 't2', t: 'Đối chiếu công nợ nhà cung cấp tháng 9', p: 'tc', a: 'thao', g: 'over', due: '25/10', late: 1, pr: 'high', st: 'todo', imp: 1, sub: [0, 3], cmt: 2, att: 3 },
+    { id: 't3', t: 'Gửi biên bản nghiệm thu móng block B cho tư vấn giám sát', p: 'phap', a: 'lan', g: 'over', due: '23/10', late: 3, pr: 'med', st: 'paused', sub: [0, 0], cmt: 1, att: 2 },
+    { id: 't4', t: 'Rà soát hợp đồng hợp tác đầu tư (bản 3)', p: 'phap', a: 'tuan', g: 'today', time: '14:00', pr: 'high', st: 'doing', imp: 1, urg: 1, sub: [3, 5], cmt: 8, att: 2 },
+    { id: 't5', t: 'Kiểm thử phân quyền Quản trị / Quản lý / Thành viên', p: 'eos', a: 'lan', g: 'today', time: '17:00', pr: 'high', st: 'todo', imp: 1, sub: [1, 4], cmt: 1, att: 0 },
+    { id: 't6', t: 'Tổng hợp báo cáo tiến độ tuần 43 cho Ban Giám đốc', p: 'eos', a: 'hermes', g: 'today', time: '16:30', pr: 'med', st: 'doing', sub: [0, 0], cmt: 3, att: 1 },
+    { id: 't7', t: 'Duyệt đề xuất tuyển kỹ sư dự toán', p: 'ts', a: 'tung', g: 'today', time: 'Trong ngày', pr: 'med', st: 'todo', sub: [0, 2], cmt: 2, att: 1 },
+    { id: 't8', t: 'Họp giao ban phòng Kỹ thuật', p: 'eos', a: 'duong', g: 'today', time: '09:00', pr: 'low', st: 'done', sub: [0, 0], cmt: 0, att: 0 },
+    { id: 't9', t: 'Tự động đánh số & ký hiệu văn bản theo NĐ 30', p: 'eos', a: 'minh', g: 'later', due: '29/10', pr: 'high', st: 'doing', sub: [1, 3], cmt: 4, att: 0 },
+    { id: 't10', t: 'Nhắc hạn xử lý công văn đến', p: 'eos', a: 'hermes', g: 'later', due: '02/11', pr: 'med', st: 'todo', sub: [0, 0], cmt: 1, att: 0 },
+    { id: 't11', t: 'Chuyển dữ liệu Ever Teams sang PostgreSQL', p: 'eos', a: 'duong', g: 'later', due: '07/11', pr: 'med', st: 'paused', sub: [2, 6], cmt: 5, att: 2 },
+    { id: 't12', t: 'Viết hướng dẫn đăng nhập Google + mã mời', p: 'eos', a: 'lan', g: 'later', due: '30/10', pr: 'low', st: 'todo', sub: [1, 3], cmt: 0, att: 1 },
+    { id: 't13', t: 'Thiết kế sổ đăng ký văn bản theo NĐ 30', p: 'eos', a: 'duong', g: 'later', due: '23/10', pr: 'med', st: 'done', sub: [4, 4], cmt: 3, att: 1 },
+    { id: 't14', t: 'Kết nối Hermes với Kanban phòng ban', p: 'eos', a: 'hermes', g: 'later', due: '05/11', pr: 'high', st: 'doing', sub: [2, 5], cmt: 7, att: 0 },
+    { id: 't15', t: 'Chuẩn bị nội dung họp HĐQT tháng 11', p: 'phap', a: 'tung', g: 'later', due: '27/10', pr: 'high', st: 'todo', imp: 1, sub: [0, 3], cmt: 1, att: 2 },
+    { id: 't16', t: 'Gửi thư mời phỏng vấn kỹ sư dự toán', p: 'ts', a: 'tuan', g: 'later', due: '27/10', pr: 'med', st: 'todo', sub: [0, 0], cmt: 0, att: 1 },
+    { id: 't17', t: 'Nộp tờ khai thuế GTGT tháng 9', p: 'tc', a: 'thao', g: 'later', due: '20/10', pr: 'high', st: 'done', sub: [2, 2], cmt: 2, att: 3 },
+    { id: 't18', t: 'Ký hợp đồng thuê văn phòng tầng 12', p: 'phap', a: 'tung', g: 'later', due: '22/10', pr: 'med', st: 'done', sub: [0, 0], cmt: 4, att: 1 },
+    { id: 'r1', t: 'Báo cáo dòng tiền tuần', p: 'tc', a: 'thao', g: 'rec', rep: 'Hằng tuần · T6', next: '30/10', pr: 'med', st: 'todo', sub: [0, 4], cmt: 0, att: 1 },
+    { id: 'r2', t: 'Sao lưu cơ sở dữ liệu PostgreSQL', p: 'eos', a: 'hermes', g: 'rec', rep: 'Hằng ngày · 23:00', next: '26/10', pr: 'low', st: 'todo', sub: [0, 0], cmt: 0, att: 0 },
+    { id: 'r3', t: 'Tổng hợp công văn đến', p: 'eos', a: 'hermes', g: 'rec', rep: 'Hằng ngày · 08:00', next: '27/10', pr: 'med', st: 'todo', sub: [0, 0], cmt: 2, att: 0 },
+    { id: 'r4', t: 'Kiểm kê văn phòng phẩm', p: 'ts', a: 'lan', g: 'rec', rep: 'Hằng tháng · ngày 25', next: '25/11', pr: 'low', st: 'todo', sub: [0, 0], cmt: 0, att: 0 },
+    { id: 'r5', t: 'Đóng bảo hiểm xã hội', p: 'tc', a: 'thao', g: 'rec', rep: 'Hằng tháng · ngày 30', next: '30/10', pr: 'high', st: 'todo', sub: [0, 2], cmt: 0, att: 1 },
+    { id: 'a1', t: 'Cập nhật hồ sơ năng lực công ty 2026', p: 'phap', a: 'tung', g: 'any', pr: 'low', st: 'todo', sub: [1, 4], cmt: 1, att: 2 },
+    { id: 'a2', t: 'Chuẩn hoá mẫu tờ trình nội bộ', p: 'phap', a: 'tuan', g: 'any', pr: 'med', st: 'doing', sub: [0, 0], cmt: 3, att: 1 },
+    { id: 'a3', t: 'Đọc Thông tư mới về quản lý chi phí đầu tư xây dựng', p: 'phap', a: 'duong', g: 'any', pr: 'low', st: 'todo', sub: [0, 0], cmt: 0, att: 1 },
+    { id: 'a4', t: 'Sắp xếp lại thư mục Drive phòng Pháp chế', p: 'phap', a: 'lan', g: 'any', pr: 'low', st: 'todo', sub: [0, 0], cmt: 0, att: 0 },
+    { id: 'b1', t: 'Nghiên cứu tích hợp Zalo OA', p: 'eos', a: 'none', g: 'back', pr: 'low', st: 'todo', sub: [0, 0], cmt: 2, att: 0 },
+    { id: 'b2', t: 'Ý tưởng: bảng KPI theo phòng ban', p: 'ts', a: 'none', g: 'back', pr: 'low', st: 'todo', sub: [0, 0], cmt: 1, att: 0 },
+    { id: 'b3', t: 'Ký số văn bản qua chữ ký số từ xa', p: 'eos', a: 'none', g: 'back', pr: 'med', st: 'todo', sub: [0, 0], cmt: 0, att: 1 },
+    { id: 'b4', t: 'Kết nối hoá đơn điện tử với kế toán', p: 'tc', a: 'none', g: 'back', pr: 'med', st: 'todo', sub: [0, 0], cmt: 0, att: 0 },
+    { id: 'b5', t: 'Mẫu checklist bàn giao căn hộ', p: 'phap', a: 'none', g: 'back', pr: 'low', st: 'todo', sub: [0, 0], cmt: 0, att: 0 }
+  ];
+  status(t) { return this.state.done[t.id] ? 'done' : (this.state.kb[t.id] || (t.st === 'done' && this.state.done[t.id] === false ? 'todo' : t.st)); }
+  deco(t) {
+    const s = this.status(t), u = this.U[t.a] || ['Chưa giao', '—'], p = this.P[t.p], st = this.ST[s], pr = this.PR[t.pr], done = s === 'done', over = t.g === 'over' && !done;
+    return Object.assign({}, t, {
+      st: s, done, over, pn: p[0], pc: p[1], an: u[0], ini: u[1], ai: !!u[2], human: !u[2],
+      stLabel: st[0], stIcon: st[1], stColor: st[2], prLabel: pr[0], prIcon: pr[1], prColor: pr[2],
+      bar: over ? 'var(--dg)' : 'transparent', rowBg: over ? 'color-mix(in srgb,var(--dg) 5%,transparent)' : 'transparent',
+      checkCls: done ? 'ph-fill ph-check-circle' : 'ph ph-circle', checkColor: done ? 'var(--ok)' : 'var(--fa)',
+      strike: done ? 'line-through' : 'none', titleColor: done ? 'var(--fa)' : 'var(--tx)',
+      dueTxt: over ? t.due + ' · trễ ' + t.late + ' ngày' : t.g === 'today' ? (t.time || 'Hôm nay') : t.g === 'rec' ? t.rep : t.g === 'any' ? 'Không hạn' : t.g === 'back' ? 'Chưa lên lịch' : t.due,
+      dueColor: over ? 'var(--dg)' : (done || t.g === 'any' || t.g === 'back') ? 'var(--fa)' : 'var(--tx)', dueW: over ? 600 : 400,
+      dueIcon: over ? 'ph-bold ph-warning-circle' : t.g === 'today' ? 'ph ph-clock' : t.g === 'rec' ? 'ph ph-repeat' : t.g === 'any' ? 'ph ph-infinity' : t.g === 'back' ? 'ph ph-archive' : 'ph ph-calendar-blank',
+      human: !u[2] && t.a !== 'none', none: t.a === 'none',
+      avTxt: u[2] ? '✦' : t.a === 'none' ? '' : u[1], avR: u[2] ? '6px' : '50%', avBg: u[2] ? 'var(--aibg)' : 'var(--sf2)', avBd: u[2] ? 'var(--ai)' : t.a === 'none' ? 'var(--fa)' : 'var(--ln)', avFg: u[2] ? 'var(--ai)' : 'var(--tx)',
+      subTxt: t.sub[1] ? t.sub[0] + '/' + t.sub[1] : '0', subOp: t.sub[1] ? 1 : .35, cmtOp: t.cmt ? 1 : .35, attOp: t.att ? 1 : .35,
+      open: () => this.setState({ detail: t.id }),
+      toggle: e => { e.stopPropagation(); const d = Object.assign({}, this.state.done); d[t.id] = !done; this.setState({ done: d, toast: !done ? 'Đã hoàn thành “' + t.t + '”' : null }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); }
+    });
+  }
+  calVals(sc, rows) {
+    if (!['month', 'day', 'week', 'gantt'].includes(sc)) return { isCal: false };
+    const key = dt => String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+    const G = [['26/10', '10:30', 'Gọi đối tác Phú Mỹ Land', 60], ['28/10', '09:00', 'Họp HĐQT thường kỳ', 120], ['22/10', '08:00', 'Khám sức khoẻ định kỳ', 0], ['30/10', '15:00', 'Tiếp đoàn kiểm tra PCCC', 90], ['14/10', '09:00', 'Đào tạo ISO 9001', 0]];
+    const evs = {};
+    const push = (k, e) => { (evs[k] = evs[k] || []).push(e); };
+    rows.filter(r => ['over', 'today', 'later', 'rec'].includes(r.g)).forEach(r => {
+      const k = r.g === 'today' ? '26/10' : r.g === 'rec' ? r.next : r.due;
+      push(k, { t: r.t, c: r.pc, open: r.open, op: r.done ? .5 : 1, strike: r.done ? 'line-through' : 'none', icon: r.over ? 'ph-fill ph-flag' : r.g === 'rec' ? 'ph ph-repeat' : r.stIcon, ic: r.over ? 'var(--dg)' : r.stColor, meta: (r.time && r.time !== 'Trong ngày' ? r.time + ' · ' : '') + r.an, time: r.time, dur: r.id === 't4' ? 90 : 45 });
+    });
+    G.forEach(([k, time, t, dur]) => push(k, { t, c: 'var(--in)', open: () => {}, op: 1, strike: 'none', icon: 'ph ph-google-logo', ic: 'var(--in)', meta: time + ' · Google Calendar', time, dur, g: 1 }));
+    const tabs = [['month', 'Tháng'], ['week', 'Tuần'], ['day', 'Ngày'], ['gantt', 'Timeline']];
+    const notes = { month: 'Mỗi ô ngày hiện tối đa 3 việc, phần còn lại gộp “+n việc nữa”. Việc quá hạn có cờ đỏ, sự kiện Google có biểu tượng G và dải xanh — không cần đọc màu vẫn phân biệt được. Màu dải trái là màu dự án.', week: '7 cột đồng cỡ, cột hôm nay có viền nhấn. Mỗi thẻ ghi giờ + người làm, việc đã xong mờ và gạch ngang.', day: 'Khung giờ 07:00–19:00, khối cao theo thời lượng. Việc không có giờ và việc quá hạn đặt ở dải trên cùng để không bị bỏ sót. Vạch đỏ mảnh là giờ hiện tại.', gantt: 'Timeline gộp tất cả dự án, mỗi dự án một nhóm có thể thu gọn. Thanh tô theo trạng thái (cùng bảng màu với pill), việc quá hạn có viền đỏ cạnh trái.' };
+    const mCells = Array.from({ length: 35 }, (_, i) => { const dt = new Date(2026, 8, 28 + i), k = key(dt), inM = dt.getMonth() === 9, today = k === '26/10', list = evs[k] || []; return { n: dt.getDate(), ev: list.slice(0, 3), more: Math.max(0, list.length - 3), fg: today ? 'var(--ac)' : inM ? 'var(--tx)' : 'var(--fa)', bd: today ? 'var(--ac)' : 'transparent', bg: inM ? 'transparent' : 'color-mix(in srgb,var(--bg) 50%,transparent)' }; });
+    const wCols = Array.from({ length: 7 }, (_, i) => { const dt = new Date(2026, 9, 26 + i), k = key(dt), list = evs[k] || [], today = i === 0; return { w: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dt.getDay()], n: dt.getDate(), ev: list, cnt: list.length ? list.length + ' việc' : '', bd: today ? 'var(--ac)' : 'var(--ln2)', sh: today ? 'inset 0 2px 0 var(--ac)' : 'none', fg: today ? 'var(--ac)' : 'var(--tx)' }; });
+    const dayList = (evs['26/10'] || []);
+    const timed = dayList.filter(e => /^\d\d:\d\d$/.test(e.time || '')).map(e => { const [h, m] = e.time.split(':').map(Number); return Object.assign({}, e, { top: ((h - 7) * 56 + m / 60 * 56) + 'px', h: Math.max(30, e.dur / 60 * 56 - 4) + 'px', bg: e.g ? 'color-mix(in srgb,var(--in) 14%,var(--sf))' : 'var(--sf)' }); });
+    const allday = dayList.filter(e => !/^\d\d:\d\d$/.test(e.time || '')).concat(rows.filter(r => r.over).map(r => ({ t: r.t, c: 'var(--dg)', open: r.open, icon: 'ph-fill ph-flag', ic: 'var(--dg)', meta: 'Quá hạn · ' + r.an })));
+    return { isCal: true, isMonth: sc === 'month', isWeek: sc === 'week', isDay: sc === 'day', isTL: sc === 'gantt',
+      calTitle: { month: 'Tháng 10, 2026', week: 'Tuần 44 · 26/10 – 01/11', day: 'Thứ Hai, 26/10', gantt: 'Timeline · 20/10 – 08/11' }[sc], calNote: notes[sc],
+      calTabs: tabs.map(([k, label]) => ({ label, go: this.go(k), fg: sc === k ? 'var(--ac)' : 'var(--mu)', sh: sc === k ? 'inset 0 0 0 1px var(--ac)' : 'none' })),
+      wdays: ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'], mCells, wCols, timed, allday,
+      hours: Array.from({ length: 13 }, (_, i) => ({ h: String(7 + i).padStart(2, '0') + ':00', top: i * 56 + 'px' })),
+      tlGroups: [['eos', [['t13', 0, 4], ['t1', 2, 5], ['t9', 3, 7], ['t14', 4, 13], ['t11', 9, 10]]], ['phap', [['t3', 0, 4], ['t4', 2, 5], ['t15', 6, 2]]], ['tc', [['t17', 0, 1], ['t2', 1, 5], ['r1', 9, 1]]], ['ts', [['t7', 5, 2], ['t16', 6, 2]]]].map(([p, items]) => ({ n: this.P[p][0], c: this.P[p][1], bars: items.map(([id, x, w]) => { const r = rows.find(q => q.id === id); return Object.assign({}, r, { x: x * 40 + 'px', w: w * 40 - 4 + 'px', fill: 'color-mix(in srgb,' + r.stColor + ' 22%,transparent)' }); }) }))
+    };
+  }
+  listCfg(sc, rows) {
+    const G = (label, icon, color, rs, action) => ({ label, icon, color, rows: rs, count: rs.length, action: action || '' });
+    const core = rows.filter(r => ['over', 'today', 'later'].includes(r.g));
+    const S = (t, icon, ic, c) => ({ t, icon, ic: ic || 'var(--mu)', c: c || 'var(--mu)' });
+    if (sc === 'upcoming') {
+      const open = rows.filter(r => r.g === 'later' && !r.done);
+      const by = d => open.filter(r => r.due === d);
+      const rest = open.filter(r => !['27/10', '29/10', '30/10'].includes(r.due));
+      return { eyebrow: '27/10 – 08/11', title: 'Sắp tới', summary: [S(open.length + ' việc trong 2 tuần', 'ph ph-calendar-dots'), S('2 việc ngày mai', 'ph-bold ph-clock-countdown', 'var(--wn)')], note: 'Nhóm theo ngày với tiêu đề dính khi cuộn; ngày mai nổi bật bằng biểu tượng đồng hồ vàng. Các ngày xa gộp thành “Tuần sau” để danh sách không dài vô tận.', groups: [G('Ngày mai · T3 27/10', 'ph-bold ph-clock-countdown', 'var(--wn)', by('27/10')), G('T5 29/10', 'ph ph-calendar-blank', 'var(--mu)', by('29/10')), G('T6 30/10', 'ph ph-calendar-blank', 'var(--mu)', by('30/10')), G('Tuần sau · 02/11 – 08/11', 'ph ph-calendar-dots', 'var(--mu)', rest)] };
+    }
+    if (sc === 'recurring') { const rs = rows.filter(r => r.g === 'rec'); return { eyebrow: 'Tự tạo lại theo lịch', title: 'Việc định kỳ', summary: [S(rs.length + ' mẫu đang chạy', 'ph ph-repeat'), S('2 việc do Hermes tự chạy', 'ph-fill ph-sparkle', 'var(--ai)')], note: 'Cột Hạn hiển thị quy tắc lặp (Hằng ngày / tuần / tháng) thay cho ngày cụ thể; lần chạy kế tiếp xem trong chi tiết. Việc định kỳ giao cho Hermes được AI tự thực hiện và ghi nhật ký.', groups: [G('Hằng ngày', 'ph ph-sun', 'var(--mu)', rs.filter(r => r.rep.startsWith('Hằng ngày'))), G('Hằng tuần', 'ph ph-calendar-dots', 'var(--mu)', rs.filter(r => r.rep.startsWith('Hằng tuần'))), G('Hằng tháng', 'ph ph-calendar', 'var(--mu)', rs.filter(r => r.rep.startsWith('Hằng tháng')))] }; }
+    if (sc === 'anytime') { const rs = rows.filter(r => r.g === 'any'); return { eyebrow: 'Không có hạn chót', title: 'Bất cứ lúc nào', summary: [S(rs.length + ' việc', 'ph ph-infinity')], note: 'Việc không hạn tách riêng để không làm nhiễu Hôm nay. Kéo một dòng sang Hôm nay (hoặc vuốt trên mobile) để lên lịch.', groups: [G('Đang làm', 'ph-fill ph-circle-half', 'var(--in)', rs.filter(r => r.st === 'doing')), G('Chưa bắt đầu', 'ph ph-circle-dashed', 'var(--mu)', rs.filter(r => r.st !== 'doing'))] }; }
+    if (sc === 'completed') { const rs = rows.filter(r => r.done); return { eyebrow: 'Tuần 44', title: 'Hoàn thành', summary: [S(rs.length + ' việc tuần này', 'ph-fill ph-check-circle', 'var(--ok)'), S('89% đúng hạn', 'ph ph-target')], note: 'Gom theo ngày hoàn thành; tick lại để mở lại việc (có toast Hoàn tác). Tiêu đề gạch ngang nhưng vẫn đủ tương phản để đọc lại.', groups: [G('Hôm nay', 'ph ph-sun-horizon', 'var(--act)', rs.filter(r => r.g === 'today' || r.g === 'over')), G('Tuần này', 'ph ph-calendar-check', 'var(--mu)', rs.filter(r => r.g === 'later'))] }; }
+    if (sc === 'backlog') { const rs = rows.filter(r => r.g === 'back'); return { eyebrow: 'Chưa giao · chưa lên lịch', title: 'Backlog', summary: [S(rs.length + ' ý tưởng & yêu cầu', 'ph ph-archive')], note: 'Backlog là nơi chứa việc chưa giao người làm và chưa có hạn. Avatar trống có viền đứt để thấy ngay việc chưa có chủ. Quản lý kéo việc vào dự án hoặc nhờ Hermes đề xuất người phù hợp.', groups: [G('Chưa giao', 'ph ph-user-circle-dashed', 'var(--mu)', rs, 'Nhờ Hermes phân công')] }; }
+    if (sc === 'all') {
+      const f = this.state.stf || 'all', rs = rows.filter(r => r.g !== 'back' && (f === 'all' || r.st === f));
+      return { eyebrow: 'EOS Holdings · 4 dự án', title: 'Tất cả task', filters: true, empty: rs.length === 0, summary: [S(rs.length + ' task khớp bộ lọc', 'ph ph-funnel')], note: 'Bộ lọc gom trên một thanh: trạng thái dạng phân đoạn có biểu tượng, phạm vi Cá nhân/Đội nhóm/Chưa giao, nhiều người làm, danh mục, khoảng ngày, sắp xếp. Bộ lọc đang bật có viền nhấn và số lượng. Kết quả nhóm theo dự án.', groups: Object.keys(this.P).map(k => G(this.P[k][0], 'ph-fill ph-square', this.P[k][1], rs.filter(r => r.p === k))).filter(g => g.count) };
+    }
+    return { eyebrow: 'Thứ Hai, 26/10/2026 · Tuần 44', title: 'Hôm nay', summary: [S('3 việc quá hạn', 'ph-fill ph-flag', 'var(--dg)', 'var(--dg)'), S('5 việc trong ngày', 'ph ph-sun-horizon'), S('Hermes đang xử lý 1 việc', 'ph-fill ph-sparkle', 'var(--ai)')], note: 'Quá hạn tách thành nhóm riêng ở đầu, đánh dấu bằng cờ + dải đỏ cạnh trái (không chỉ dựa vào màu). Dòng task chuyển từ khối chữ tự do sang bảng cột cố định — người làm, hạn, ưu tiên, trạng thái luôn ở cùng vị trí nên mắt quét dọc nhanh hơn. Việc do Hermes làm có avatar vuông và nhãn AI. Bấm dòng mở panel chi tiết bên phải, không rời danh sách.',
+      groups: [G('Quá hạn', 'ph-fill ph-flag', 'var(--dg)', core.filter(r => r.g === 'over'), 'Dời tất cả sang hôm nay'), G('Hôm nay · 26/10', 'ph ph-sun-horizon', 'var(--act)', core.filter(r => r.g === 'today'))] };
+  }
+  go(k) { return () => this.setState({ screen: k, project: null }); }
+  renderVals() {
+    const sc = this.state.screen, rows = this.T.map(t => this.deco(t));
+    const nav = (key, label, icon, count, alert) => ({ key, label, icon: 'ph ' + icon, count, alert, go: this.go(key), bg: sc === key ? 'var(--acbg)' : 'transparent', fg: sc === key ? 'var(--act)' : 'var(--mu)', mark: sc === key ? 'inset 2px 0 0 var(--ac)' : 'none' });
+    return {
+      showNotes: this.props.showNotes ?? true,
+      navGroups: [
+        { label: 'Việc của tôi', items: [nav('today', 'Hôm nay', 'ph-sun-horizon', 8, 3), nav('upcoming', 'Sắp tới', 'ph-calendar-dots', 12), nav('recurring', 'Việc định kỳ', 'ph-repeat', 5), nav('anytime', 'Bất cứ lúc nào', 'ph-tray', 4), nav('completed', 'Hoàn thành', 'ph-check-square', 41), nav('backlog', 'Backlog', 'ph-archive', 6)] },
+        { label: 'Quản lý', items: [nav('overview', 'Tổng quan', 'ph-chart-line-up', ''), nav('all', 'Tất cả task', 'ph-list-checks', 64, 5), nav('projects', 'Dự án', 'ph-folders', 4), nav('members', 'Thành viên', 'ph-users-three', 7), nav('hr', 'Nhân sự', 'ph-identification-card', '')] },
+        { label: 'Góc nhìn', items: [nav('kanban', 'Kanban', 'ph-kanban', ''), nav('eisen', 'Eisenhower', 'ph-squares-four', ''), nav('month', 'Lịch tháng', 'ph-calendar', ''), nav('day', 'Lịch ngày', 'ph-clock', ''), nav('week', 'Tuần', 'ph-columns', ''), nav('gantt', 'Timeline', 'ph-chart-bar-horizontal', '')] }
+      ],
+      isList: ['today', 'upcoming', 'recurring', 'anytime', 'completed', 'backlog', 'all'].includes(sc),
+      L: (c => Object.assign(c, { groups: c.groups.filter(g => g.count) }))(this.listCfg(sc, rows)),
+      ...this.calVals(sc, rows),
+      isMembers: sc === 'members', isSettings: sc === 'settings', goSettings: this.go('settings'),
+      inviteCode: this.state.code || 'EOS-4MXR', genCode: () => this.setState({ code: 'EOS-' + Math.random().toString(36).slice(2, 6).toUpperCase(), toast: 'Đã tạo mã mời mới — hết hạn sau 7 ngày' }),
+      roles: [['Quản trị viên', 'ph-fill ph-crown-simple', 'var(--wn)', 1, ['Toàn quyền công ty, thanh toán', 'Quản lý thành viên & vai trò', 'Xem mọi dự án, Nhân sự, KPI']], ['Quản lý', 'ph-fill ph-user-gear', 'var(--in)', 2, ['Tạo dự án, giao việc trong phòng', 'Xem tải công việc của đội', 'Duyệt việc hoàn thành']], ['Thành viên', 'ph-fill ph-user', 'var(--mu)', 3, ['Xem & làm việc được giao', 'Tạo task cá nhân', 'Bình luận, đính kèm']], ['AI Agent', 'ph-fill ph-sparkle', 'var(--ai)', 1, ['Nhận/giao việc trong phạm vi cấp', 'Bình luận, báo cáo tự động', 'Mọi hành động gắn nhãn AI']]].map(([n, icon, c, cnt, perms]) => ({ n, icon, c, cnt, perms, bd: n === 'AI Agent' ? 'color-mix(in srgb,var(--ai) 45%,transparent)' : 'var(--ln2)' })),
+      memberRows: [['tung', 'tung@enterpriseos.bond', 'Ban Giám đốc', 'admin', 'Đang online', 1], ['tuan', 'tuan@enterpriseos.bond', 'Pháp chế', 'manager', '10 phút', 1], ['duong', 'duong@enterpriseos.bond', 'Kỹ thuật', 'manager', 'Đang online', 1], ['lan', 'lan@enterpriseos.bond', 'Hành chính', 'member', '1 giờ', 0], ['minh', 'minh@enterpriseos.bond', 'Kỹ thuật', 'member', 'Hôm qua', 0], ['thao', 'thao@enterpriseos.bond', 'Kế toán', 'member', '25 phút', 0], ['hermes', 'Agent · API key ••••3f9a', 'Điều phối AI', 'agent', 'Đang chạy', 1]].map(([k, email, dept, role, seen, on]) => { const u = this.U[k], ai = !!u[2]; return { n: u[0], i: ai ? '' : u[1], aicon: ai ? 'ph-fill ph-sparkle' : '', ai, email, dept, role, seen, dot: on ? 'var(--ok)' : 'var(--fa)', r: ai ? '9px' : '50%', abg: ai ? 'var(--aibg)' : 'var(--sf2)', abd: ai ? 'var(--ai)' : 'var(--ln)', afg: ai ? 'var(--ai)' : 'var(--tx)' }; }),
+      accents: [['Tím Nocturne (mặc định)', 'var(--color-accent)'], ['Lam', 'oklch(0.70 0.10 240)'], ['Ngọc', 'oklch(0.72 0.09 185)'], ['Đồng', 'oklch(0.72 0.09 60)']].map(([n, c], i) => ({ n, c, on: (this.state.acc || 0) === i, ring: (this.state.acc || 0) === i ? '0 0 0 2px var(--tx)' : '0 0 0 1px var(--ln)', go: () => this.setState({ acc: i }) })),
+      accentName: ['Tím Nocturne (mặc định)', 'Lam', 'Ngọc', 'Đồng'][this.state.acc || 0],
+      workdays: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((n, i) => ({ n, bd: i < 5 ? 'var(--ac)' : i === 5 ? 'color-mix(in srgb,var(--ac) 45%,transparent)' : 'var(--ln)', fg: i < 6 ? 'var(--act)' : 'var(--fa)' })),
+      templates: [['Hồ sơ đất đai', '6 mục · bản đồ, xác nhận ranh giới, đo đạc…', 'Dùng 14 lần'], ['Khoá sổ cuối tháng', '8 mục · đối chiếu ngân hàng, công nợ, kho…', 'Dùng 9 lần'], ['Onboarding nhân sự mới', '7 mục · tài khoản, thiết bị, đào tạo…', 'Dùng 5 lần']].map(([n, items, used]) => ({ n, items, used })),
+      popOpen: !!this.state.pop, popNotif: this.state.pop === 'notif', popCo: this.state.pop === 'co', closePop: () => this.setState({ pop: null }),
+      toggleNotif: () => this.setState({ pop: this.state.pop === 'notif' ? null : 'notif' }), toggleCo: () => this.setState({ pop: this.state.pop === 'co' ? null : 'co' }),
+      coName: ['EOS Holdings', 'EOS Xây dựng', 'EOS Bất động sản'][this.state.co || 0], coIni: ['EH', 'EX', 'EB'][this.state.co || 0],
+      companies: [['EH', 'EOS Holdings', 'Quản trị viên · 4 dự án', 3], ['EX', 'EOS Xây dựng', 'Quản lý · 6 dự án', 2], ['EB', 'EOS Bất động sản', 'Thành viên · 2 dự án', 0]].map(([i, n, meta, over], k) => ({ i, n, meta, over, on: (this.state.co || 0) === k, bg: (this.state.co || 0) === k ? 'var(--acbg)' : 'transparent', go: () => this.setState({ co: k, pop: null, toast: 'Đã chuyển sang ' + n }) })),
+      notifs: [['tung', 'nhắc tên bạn trong', 'Rà soát hợp đồng hợp tác đầu tư', '25/10 21:10', 1, 't4'], ['hermes', 'đính kèm bảng so sánh vào', 'Rà soát hợp đồng hợp tác đầu tư', '07:00', 1, 't4'], ['hermes', 'cảnh báo quá hạn 3 ngày:', 'Gửi biên bản nghiệm thu móng block B', '08:00', 1, 't3'], ['duong', 'đánh dấu bị chặn', 'Khắc phục sự cố API 502', '25/10 17:42', 1, 't1'], ['tuan', 'giao cho bạn', 'Duyệt đề xuất tuyển kỹ sư dự toán', '25/10 15:20', 1, 't7'], ['thao', 'hoàn thành', 'Nộp tờ khai thuế GTGT tháng 9', '20/10 16:05', 0, 't17']].map(([k, what, task, ts, unread, id]) => { const u = this.U[k], ai = !!u[2]; return { who: u[0], what, task, ts, unread: !!unread, i: ai ? '' : u[1], icon: ai ? 'ph-fill ph-sparkle' : '', r: ai ? '8px' : '50%', abg: ai ? 'var(--aibg)' : 'var(--sf2)', abd: ai ? 'var(--ai)' : 'var(--ln)', afg: ai ? 'var(--ai)' : 'var(--tx)', bg: unread ? 'color-mix(in srgb,var(--ac) 5%,transparent)' : 'transparent', open: () => this.setState({ pop: null, detail: id }) }; }),
+      isEisen: sc === 'eisen',
+      quads: [['do', 'Làm ngay', 'Quan trọng · Khẩn cấp', 'var(--dg)', 'ph-fill ph-lightning'], ['plan', 'Lên lịch', 'Quan trọng · Không khẩn', 'var(--in)', 'ph ph-calendar-plus'], ['delegate', 'Giao việc', 'Khẩn · Không quan trọng', 'var(--wn)', 'ph ph-user-switch'], ['later', 'Để sau', 'Không khẩn · Không quan trọng', 'var(--mu)', 'ph ph-hourglass']].map(([k, label, sub, c, icon]) => {
+        const eq = this.state.eq || {}, qOf = r => eq[r.id] || (r.imp && r.urg ? 'do' : r.imp ? 'plan' : r.urg ? 'delegate' : 'later');
+        const items = rows.filter(r => ['over', 'today', 'later', 'any'].includes(r.g) && !r.done && qOf(r) === k).map(r => Object.assign({}, r, { dragStart: e => { e.dataTransfer.setData('text/plain', r.id); this.setState({ drag: r.id }); }, op: this.state.drag === r.id ? .4 : 1 }));
+        const pos = { do: [2, 2], plan: [2, 3], delegate: [3, 2], later: [3, 3] }[k];
+        return { label, sub, c, icon, items, n: items.length, row: pos[0], col: pos[1], bd: this.state.overQ === k ? 'var(--ac)' : 'var(--ln2)',
+          over: e => { e.preventDefault(); if (this.state.overQ !== k) this.setState({ overQ: k }); },
+          drop: e => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || this.state.drag; this.setState({ eq: Object.assign({}, eq, { [id]: k }), drag: null, overQ: null, toast: 'Đã chuyển sang “' + label + '” — cờ Quan trọng/Khẩn cấp được cập nhật' }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); } };
+      }),
+      stFilters: [['all', 'Tất cả', 'ph ph-stack'], ['todo', 'Chưa làm', 'ph ph-circle-dashed'], ['doing', 'Đang làm', 'ph-fill ph-circle-half'], ['paused', 'Tạm dừng', 'ph-fill ph-pause-circle'], ['done', 'Hoàn thành', 'ph-fill ph-check-circle']].map(([k, label, icon]) => ({ label, icon, go: () => this.setState({ stf: k }), fg: (this.state.stf || 'all') === k ? 'var(--ac)' : 'var(--mu)', sh: (this.state.stf || 'all') === k ? 'inset 0 0 0 1px var(--ac)' : 'none' })),
+      clearSt: () => this.setState({ stf: 'all' }),
+      todayGroups: [
+        { label: 'Quá hạn', icon: 'ph-fill ph-flag', color: 'var(--dg)', count: rows.filter(r => r.g === 'over').length, action: 'Dời tất cả sang hôm nay', rows: rows.filter(r => r.g === 'over') },
+        { label: 'Hôm nay · 26/10', icon: 'ph ph-sun-horizon', color: 'var(--act)', count: rows.filter(r => r.g === 'today').length, action: '', rows: rows.filter(r => r.g === 'today') }
+      ],
+      isOverview: sc === 'overview',
+      periods: [['week', 'Tuần'], ['month', 'Tháng'], ['quarter', 'Quý']].map(([k, l]) => ({ label: l, go: () => this.setState({ period: k }), fg: this.state.period === k ? 'var(--ac)' : 'var(--mu)', sh: this.state.period === k ? 'inset 0 0 0 1px var(--ac)' : 'none' })),
+      tiles: [
+        { label: 'Tổng', icon: 'ph ph-stack', v: 64, sub: '+9 so với tuần trước', c: 'var(--ln)', vc: 'var(--tx)' },
+        { label: 'Đã xong', icon: 'ph-fill ph-check-circle', v: 41, sub: '64% tổng số', c: 'var(--ok)', vc: 'var(--tx)' },
+        { label: 'Đang làm', icon: 'ph-fill ph-circle-half', v: 12, sub: '3 việc do Hermes', c: 'var(--in)', vc: 'var(--tx)' },
+        { label: 'Quá hạn', icon: 'ph-fill ph-flag', v: 5, sub: 'Cũ nhất: trễ 3 ngày', c: 'var(--dg)', vc: 'var(--dg)' },
+        { label: 'Hạn 3 ngày', icon: 'ph-bold ph-clock-countdown', v: 7, sub: 'Đến 29/10', c: 'var(--wn)', vc: 'var(--tx)' },
+        { label: 'Hạn 7 ngày', icon: 'ph ph-calendar-dots', v: 11, sub: 'Đến 02/11', c: 'var(--ln)', vc: 'var(--tx)' }
+      ],
+      risks: [
+        { t: 'Nộp hồ sơ chấp thuận chủ trương đầu tư', why: 'Hạn 30/10 · còn 4/9 việc con, Nguyễn Quốc Tuấn đang có 6 việc' },
+        { t: 'Khoá sổ BCTC Q3', why: 'Hạn 31/10 · phụ thuộc “Đối chiếu công nợ” đang quá hạn' },
+        { t: 'Kết nối Hermes với Kanban phòng ban', why: 'Bị chặn bởi lỗi API 502' }
+      ],
+      statusMix: [['Hoàn thành', 41, 'var(--ok)', 'ph-fill ph-check-circle'], ['Đang làm', 12, 'var(--in)', 'ph-fill ph-circle-half'], ['Tạm dừng', 3, 'var(--wn)', 'ph-fill ph-pause-circle'], ['Chưa làm', 8, 'var(--fa)', 'ph ph-circle-dashed']].map(([label, n, c, icon]) => ({ label, n, c, icon, w: (n / 64 * 100) + '%' })),
+      byPerson: [['Trần Đức Dương', 9, 3, 1], ['Nguyễn Quốc Tuấn', 7, 4, 1], ['Lan Trần', 6, 2, 1], ['Thảo Vũ', 8, 1, 1], ['Minh Nguyễn', 5, 2, 0], ['Hermes', 6, 3, 0, 1]].map(([n, d, g, o, ai]) => ({ n, ai: !!ai, d: d * 3.6 + '%', g: g * 3.6 + '%', o: o * 3.6 + '%', tot: d + g + o })),
+      byProject: [['Enterprise OS v1.3', 7, 9, 4], ['Hồ sơ pháp lý KĐT Phú Mỹ', 6, 5, 2], ['Báo cáo tài chính Q3', 4, 6, 3], ['Tuyển dụng & đào tạo Q4', 1, 5, 4]].map(([n, h, m, l]) => ({ n, h, m, l, hw: h * 5 + '%', mw: m * 5 + '%', lw: l * 5 + '%' })),
+      burn: [48,47,45,45,41,39,37,35,31,30,26,24,22,15].map((v,i)=>({ h: v/48*100+'%', ideal: (48-48*i/13)/48*100+'%', c: i===13?'var(--ac)':'color-mix(in srgb,var(--ac) 45%,transparent)' })),
+      isKanban: sc === 'kanban',
+      isProjects: sc === 'projects' && !this.state.project,
+      isProject: sc === 'projects' && !!this.state.project,
+      showBoard: sc === 'kanban' || (sc === 'projects' && this.state.project && this.state.ptab === 'kanban'),
+      cols: ['todo', 'doing', 'paused', 'done'].map(k => {
+        const cards = rows.filter(r => r.st === k && ['over', 'today', 'later'].includes(r.g) && !['t15','t16','t17','t18'].includes(r.id) && (sc === 'kanban' || r.p === this.state.project)).map(r => Object.assign(r, {
+          sub1: r.sub[1] > 0, subW: (r.sub[1] ? r.sub[0] / r.sub[1] * 100 : 0) + '%', op: this.state.drag === r.id ? .4 : 1,
+          dragStart: e => { e.dataTransfer.setData('text/plain', r.id); this.setState({ drag: r.id }); }
+        }));
+        return { label: this.ST[k][0], icon: this.ST[k][1], c: this.ST[k][2], n: cards.length, cards, bd: this.state.over === k ? 'var(--ac)' : 'var(--ln2)',
+          over: e => { e.preventDefault(); if (this.state.over !== k) this.setState({ over: k }); },
+          leave: () => {}, drop: e => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || this.state.drag; const kb = Object.assign({}, this.state.kb, { [id]: k }); const d = Object.assign({}, this.state.done, { [id]: k === 'done' }); this.setState({ kb, done: d, drag: null, over: null, toast: 'Đã chuyển sang “' + this.ST[k][0] + '”' }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); } };
+      }),
+      projectCards: [['eos', 'EOS Holdings', '25/11', 'Hoàn thiện nền tảng giao việc, module công văn và kết nối Hermes.', 58, 14, 24, 2, ['duong', 'minh', 'lan', 'hermes']], ['phap', 'EOS Holdings', '10/12', 'Bộ hồ sơ chấp thuận chủ trương đầu tư khu nhà ở Phú Mỹ.', 41, 9, 22, 1, ['tuan', 'tung', 'lan']], ['tc', 'EOS Xây dựng', '05/11', 'Khoá sổ, đối chiếu, lập và trình ký BCTC quý 3.', 72, 13, 18, 1, ['thao', 'tung']], ['ts', 'EOS Xây dựng', '20/11', 'Tuyển kỹ sư dự toán, pháp chế; onboarding nhân sự mới.', 30, 3, 10, 0, ['tuan', 'tung', 'hermes']]].map(([k, co, due, d, pct, dn, tot, over, mem]) => ({
+        n: this.P[k][0], c: this.P[k][1], co, due, d, pct, doneN: dn, tot, over, w: pct + '%', memN: mem.length,
+        mem: mem.map(m => this.U[m][2] ? { i: '✦', r: '6px', bg: 'var(--aibg)', bd: 'var(--ai)', fg: 'var(--ai)' } : { i: this.U[m][1], r: '50%', bg: 'var(--sf2)', bd: 'var(--ln)', fg: 'var(--tx)' }),
+        open: () => this.setState({ project: k, ptab: 'kanban' })
+      })),
+      backProjects: () => this.setState({ project: null }),
+      pName: this.state.project ? this.P[this.state.project][0] : '', pColor: this.state.project ? this.P[this.state.project][1] : 'transparent',
+      ptabs: [['kanban', 'Kanban', 'ph ph-kanban'], ['list', 'Danh sách', 'ph ph-list-bullets'], ['mind', 'Mindmap', 'ph ph-graph'], ['gantt', 'Gantt', 'ph ph-chart-bar-horizontal']].map(([k, label, icon]) => ({ label, icon, go: () => this.setState({ ptab: k }), fg: this.state.ptab === k ? 'var(--ac)' : 'var(--mu)', sh: this.state.ptab === k ? 'inset 0 -2px 0 var(--ac)' : 'none' })),
+      isPList: this.state.ptab === 'list', isPMind: this.state.ptab === 'mind', isPGantt: this.state.ptab === 'gantt',
+      pRows: rows.filter(r => r.p === this.state.project && ['over', 'today', 'later'].includes(r.g)).map(r => Object.assign(r, { child: ['t9', 't10', 't13'].includes(r.id), indent: ['t9', 't10', 't13'].includes(r.id) ? '22px' : '0', setSt: e => { const v = e.target.value; this.setState({ kb: Object.assign({}, this.state.kb, { [r.id]: v }), done: Object.assign({}, this.state.done, { [r.id]: v === 'done' }) }); } })),
+      mind: [['Module Công văn', ['t13', 't9', 't10']], ['Hermes AI', ['t14', 't6']], ['Hạ tầng & dữ liệu', ['t1', 't11']], ['Phát hành v1.3', ['t5', 't12', 't8']]].map(([n, ids]) => { const k = ids.map(i => rows.find(r => r.id === i)); return { n, meta: k.filter(x => x.done).length + '/' + k.length + ' xong', kids: k.map(x => ({ t: x.t, icon: x.stIcon, c: x.stColor })) }; }),
+      gDays: Array.from({ length: 20 }, (_, i) => { const dt = new Date(2026, 9, 20 + i), wd = dt.getDay(); return { d: String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0'), w: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][wd], c: i === 6 ? 'var(--ac)' : 'var(--fa)', bg: (wd === 0 || wd === 6) ? 'var(--ln2)' : 'transparent' }; }),
+      gRows: [['t13', 0, 4], ['t1', 2, 5], ['t9', 3, 7], ['t8', 6, 1], ['t5', 5, 3], ['t14', 4, 13], ['t10', 8, 6], ['t12', 7, 4], ['t11', 9, 10], ['t6', 6, 1]].map(([id, x, w]) => { const r = rows.find(q => q.id === id); return Object.assign({}, r, { x: x * 40 + 'px', w: w * 40 - 4 + 'px', fill: 'color-mix(in srgb,' + r.stColor + ' 22%,transparent)' }); }),
+      isHR: sc === 'hr',
+      hrTiles: [['Tổng nhân sự', 6, 'ph ph-users', 'var(--ln)'], ['Đang rảnh', 1, 'ph ph-coffee', 'var(--ok)'], ['Có task bị chặn', 1, 'ph-bold ph-prohibit', 'var(--dg)'], ['Có task chậm tiến độ', 3, 'ph-bold ph-clock-countdown', 'var(--wn)']].map(([label, v, icon, c]) => ({ label, v, icon, c })),
+      hrBars: [['Trần Đức Dương', 14, 2], ['Thảo Vũ', 12, 1], ['Nguyễn Quốc Tuấn', 10, 3], ['Lan Trần', 9, 2], ['Minh Nguyễn', 8, 0], ['Vũ Cao Tùng', 6, 1]].map(([n, o, l]) => ({ n, tot: o + l, oh: o * 8 + 'px', lh: l * 8 + 'px' })),
+      people: [
+        ['duong', 'Kỹ thuật · Quản lý', 3, 9, 14, '88%', 'Bị chặn: “Khắc phục sự cố API 502” chờ quyền máy chủ', 'dg'],
+        ['tuan', 'Pháp chế · Quản lý', 4, 7, 10, '77%', 'Chậm: “Soạn tờ trình chấp thuận chủ trương” còn 4 ngày, 3/9 việc con', 'wn'],
+        ['thao', 'Kế toán', 2, 4, 12, '92%', 'Chậm: “Đối chiếu công nợ NCC tháng 9” trễ 1 ngày', 'wn'],
+        ['lan', 'Hành chính', 3, 6, 9, '82%', 'Chậm: “Biên bản nghiệm thu móng block B” trễ 3 ngày', 'wn'],
+        ['minh', 'Kỹ thuật', 2, 3, 8, '100%', '', ''],
+        ['tung', 'Ban Giám đốc · Quản trị viên', 1, 2, 6, '86%', '', ''],
+        ['hermes', 'Điều phối AI · không tính KPI', 2, 3, 21, '100%', 'Đang tổng hợp báo cáo tuần 43 — dự kiến xong 16:30', 'ai']
+      ].map(([k, dept, lv, open, doneM, ontime, issue, it]) => { const u = this.U[k], L = [['Rảnh', 'ph ph-coffee', 'var(--ok)'], ['Vừa sức', 'ph ph-gauge', 'var(--in)'], ['Bận', 'ph-bold ph-hourglass-medium', 'var(--wn)'], ['Quá tải', 'ph-bold ph-warning-octagon', 'var(--dg)']][lv - 1]; return {
+        n: u[0], i: u[2] ? '' : u[1], aicon: u[2] ? 'ph-fill ph-sparkle' : '', r: u[2] ? '10px' : '50%', abg: u[2] ? 'var(--aibg)' : 'var(--sf2)', abd: u[2] ? 'var(--ai)' : 'var(--ln)', afg: u[2] ? 'var(--ai)' : 'var(--tx)',
+        dept, load: L[0], licon: L[1], lc: L[2], meter: [1, 2, 3, 4].map(x => ({ c: x <= lv ? L[2] : 'var(--ln2)' })), open, doneM, ontime, issue,
+        ic: { dg: 'var(--dg)', wn: 'var(--wn)', ai: 'var(--ai)' }[it] || 'var(--mu)', iicon: { dg: 'ph-bold ph-prohibit', wn: 'ph-bold ph-clock-countdown', ai: 'ph-fill ph-sparkle' }[it] || '' }; }),
+      hasDetail: !!this.state.detail, d: rows.find(r => r.id === this.state.detail) || rows[3],
+      closeDetail: () => this.setState({ detail: null }),
+      mentionDisplay: this.state.mention ? 'block' : 'none',
+      onChatInput: e => this.setState({ mention: /@\S*$/.test(e.target.value) }),
+      subtasks: [['Đối chiếu tiến độ góp vốn với PL 02', 1, 'QT', '22/10'], ['Rà soát mục 7.2 phạt chậm góp vốn', 1, 'QT', '24/10'], ['So sánh với bản 2 (track changes)', 1, 'Hermes', '24/10'], ['Ý kiến về cơ chế phân chia sản phẩm', 0, 'QT', '26/10'], ['Gửi bản tổng hợp cho HĐQT', 0, 'VT', '26/10']].map(([t, on, who, due]) => ({ t, who, due, icon: on ? 'ph-fill ph-check-circle' : 'ph ph-circle', c: on ? 'var(--ok)' : 'var(--fa)', strike: on ? 'line-through' : 'none', tc: on ? 'var(--mu)' : 'var(--tx)' })),
+      checklist: [['Đọc đủ 14 điều khoản', true], ['Đánh dấu điều khoản rủi ro', true], ['Đề xuất phương án sửa', false], ['Xin ý kiến Ban Giám đốc', false]].map(([t, on]) => ({ t, on })),
+      chat: [
+        ['tung', '25/10 21:10', '@Nguyễn Quốc Tuấn', 'chú ý điều khoản phạt chậm góp vốn ở mục 7.2 nhé, đối tác đề xuất 0,05%/ngày là cao.'],
+        ['tuan', '25/10 21:32', '', 'Đã ghi nhận, em đề xuất hạ xuống 0,03%/ngày và trần 8% giá trị phần vốn chậm góp.'],
+        ['hermes', '26/10 07:00', '', 'Tôi đã so sánh bản 3 với bản 2: có 11 thay đổi, 3 thay đổi ảnh hưởng nghĩa vụ tài chính (mục 5.1, 7.2, 9.4). Bảng so sánh đã đính kèm.'],
+        ['lan', '26/10 08:15', '@Hermes', 'gửi giúp chị bản so sánh dạng PDF để in cho buổi họp nhé.']
+      ].map(([k, ts, at, text]) => { const u = this.U[k], ai = !!u[2]; return { n: u[0], i: ai ? '' : u[1], aicon: ai ? 'ph-fill ph-sparkle' : '', ai, ts, at, text, r: ai ? '8px' : '50%', abg: ai ? 'var(--aibg)' : 'var(--sf2)', abd: ai ? 'var(--ai)' : 'var(--ln)', afg: ai ? 'var(--ai)' : 'var(--tx)', bg: ai ? 'color-mix(in srgb,var(--ai) 8%,var(--sf))' : 'var(--sf)', bd: ai ? 'color-mix(in srgb,var(--ai) 40%,transparent)' : 'var(--ln2)' }; }),
+      log: [['Hermes', 'đính kèm “Bảng so sánh bản 2–3.xlsx”', '26/10 07:00', 'ph-fill ph-sparkle', 'var(--ai)'], ['Nguyễn Quốc Tuấn', 'đổi trạng thái Chưa làm → Đang làm', '24/10 09:12', 'ph ph-arrows-left-right', 'var(--mu)'], ['Vũ Cao Tùng', 'bật cờ Khẩn cấp', '23/10 16:40', 'ph ph-lightning', 'var(--mu)'], ['Vũ Cao Tùng', 'tạo task và giao cho Nguyễn Quốc Tuấn', '20/10 08:30', 'ph ph-plus-circle', 'var(--mu)']].map(([who, what, ts, icon, c]) => ({ who, what, ts, icon, c })),
+      isOther: !['today', 'upcoming', 'recurring', 'anytime', 'completed', 'backlog', 'all', 'overview', 'kanban', 'projects', 'hr', 'eisen', 'month', 'day', 'week', 'gantt', 'members', 'settings'].includes(sc),
+      form: this.state.form, closeForm: () => this.setState({ form: false }),
+      formTabs: [['manual', 'Tạo thủ công', 'ph ph-pencil-simple-line'], ['ai', 'Tạo bằng AI', 'ph-fill ph-sparkle']].map(([k, label, icon]) => ({ label, icon, go: () => this.setState({ formTab: k, aiStep: 1 }), fg: this.state.formTab === k ? 'var(--ac)' : 'var(--mu)', sh: this.state.formTab === k ? 'inset 0 -2px 0 var(--ac)' : 'none' })),
+      isManual: this.state.formTab === 'manual', isAI: this.state.formTab === 'ai',
+      aiStep1: this.state.aiStep === 1, aiStep2: this.state.aiStep === 2 && this.state.formTab === 'ai', step2c: this.state.aiStep === 2 ? 'var(--ac)' : 'var(--ln)',
+      aiBack: () => this.setState({ aiStep: 1 }),
+      aiSubs: [['Hoàn thiện bản vẽ thiết kế cơ sở block C', '30/10'], ['Nộp hồ sơ thẩm duyệt PCCC', '02/11'], ['Xin văn bản thoả thuận đấu nối điện, nước', '03/11'], ['Tổng hợp & nộp hồ sơ xin GPXD', '06/11']].map(([t, d]) => ({ t, d })),
+      primaryLabel: this.state.formTab === 'ai' ? (this.state.aiStep === 1 ? 'Phân tích mô tả' : 'Xác nhận tạo 1 task + 4 việc con') : 'Tạo task',
+      primaryIcon: this.state.formTab === 'ai' && this.state.aiStep === 1 ? 'ph-fill ph-sparkle' : 'ph ph-check',
+      formPrimary: () => { if (this.state.formTab === 'ai' && this.state.aiStep === 1) return this.setState({ aiStep: 2 }); this.setState({ form: false, toast: 'Đã tạo task — xem trong Sắp tới' }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); },
+      fImp: !!this.state.fImp, fUrg: !!this.state.fUrg,
+      toggleImp: () => this.setState({ fImp: !this.state.fImp }), toggleUrg: () => this.setState({ fUrg: !this.state.fUrg }),
+      impFg: this.state.fImp ? 'var(--wn)' : 'var(--mu)', impBd: this.state.fImp ? 'var(--wn)' : 'var(--ln)', urgFg: this.state.fUrg ? 'var(--dg)' : 'var(--mu)', urgBd: this.state.fUrg ? 'var(--dg)' : 'var(--ln)',
+      quadrant: 'Eisenhower: ' + (this.state.fImp ? (this.state.fUrg ? 'Làm ngay' : 'Lên lịch') : (this.state.fUrg ? 'Giao việc' : 'Để sau')),
+      more: this.state.more, notMore: !this.state.more, showMore: () => this.setState({ more: true }),
+      scheds: [['one', '1 ngày'], ['multi', 'Nhiều ngày'], ['none', 'Không giới hạn']].map(([k, label]) => ({ label, on: (this.state.sched || 'one') === k, go: () => this.setState({ sched: k }) })),
+      hermes: this.state.hermes, toggleHermes: () => this.setState({ hermes: !this.state.hermes }),
+      hermesList: rows.filter(r => r.g === 'over').map(r => Object.assign({}, r, { open: () => this.setState({ detail: r.id }) })),
+      quick: ['Việc hôm nay', 'Việc quá hạn', 'Tóm tắt tuần', 'Ai đang rảnh?'],
+      toast: this.state.toast, goToday: this.go('today'),
+      openForm: () => this.setState({ form: true, formTab: 'manual', more: false, aiStep: 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

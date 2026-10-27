@@ -28,14 +28,14 @@ export function AppProvider({ children }) {
   const [org, setOrg] = useState({ departments: [], members: [], projects: [], project_members: [], flows: [] });
   const [version, setVersion] = useState(0);            // tăng để các trang tải lại dữ liệu
   const [openTaskId, setOpenTaskId] = useState(null);
-  const [theme, setThemeState] = useState(store.get("deo.theme") || "");
+  const [theme, setThemeState] = useState(() => { const v = store.get("deo.theme"); return v === "system" ? "" : (v || "dark"); });   // mặc định chế độ tối (Nocturne); "" = theo hệ thống
 
   useEffect(() => { const f = () => setRoute(readRoute()); addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
   useEffect(() => onUnauthorized(() => setMe(null)), []);
   useEffect(() => {
     const el = document.documentElement;
     if (theme) el.setAttribute("data-theme", theme); else el.removeAttribute("data-theme");
-    store.set("deo.theme", theme || null);
+    store.set("deo.theme", theme || "system");
   }, [theme]);
 
   const loadMe = useCallback(async () => {

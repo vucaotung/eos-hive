@@ -29,7 +29,7 @@ export default function Reports() {
 
   const stat = (n, label, tone = "") => (
     <div className="flex flex-col gap-0.5 rounded-xl bg-surface px-4 py-3">
-      <b className={`text-3xl font-extrabold tracking-tight ${tone}`}>{n}</b><span className="text-sm font-semibold text-muted">{label}</span>
+      <b className={`text-3xl font-semibold tracking-tight ${tone}`}>{n}</b><span className="text-sm font-semibold text-muted">{label}</span>
     </div>
   );
 
@@ -58,9 +58,9 @@ export default function Reports() {
                   {depts.map((r) => (
                     <tr key={r.department_id || "none"} className="border-t-2 border-background">
                       <td className="px-4 py-3 font-semibold">{r.d ? `${r.d.code} · ${r.d.name}` : "Chung công ty"}</td>
-                      <td className="px-3 py-3 font-extrabold">{r.open}</td>
+                      <td className="px-3 py-3 font-semibold">{r.open}</td>
                       <td className="px-3 py-3"><Meter value={r.open} max={maxOpen} label={`${r.open} việc mở`} /></td>
-                      <td className={`px-3 py-3 ${r.overdue ? "font-extrabold text-danger" : "text-muted"}`}>{r.overdue}</td>
+                      <td className={`px-3 py-3 ${r.overdue ? "font-semibold text-danger" : "text-muted"}`}>{r.overdue}</td>
                       <td className={`px-3 py-3 ${r.blocked ? "font-semibold text-warning" : "text-muted"}`}>{r.blocked}</td>
                       <td className="px-3 py-3">{r.in_review}</td>
                       <td className="px-3 py-3">{r.done_30d}{r.done_30d > 0 && <span className="ml-1 text-sm text-muted">({Math.round((r.done_on_time_30d / r.done_30d) * 100)}% đúng hạn)</span>}</td>

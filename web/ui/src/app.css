@@ -1,95 +1,110 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-/* Enterprise OS (giao diện gốc Dẹo Work) — ánh xạ bản sắc "con dấu" lên theme HeroUI.
-   Mực ký xanh cho hành động chính, đỏ son chỉ cho con dấu duyệt và cảnh báo quá hạn.
-   Bề mặt tách bằng bậc tông, không dùng bóng đổ khi đứng yên. */
+/* Enterprise OS — design system Nocturne (design/README.md). Mặc định chế độ tối; sáng khi data-theme="light"; "Theo hệ thống" khi không có data-theme.
+   Mọi màu lấy từ biến, không hard-code. Không gradient; nút chính là VIỀN màu nhấn trên nền trong suốt. */
 :root,
-[data-theme="light"] {
-  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --background: #eef0ec;
-  --foreground: #14181f;
-  --surface: #ffffff;
-  --surface-foreground: #14181f;
-  --surface-secondary: #e4e8e2;
-  --surface-tertiary: #d9ded6;
-  --overlay: #ffffff;
-  --muted: #545c66;
-  --default: #e4e8e2;
-  --default-foreground: #14181f;
-  --accent: #23399a;
-  --accent-foreground: #ffffff;
-  --accent-soft: #dfe4f7;
-  --success: #2e6b3e;
-  --success-foreground: #ffffff;
-  --warning: #935600;
-  --warning-foreground: #ffffff;
-  --danger: #b3261e;
-  --danger-foreground: #ffffff;
-  --field-background: #f3f5f1;
-  --border: #d9ded6;
-  --separator: #e4e8e2;
-  --radius: 0.625rem;
-  --seal: #b3261e;
-  --seal-paper: #ffffff;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: #0f1217;
-    --foreground: #e9ecf1;
-    --surface: #181c23;
-    --surface-foreground: #e9ecf1;
-    --surface-secondary: #222731;
-    --surface-tertiary: #2c3240;
-    --overlay: #1d222b;
-    --muted: #9aa3ae;
-    --default: #222731;
-    --default-foreground: #e9ecf1;
-    --accent: #a3b5ff;
-    --accent-foreground: #0b1640;
-    --accent-soft: #1d2647;
-    --success: #78c58f;
-    --success-foreground: #082012;
-    --warning: #e9a949;
-    --warning-foreground: #2a1700;
-    --danger: #f06a60;
-    --danger-foreground: #1a0705;
-    --field-background: #222731;
-    --border: #2c3240;
-    --separator: #222731;
-    --seal: #f06a60;
-    --seal-paper: #181c23;
-    color-scheme: dark;
-  }
-}
 [data-theme="dark"] {
-  --background: #0f1217;
-  --foreground: #e9ecf1;
-  --surface: #181c23;
-  --surface-foreground: #e9ecf1;
-  --surface-secondary: #222731;
-  --surface-tertiary: #2c3240;
-  --overlay: #1d222b;
-  --muted: #9aa3ae;
-  --default: #222731;
-  --default-foreground: #e9ecf1;
-  --accent: #a3b5ff;
-  --accent-foreground: #0b1640;
-  --accent-soft: #1d2647;
-  --success: #78c58f;
-  --success-foreground: #082012;
-  --warning: #e9a949;
-  --warning-foreground: #2a1700;
-  --danger: #f06a60;
-  --danger-foreground: #1a0705;
-  --field-background: #222731;
-  --border: #2c3240;
-  --separator: #222731;
-  --seal: #f06a60;
-  --seal-paper: #181c23;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --background: #161826;
+  --foreground: #e9e9ed;
+  --surface: #232532;
+  --surface-foreground: #e9e9ed;
+  --surface-secondary: oklch(0.30 0.02 277);
+  --surface-tertiary: oklch(0.34 0.02 277);
+  --overlay: #232532;
+  --muted: #b2b6ca;
+  --fa: #9397ab;
+  --default: oklch(0.30 0.02 277);
+  --default-foreground: #e9e9ed;
+  --accent: #9184d9;
+  --accent-foreground: #161826;
+  --accent-soft: #2b2741;
+  --act: #d2cefd;
+  --success: oklch(0.76 0.13 155);
+  --success-foreground: #161826;
+  --ok-bg: oklch(0.30 0.05 155);
+  --warning: oklch(0.82 0.13 80);
+  --warning-foreground: #161826;
+  --wn-bg: oklch(0.31 0.05 80);
+  --danger: oklch(0.72 0.15 25);
+  --danger-foreground: #161826;
+  --dg-bg: oklch(0.30 0.07 25);
+  --info: oklch(0.76 0.10 240);
+  --in-bg: oklch(0.30 0.05 240);
+  --ai: #b5abfc;
+  --ai-bg: #2b2741;
+  --field-background: oklch(0.30 0.02 277);
+  --border: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --separator: color-mix(in srgb, #e9e9ed 9%, transparent);
+  --scrim: oklch(0.12 0.02 277 / .62);
+  --radius: 0.5rem;
+  --seal: oklch(0.72 0.15 25);
+  --seal-paper: #232532;
   color-scheme: dark;
 }
+[data-theme="light"] {
+  --background: oklch(0.955 0.008 277);
+  --foreground: #161826;
+  --surface: oklch(0.99 0.003 277);
+  --surface-foreground: #161826;
+  --surface-secondary: oklch(0.965 0.006 277);
+  --surface-tertiary: oklch(0.93 0.01 277);
+  --overlay: oklch(0.99 0.003 277);
+  --muted: #595d6c;
+  --fa: #6b6f80;
+  --default: oklch(0.965 0.006 277);
+  --default-foreground: #161826;
+  --accent: #6a5db3;
+  --accent-foreground: #ffffff;
+  --accent-soft: #ecebfd;
+  --act: #4f4590;
+  --success: oklch(0.48 0.12 155);
+  --success-foreground: #ffffff;
+  --ok-bg: oklch(0.94 0.04 155);
+  --warning: oklch(0.52 0.12 70);
+  --warning-foreground: #ffffff;
+  --wn-bg: oklch(0.95 0.05 85);
+  --danger: oklch(0.52 0.17 25);
+  --danger-foreground: #ffffff;
+  --dg-bg: oklch(0.95 0.03 25);
+  --info: oklch(0.50 0.12 245);
+  --in-bg: oklch(0.95 0.03 245);
+  --ai: #5d5294;
+  --ai-bg: #ecebfd;
+  --field-background: oklch(0.965 0.006 277);
+  --border: color-mix(in srgb, #161826 15%, transparent);
+  --separator: color-mix(in srgb, #161826 9%, transparent);
+  --scrim: oklch(0.2 0.02 277 / .4);
+  --seal: oklch(0.52 0.17 25);
+  --seal-paper: oklch(0.99 0.003 277);
+  color-scheme: light;
+}
+/* "Theo hệ thống": không có data-theme và hệ điều hành chọn sáng */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --background: oklch(0.955 0.008 277); --foreground: #161826; --surface: oklch(0.99 0.003 277); --surface-foreground: #161826;
+    --surface-secondary: oklch(0.965 0.006 277); --surface-tertiary: oklch(0.93 0.01 277); --overlay: oklch(0.99 0.003 277);
+    --muted: #595d6c; --fa: #6b6f80; --default: oklch(0.965 0.006 277); --default-foreground: #161826;
+    --accent: #6a5db3; --accent-foreground: #ffffff; --accent-soft: #ecebfd; --act: #4f4590;
+    --success: oklch(0.48 0.12 155); --success-foreground: #ffffff; --ok-bg: oklch(0.94 0.04 155);
+    --warning: oklch(0.52 0.12 70); --warning-foreground: #ffffff; --wn-bg: oklch(0.95 0.05 85);
+    --danger: oklch(0.52 0.17 25); --danger-foreground: #ffffff; --dg-bg: oklch(0.95 0.03 25);
+    --info: oklch(0.50 0.12 245); --in-bg: oklch(0.95 0.03 245); --ai: #5d5294; --ai-bg: #ecebfd;
+    --field-background: oklch(0.965 0.006 277); --border: color-mix(in srgb, #161826 15%, transparent); --separator: color-mix(in srgb, #161826 9%, transparent);
+    --scrim: oklch(0.2 0.02 277 / .4); --seal: oklch(0.52 0.17 25); --seal-paper: oklch(0.99 0.003 277); color-scheme: light;
+  }
+}
+/* Màu ngữ nghĩa của Nocturne thành lớp tiện ích Tailwind: text-ai, bg-ai-bg, border-ai, text-faint, text-act, bg-dg-bg, bg-ok-bg, bg-wn-bg, bg-in-bg, text-info */
+@theme inline {
+  --color-ai: var(--ai); --color-ai-bg: var(--ai-bg); --color-info: var(--info); --color-in-bg: var(--in-bg);
+  --color-ok-bg: var(--ok-bg); --color-wn-bg: var(--wn-bg); --color-dg-bg: var(--dg-bg); --color-faint: var(--fa); --color-act: var(--act); --color-scrim: var(--scrim);
+}
+
+/* Nút chính: viền màu nhấn trên nền trong suốt (không tô đặc) */
+.button--primary { --button-bg: transparent; --button-bg-hover: var(--accent-soft); --button-bg-pressed: var(--accent-soft); --button-fg: var(--act); box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* Focus bàn phím rõ ràng trên mọi phần tử tương tác */
+:where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 html, body { background: var(--background); color: var(--foreground); }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
