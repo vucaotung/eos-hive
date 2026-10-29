@@ -449,6 +449,27 @@ try {
     assert.equal((await minh.ok('app_workflow_runs', { company_id: CO })).length, 1, 'người theo dõi thấy lần chạy của mình');
     assert.equal((await (await as('ketoan@demo.vn')).ok('app_workflow_runs', { company_id: CO })).length, 0);
   });
+  await step('tạo việc nâng cao qua web: nhãn, phụ thuộc, nhắc, mẫu, nhân bản, hàng loạt, cảnh báo trùng, định kỳ hằng năm; job nhắc không gọi được từ web', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const a = await adm.ok('app_task_create_ex', { company_id: CO, title: 'Chuẩn bị hồ sơ đấu thầu', tags: ['đấu thầu', '#Gấp'], checklist: ['Bản scan', 'Con dấu'], subtasks: ['Thu thập chứng chỉ'],
+      attach: [{ url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view', name: 'Hồ sơ.pdf' }], remind_at: new Date(Date.now() + 3600e3).toISOString() });
+    const ex = await adm.ok('app_task_extras', { id: a.id }); assert.deepEqual([...ex.tags].sort(), ['Gấp', 'đấu thầu'].sort()); assert.ok(ex.remind_at);
+    assert.equal(a.subtasks.length, 1);
+    assert.equal((await adm.rpc('app_task_create_ex', { company_id: CO, title: 'Link ngoài', attach: [{ url: 'https://evil.example.com/x' }] })).status, 400);
+    assert.ok((await adm.ok('app_task_similar', { company_id: CO, title: 'Chuẩn bị hồ sơ đấu thầu' })).some((x) => x.id === a.id), 'cảnh báo trùng');
+    assert.ok((await adm.ok('app_tags', { company_id: CO })).some((x) => x.name === 'đấu thầu'));
+    const b = await adm.ok('app_task_create_ex', { company_id: CO, title: 'Nộp hồ sơ đấu thầu', depends_on: [a.id] });
+    assert.deepEqual((await adm.ok('app_task_extras', { id: b.id })).blocked_by, [a.id]);
+    assert.equal((await adm.rpc('app_task_deps_set', { task: a.id, depends_on: [b.id] })).status, 400, 'không tạo vòng chờ');
+    const tpl = await adm.ok('app_task_template_save', { company_id: CO, name: 'Gói thầu chuẩn', body: { title: 'Gói thầu {tên}', checklist: ['Hồ sơ năng lực'], due_in_days: 14 } });
+    assert.ok((await minh.ok('app_task_templates', { company_id: CO })).some((x) => x.id === tpl.id));
+    const clone = await adm.ok('app_task_clone', { task: a.id, subtasks: true }); assert.equal(clone.subtasks.length, 1);
+    const bulk = await adm.ok('app_tasks_bulk', { company_id: CO, items: [{ title: 'Việc A hàng loạt', tags: ['đợt'] }, { title: 'x' }, { title: 'Việc C hàng loạt', priority: 'high' }] });
+    assert.equal(bulk.created.length, 2); assert.equal(bulk.errors[0].row, 2);
+    const rec = await adm.ok('app_recurrence_save_ex', { company_id: CO, title: 'Gia hạn bảo hiểm', freq: 'yearly', start: new Date(Date.now() - 3 * 86400e3).toISOString().slice(0, 10), skip_holidays: false, end: { mode: 'count', n: 3 } });
+    assert.ok(rec.id); assert.equal((await sql('SELECT max_runs, run_count, active FROM work.recurrences WHERE id = $1', [rec.id]))[0].max_runs, 3);
+    assert.equal((await minh.rpc('work_run_reminders', {})).status, 404, 'job nhắc không nằm trong bảng trắng');
+  });
   await step('kết nối AI: cấp mã MCP (hiện một lần, không lộ băm), liệt kê, thu hồi; quản trị hệ thống xem tổng quan', async () => {
     const minh = await as('minh@demo.vn'), adm = await as('admin@demo.vn');
     const t = await minh.ok('web_token_issue', { name: 'Claude laptop', client: 'claude', scopes: ['read', 'write'], days: 30 });
