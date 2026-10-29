@@ -33,7 +33,7 @@ Nguồn thiết kế: gói bàn giao Claude Design (26/10/2026) đã chép vào 
 | **Phóng to Gantt và Mindmap** | Chụm hai ngón, Ctrl + lăn chuột, hoặc nút +/− (50%–220%) | Chỉ giao diện. |
 
 ### Việc ops-admin phải kiểm sau khi triển khai (chưa thể kiểm trong phiên phát triển)
-1. Cài skill `enterprise-os-guide` **1.2.0** vào `team_admin` (có mục "Thẻ phân tích yêu cầu tạo việc bằng AI"), khởi động lại gateway từ shell ngoài.
+1. Cài skill `enterprise-os-guide` **1.2.0** (nay có 1.3.0, xem docs/19) vào `team_admin` (có mục "Thẻ phân tích yêu cầu tạo việc bằng AI"), khởi động lại gateway từ shell ngoài.
 2. Chạy `deploy/setup_agent_profiles.sql` để bật Mai nội bộ (hoặc bật tay `company_agents.enabled = true, auto_done = true, config = '{"internal": true}'`).
 3. Thử một yêu cầu thật trên web ("✦ Tạo bằng AI"): phải thấy thẻ Kanban sang `team_admin`, Mai gọi `eos_task_propose`, đề xuất hiện ở web trong vài chục giây. **Nếu thẻ không chạy** (profile `team_admin` chưa chạy được worker Kanban): yêu cầu sẽ báo "Mai chưa phản hồi sau 10 phút", không hỏng gì khác; xử lý ở phía Hermes.
 

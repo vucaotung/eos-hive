@@ -71,6 +71,8 @@ export function AppProvider({ children }) {
   useEffect(() => { loadOrg().catch(() => {}); }, [loadOrg, version]);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
+  const [tagsMap, setTagsMap] = useState({});   // {"<id việc>": ["nhãn", ...]} của các việc tôi thấy (hiện ở dòng việc, dùng để lọc theo nhãn)
+  useEffect(() => { if (membership) rpc("app_task_tags_map", { company_id: membership.company_id }).then(setTagsMap).catch(() => {}); }, [membership, version]);
   // Việc đang mở nằm trên URL (#/trang?t=37): sao chép link là mở thẳng việc; nút Back đóng ngăn chi tiết.
   const openTaskId = /^\d{1,12}$/.test(route.params.t || "") ? Number(route.params.t) : null;
   const openTask = useCallback((id) => {
@@ -92,11 +94,11 @@ export function AppProvider({ children }) {
       me, meError, loadMe, signOut, route, go,
       memberships, membership, companyId: membership?.company_id || null, switchCompany,
       role, isAdmin: role === "owner" || role === "admin", isManager: role === "manager", isSystemAdmin: !!me?.user?.is_system_admin,
-      org, lookups, loadOrg, version, refresh,
+      org, lookups, loadOrg, version, refresh, tagsMap,
       openTaskId, openTask, theme, setTheme: setThemeState, settings, setSetting,
       userId: me?.user?.id || null,
     };
-  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, openTaskId, openTask, theme, settings, setSetting]);
+  }, [me, meError, loadMe, signOut, route, memberships, membership, org, loadOrg, version, refresh, tagsMap, openTaskId, openTask, theme, settings, setSetting]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -165,10 +165,16 @@ export function registerTools(server, ident) {
       assignee_email: z.string().email().optional(), project: z.string().max(120).optional(), due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(), agent: z.string().regex(/^[a-z][a-z-]{1,31}$/).or(z.literal('')).optional(), approval: z.boolean().optional(),
       status: z.enum(['todo', 'in_progress', 'blocked', 'cancelled']).optional(),
+      tags: z.array(z.string().min(1).max(30)).max(8).optional().describe('Nhãn gắn cho việc (vd. ["hợp-đồng", "gấp"], tối đa 8). Agent chỉ gắn được cho việc vừa tạo.'),
       source_ref: z.string().max(120).optional().describe('Mã tin nhắn/nguồn yêu cầu (vd. id tin Zalo). Chỉ dùng để chống tạo trùng: cùng tên + cùng người phụ trách + cùng nguồn trong 15 phút trả lại việc cũ.') },
   }, async (args) => {
     if (createOnly() && (args.id || args.status)) throw new DbError('Mã này chỉ được tạo việc mới, không sửa việc có sẵn', '42501');
-    return { result: await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(args)]), entity: { type: 'task', id: String(args.id || 'new') } };
+    const { tags, ...rest } = args;
+    const result = await call('SELECT agent.mcp_task_save($1::jsonb) AS r', [JSON.stringify(rest)]);
+    if (tags?.length && !result.duplicate) {   // nhãn: bước riêng; việc đã tạo vẫn giữ nếu gắn nhãn lỗi (báo lại, không ném lỗi để bot không tạo lại)
+      try { result.tags = (await call('SELECT agent.mcp_task_tags($1::jsonb) AS r', [JSON.stringify({ id: result.id, tags })])).tags; } catch (e) { result.tags_error = String(e.message || e).slice(0, 200); }
+    }
+    return { result, entity: { type: 'task', id: String(args.id || 'new') } };
   },
   (a) => ({ id: a.id || null, title: String(a.title || '').slice(0, 80), agent: a.agent || null, approval: a.approval }));
 

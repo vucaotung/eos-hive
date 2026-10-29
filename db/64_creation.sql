@@ -588,9 +588,26 @@ BEGIN
 END $$;
 -- ==== HẾT PHẦN E ====
 
+-- ==== PHẦN F: NHÃN QUA MCP (Mai tạo việc từ tin nhắn Zalo/Telegram) ====
+-- Gắn nhãn cho việc VỪA tạo bởi chính tài khoản gọi (agent: trong 10 phút), hoặc việc người gọi sửa được. Không sửa việc của người khác.
+CREATE OR REPLACE FUNCTION agent.mcp_task_tags(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE me core.users := agent._web_me(); t work.tasks; n int;
+BEGIN
+  SELECT * INTO t FROM work.tasks WHERE id = (regexp_replace(coalesce(p->>'id', ''), '^T-', '', 'i'))::bigint;
+  IF t.id IS NULL OR NOT agent._can_see(me.id, t) THEN RAISE EXCEPTION 'Không tìm thấy việc' USING ERRCODE = '42501'; END IF;
+  IF NOT (agent._can_edit(me.id, t) OR (me.kind = 'agent' AND t.created_by = me.id AND t.created_at > now() - interval '10 minutes')) THEN
+    RAISE EXCEPTION 'Chỉ gắn nhãn được cho việc do chính tài khoản này vừa tạo hoặc việc bạn sửa được' USING ERRCODE = '42501';
+  END IF;
+  n := agent._tags_apply(t.id, t.company_id, p->'tags', me.id);
+  RETURN jsonb_build_object('tags', n);
+END $$;
+-- ==== HẾT PHẦN F ====
+
 -- Quyền
 GRANT EXECUTE ON FUNCTION agent.app_task_tags_set(jsonb), agent.app_tags(jsonb), agent.app_task_tags_map(jsonb), agent.app_task_similar(jsonb), agent.app_tag_suggest(jsonb),
   agent.app_task_deps_set(jsonb), agent.app_task_remind(jsonb), agent.app_task_attach_link(jsonb), agent.app_task_extras(jsonb),
   agent.app_task_templates(jsonb), agent.app_task_template_save(jsonb), agent.app_task_template_delete(jsonb),
   agent.app_task_create_ex(jsonb), agent.app_task_clone(jsonb), agent.app_tasks_bulk(jsonb), agent.app_recurrence_save_ex(jsonb) TO web_svc;
+GRANT EXECUTE ON FUNCTION agent.mcp_task_tags(jsonb) TO mcp_svc;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent FROM PUBLIC;

@@ -3,6 +3,10 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.5.0 — Tạo việc nâng cao: 11 tính năng (chưa triển khai; cần migration 0030, skill 1.3.0, cron nhắc việc)
+- Đính kèm link Drive lúc tạo; mẫu việc; nhân bản việc (kèm việc con); phụ thuộc "B chờ A" (chặn Chờ duyệt/Xong khi A còn mở, báo khi hết chờ); gõ nhanh một dòng; nhắc hạn riêng từng việc (job 10 phút); tạo hàng loạt (dán danh sách/CSV, ≤ 100); tạo từ tin nhắn Zalo/Telegram qua Mai (skill 1.3.0, `eos_task_save` nhận `tags`); nhãn + gợi ý nhãn + lọc theo nhãn; cảnh báo trùng khi gõ tên; việc định kỳ hằng năm, kết thúc không bao giờ / đến ngày / sau n lần.
+- Chi tiết, giới hạn và việc cần làm sau triển khai: docs/19.
+
 ## 0.4.0 — Giao diện Nocturne giai đoạn 4: thông báo, việc định kỳ, chi tiết việc, tạo việc bằng AI (chưa triển khai; cần migration 0026–0029)
 - Chuông thông báo (giao việc, nhắc tên, bình luận, duyệt, xong, đề xuất AI); việc định kỳ (job ngày); checklist + mẫu, người theo dõi, nhật ký đổi gì, thời lượng, menu `@`; tạo việc bằng AI giao cho Mai (`eos_task_propose` chỉ đề xuất, người dùng xác nhận); phóng to Gantt/Mindmap.
 - Skill `enterprise-os-guide` 1.2.0 (quy trình thẻ phân tích yêu cầu). Mai bật nhận thẻ ở chế độ nội bộ. Lịch ngày/Google Calendar tạm dừng theo quyết định.
