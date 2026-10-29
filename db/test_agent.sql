@@ -1136,4 +1136,129 @@ DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own con
   RAISE NOTICE 'Tạo việc bằng AI ok';
 END $$;
 
+-- ===== 64: tạo việc nâng cao (nhãn, phụ thuộc, nhắc hạn, mẫu, nhân bản, hàng loạt, trùng, đính kèm, định kỳ giới hạn) =====
+DO $$ DECLARE c constant uuid := '22222222-2222-2222-2222-222222222222'; own constant uuid := 'eeeeeeee-0000-0000-0000-000000000002'; mem constant uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+              stranger constant uuid := 'eeeeeeee-0000-0000-0000-0000000000f0'; a bigint; b bigint; k bigint; r jsonb; x jsonb; tpl uuid; rid uuid; n int; st date := (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date - 5; BEGIN
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  -- tạo đầy đủ trong một giao dịch: nhãn, nhắc, checklist, việc con, đính kèm Drive
+  r := agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Soạn hợp đồng thuê kho', 'assignee_id', mem, 'due_date', '2030-06-20', 'tags', jsonb_build_array('#Hợp đồng', 'hop dong', 'gấp'),
+        'remind_at', (now() + interval '1 hour')::text, 'checklist', jsonb_build_array('Bản nháp', 'Pháp chế duyệt'), 'subtasks', jsonb_build_array('Thu thập hồ sơ', jsonb_build_object('title', 'Gửi bản nháp', 'due_date', '2030-06-10')),
+        'attach', jsonb_build_array(jsonb_build_object('url', 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view', 'name', 'Bản nháp.docx'))));
+  a := (r->>'id')::bigint;
+  x := agent.app_task_extras(jsonb_build_object('id', a));
+  ASSERT x->'tags' = '["gấp", "Hợp đồng", "hop dong"]'::jsonb OR (SELECT count(*) FROM jsonb_array_elements(x->'tags')) = 3, format('3 nhãn: %s', x->'tags');
+  ASSERT x->>'remind_at' IS NOT NULL AND jsonb_array_length(r->'subtasks') = 2, 'giờ nhắc và việc con';
+  ASSERT (SELECT count(*) FROM work.checklist_items WHERE task_id = a) = 2, 'checklist';
+  ASSERT (SELECT count(*) FROM core.attachments WHERE entity_type = 'task' AND entity_id = a::text) = 1, 'đính kèm Drive';
+  BEGIN PERFORM agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Link lạ', 'attach', jsonb_build_array(jsonb_build_object('url', 'https://evil.example.com/x')))); ASSERT false, 'link ngoài Drive';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%Google Drive%' THEN RAISE; END IF; END;
+  ASSERT NOT EXISTS (SELECT 1 FROM work.tasks WHERE title = 'Link lạ'), 'lỗi đính kèm hủy cả việc (một giao dịch)';
+  BEGIN PERFORM agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Quá nhiều nhãn', 'tags', '["a","b","c","d","e","f","g","h","i"]'::jsonb)); ASSERT false, '9 nhãn';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%8 nhãn%' THEN RAISE; END IF; END;
+  BEGIN PERFORM agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Nhắc quá khứ', 'remind_at', '2020-01-01T08:00:00+07')); ASSERT false, 'nhắc quá khứ';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%tương lai%' THEN RAISE; END IF; END;
+  ASSERT (SELECT count(*) FROM jsonb_array_elements(agent.app_tags(jsonb_build_object('company_id', c)))) >= 3, 'danh sách nhãn';
+  ASSERT agent.app_task_tags_map(jsonb_build_object('company_id', c)) ? a::text, 'bản đồ nhãn có việc vừa tạo';
+  PERFORM agent.app_task_tags_set(jsonb_build_object('task', a, 'tags', '["hợp đồng"]'::jsonb));
+  ASSERT jsonb_array_length(agent.app_task_extras(jsonb_build_object('id', a))->'tags') = 1, 'đặt lại nhãn, không tạo nhãn trùng không phân biệt hoa thường';
+  ASSERT (SELECT count(*) FROM work.tags WHERE company_id = c AND lower(name) = 'hợp đồng') = 1, 'nhãn duy nhất theo tên';
+  ASSERT agent.app_tag_suggest(jsonb_build_object('company_id', c, 'title', 'Duyệt hợp đồng thuê xe'))::text ILIKE '%hợp đồng%', 'gợi ý nhãn theo tên nhãn trong tiêu đề';
+  -- gợi ý trùng
+  x := agent.app_task_similar(jsonb_build_object('company_id', c, 'title', 'Soạn hợp đồng thuê kho'));
+  ASSERT jsonb_array_length(x) >= 1 AND (x->0->>'id')::bigint = a, format('phát hiện trùng: %s', x);
+  ASSERT jsonb_array_length(agent.app_task_similar(jsonb_build_object('company_id', c, 'title', 'Soạn hợp đồng thuê kho', 'exclude', a))) = 0 OR (agent.app_task_similar(jsonb_build_object('company_id', c, 'title', 'Soạn hợp đồng thuê kho', 'exclude', a))->0->>'id')::bigint <> a, 'loại trừ chính việc đang sửa';
+  ASSERT jsonb_array_length(agent.app_task_similar(jsonb_build_object('company_id', c, 'title', 'Zzz hoàn toàn khác biệt qqq'))) = 0, 'tiêu đề khác không báo trùng';
+  -- phụ thuộc: B chờ A
+  b := (agent.app_task_save(jsonb_build_object('company_id', c, 'title', 'Ký hợp đồng thuê kho', 'assignee_id', mem))->>'id')::bigint;
+  PERFORM agent.app_task_deps_set(jsonb_build_object('task', b, 'depends_on', jsonb_build_array(a)));
+  x := agent.app_task_extras(jsonb_build_object('id', b));
+  ASSERT x->'blocked_by' = jsonb_build_array(a) AND (x->'depends_on'->0->>'id')::bigint = a, 'B đang chờ A';
+  ASSERT agent.app_task_extras(jsonb_build_object('id', a))->'dependents'->0->>'id' = b::text, 'A thấy B đang chờ';
+  BEGIN PERFORM agent.app_task_deps_set(jsonb_build_object('task', a, 'depends_on', jsonb_build_array(b))); ASSERT false, 'vòng chờ nhau';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%vòng chờ%' THEN RAISE; END IF; END;
+  BEGIN PERFORM agent.app_task_deps_set(jsonb_build_object('task', a, 'depends_on', jsonb_build_array(a))); ASSERT false, 'tự chờ chính mình';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN UPDATE work.tasks SET status = 'in_progress' WHERE id = b; EXCEPTION WHEN OTHERS THEN ASSERT false, 'bắt đầu làm B không bị chặn'; END;
+  BEGIN UPDATE work.tasks SET status = 'done', completed_at = now() WHERE id = b; ASSERT false, 'B xong khi A còn mở';
+  EXCEPTION WHEN check_violation THEN IF SQLERRM NOT LIKE '%đang chờ T-%' THEN RAISE; END IF; END;
+  UPDATE work.tasks SET status = 'done', completed_at = now() WHERE id = a;
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mem AND kind = 'unblocked' AND entity_id = b::text), 'A xong → báo người làm B';
+  UPDATE work.tasks SET status = 'done', completed_at = now() WHERE id = b;
+  ASSERT (SELECT status FROM work.tasks WHERE id = b) = 'done', 'hết chờ thì B xong được';
+  -- người ngoài công ty không thấy, không đặt được
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', stranger, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.app_task_extras(jsonb_build_object('id', a)); ASSERT false, 'người lạ xem extras';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM agent.app_task_deps_set(jsonb_build_object('task', b, 'depends_on', '[]'::jsonb)); ASSERT false, 'người lạ sửa phụ thuộc';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  -- nhắc hạn: đến giờ thì báo đúng người một lần; việc đã xong thì không báo
+  k := (agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Việc có nhắc', 'assignee_id', mem, 'remind_at', (now() + interval '5 minutes')::text))->>'id')::bigint;
+  ASSERT (work.run_reminders()->>'sent')::int = 0, 'chưa đến giờ thì không báo';
+  UPDATE work.tasks SET remind_at = now() - interval '1 minute' WHERE id = k;
+  ASSERT (work.run_reminders()->>'sent')::int >= 1, 'đến giờ thì chạy job nhắc';
+  ASSERT EXISTS (SELECT 1 FROM core.notifications WHERE user_id = mem AND kind = 'reminder' AND entity_id = k::text), 'đến giờ thì báo người phụ trách';
+  ASSERT (work.run_reminders()->>'sent')::int = 0, 'chỉ báo một lần';
+  PERFORM agent.app_task_remind(jsonb_build_object('task', k, 'remind_at', (now() + interval '2 days')::text));
+  ASSERT (SELECT reminded_at FROM work.tasks WHERE id = k) IS NULL, 'đặt lại giờ nhắc thì nhắc lại được';
+  PERFORM agent.app_task_remind(jsonb_build_object('task', k, 'remind_at', NULL));
+  ASSERT (SELECT remind_at FROM work.tasks WHERE id = k) IS NULL, 'bỏ nhắc';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', mem, 'via', 'web')::text, true);
+  BEGIN PERFORM work.run_reminders(); ASSERT false, 'thành viên chạy job nhắc'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  -- mẫu việc
+  r := agent.app_task_template_save(jsonb_build_object('company_id', c, 'name', 'Hồ sơ thuê kho', 'body', jsonb_build_object('title', 'Hồ sơ thuê kho {kho}', 'priority', 'high', 'due_in_days', 7, 'tags', jsonb_build_array('hợp đồng'),
+        'checklist', jsonb_build_array('CCCD', 'GPKD'), 'subtasks', jsonb_build_array('Khảo sát kho'), 'rogue', 'x')));
+  tpl := (r->>'id')::uuid;
+  ASSERT NOT (SELECT body ? 'rogue' FROM work.task_templates WHERE id = tpl), 'bỏ trường lạ của mẫu';
+  BEGIN PERFORM agent.app_task_template_save(jsonb_build_object('company_id', c, 'name', 'Hồ sơ thuê kho', 'body', jsonb_build_object('title', 'Trùng tên'))); ASSERT false, 'trùng tên mẫu';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE '%Đã có mẫu%' THEN RAISE; END IF; END;
+  BEGIN PERFORM agent.app_task_template_save(jsonb_build_object('company_id', c, 'name', 'Mẫu hỏng', 'body', jsonb_build_object('title', 'x'))); ASSERT false, 'tiêu đề mẫu quá ngắn';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  ASSERT jsonb_array_length(agent.app_task_templates(jsonb_build_object('company_id', c))) >= 1, 'liệt kê mẫu';
+  x := agent.app_task_create_ex(jsonb_build_object('company_id', c, 'title', 'Hồ sơ thuê kho A', 'template_id', tpl, 'checklist', jsonb_build_array('CCCD', 'GPKD'), 'subtasks', jsonb_build_array('Khảo sát kho')));
+  ASSERT (SELECT uses FROM work.task_templates WHERE id = tpl) = 1, 'đếm số lần dùng mẫu';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', stranger, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.app_task_template_delete(jsonb_build_object('id', tpl)); ASSERT false, 'người lạ xóa mẫu'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  PERFORM agent.app_task_template_delete(jsonb_build_object('id', tpl));
+  ASSERT NOT EXISTS (SELECT 1 FROM work.task_templates WHERE id = tpl), 'xóa mẫu';
+  -- nhân bản
+  r := agent.app_task_clone(jsonb_build_object('task', (x->>'id')::bigint, 'subtasks', true));
+  ASSERT (SELECT title FROM work.tasks WHERE id = (r->>'id')::bigint) = 'Hồ sơ thuê kho A (bản sao)' AND (SELECT status FROM work.tasks WHERE id = (r->>'id')::bigint) = 'todo', 'bản sao chờ làm';
+  ASSERT (SELECT count(*) FROM work.checklist_items WHERE task_id = (r->>'id')::bigint AND NOT done) = 2 AND jsonb_array_length(r->'subtasks') = 1, 'bản sao có checklist và việc con';
+  ASSERT (SELECT count(*) FROM work.task_tags WHERE task_id = (r->>'id')::bigint) = (SELECT count(*) FROM work.task_tags WHERE task_id = (x->>'id')::bigint), 'bản sao giữ nhãn';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', stranger, 'via', 'web')::text, true);
+  BEGIN PERFORM agent.app_task_clone(jsonb_build_object('task', (x->>'id')::bigint)); ASSERT false, 'người lạ nhân bản'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', own, 'via', 'web')::text, true);
+  -- hàng loạt: dòng lỗi không làm hỏng dòng khác
+  r := agent.app_tasks_bulk(jsonb_build_object('company_id', c, 'items', jsonb_build_array(
+        jsonb_build_object('title', 'Việc hàng loạt 1', 'priority', 'high', 'tags', jsonb_build_array('đợt-1')),
+        jsonb_build_object('title', 'x'),
+        jsonb_build_object('title', 'Việc hàng loạt 3', 'due_date', '2030-08-01', 'assignee_id', mem))));
+  ASSERT jsonb_array_length(r->'created') = 2 AND jsonb_array_length(r->'errors') = 1 AND (r->'errors'->0->>'row')::int = 2, format('hàng loạt: %s', r);
+  BEGIN PERFORM agent.app_tasks_bulk(jsonb_build_object('company_id', c, 'items', '[]'::jsonb)); ASSERT false, 'danh sách rỗng'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.app_tasks_bulk(jsonb_build_object('company_id', c, 'items', (SELECT jsonb_agg(jsonb_build_object('title', 'Việc ' || g)) FROM generate_series(1, 101) g))); ASSERT false, 'quá 100 việc'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  -- việc định kỳ: hằng năm, đủ n lần thì dừng, lặp vô hạn
+  r := agent.app_recurrence_save_ex(jsonb_build_object('company_id', c, 'title', 'Gia hạn giấy phép', 'freq', 'yearly', 'interval_n', 1, 'start', st, 'skip_holidays', false, 'end', jsonb_build_object('mode', 'count', 'n', 2)));
+  rid := (r->>'id')::uuid;
+  ASSERT (SELECT next_run FROM work.recurrences WHERE id = rid) = (st + interval '1 year')::date AND (SELECT run_count FROM work.recurrences WHERE id = rid) = 1 AND (SELECT max_runs FROM work.recurrences WHERE id = rid) = 2, 'hằng năm: lần 1 đã sinh, lần 2 hẹn sau đúng 1 năm';
+  PERFORM work._run_recurrence(rid, (st + interval '1 year' + interval '1 day')::date);
+  ASSERT NOT (SELECT active FROM work.recurrences WHERE id = rid) AND (SELECT run_count FROM work.recurrences WHERE id = rid) = 2, 'đủ 2 lần thì tự dừng';
+  r := agent.app_recurrence_save_ex(jsonb_build_object('company_id', c, 'title', 'Một lần duy nhất', 'freq', 'daily', 'start', st, 'skip_holidays', false, 'end', jsonb_build_object('mode', 'count', 'n', 1)));
+  ASSERT NOT (SELECT active FROM work.recurrences WHERE id = (r->>'id')::uuid) AND (SELECT run_count FROM work.recurrences WHERE id = (r->>'id')::uuid) = 1, 'n = 1: sinh việc đầu tiên rồi dừng ngay';
+  r := agent.app_recurrence_save_ex(jsonb_build_object('company_id', c, 'title', 'Lặp mãi mãi', 'freq', 'daily', 'start', st, 'skip_holidays', false, 'end', jsonb_build_object('mode', 'never')));
+  ASSERT (SELECT active AND max_runs IS NULL AND until_date IS NULL FROM work.recurrences WHERE id = (r->>'id')::uuid), 'vô hạn: không có ngày kết thúc, không giới hạn lần';
+  PERFORM work._run_recurrence((r->>'id')::uuid, st + 800); PERFORM work._run_recurrence((r->>'id')::uuid, st + 3000);
+  ASSERT (SELECT active FROM work.recurrences WHERE id = (r->>'id')::uuid), 'vô hạn vẫn hoạt động nhiều năm sau';
+  r := agent.app_recurrence_save_ex(jsonb_build_object('company_id', c, 'title', 'Đến hết tuần trước', 'freq', 'daily', 'start', st, 'skip_holidays', false, 'end', jsonb_build_object('mode', 'until', 'date', st + 2)));
+  ASSERT NOT (SELECT active FROM work.recurrences WHERE id = (r->>'id')::uuid), 'quá ngày kết thúc thì dừng';
+  BEGIN PERFORM agent.app_recurrence_save_ex(jsonb_build_object('company_id', c, 'title', 'Sai số lần', 'freq', 'daily', 'start', st, 'end', jsonb_build_object('mode', 'count', 'n', 0))); ASSERT false, 'n = 0'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  ASSERT (SELECT max_runs FROM agent.app_recurrences(jsonb_build_object('company_id', c)) j, jsonb_to_recordset(j) AS q(id uuid, max_runs int) WHERE q.id = rid) = 2, 'danh sách việc định kỳ có max_runs';
+  -- PUBLIC không chạy được hàm mới
+  ASSERT NOT has_function_privilege('public', 'agent.app_task_create_ex(jsonb)', 'execute') AND NOT has_function_privilege('public', 'agent.app_tasks_bulk(jsonb)', 'execute'), 'PUBLIC không chạy được app_task_create_ex/bulk';
+  ASSERT has_function_privilege('web_svc', 'agent.app_task_clone(jsonb)', 'execute'), 'web_svc chạy được';
+  RAISE NOTICE 'Tạo việc nâng cao ok';
+END $$;
+
 ROLLBACK;

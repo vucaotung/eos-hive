@@ -10,6 +10,7 @@ import { ErrorBox, LoadingList, PageHeader, SelectField, StatusBadge, DueText } 
 import { TaskList } from "../components/TaskRow.jsx";
 import KanbanBoard from "../components/Kanban.jsx";
 import { SelectBar, SelectProvider, useSelect } from "../components/select.jsx";
+import BulkCreate from "../components/BulkCreate.jsx";
 import { CheckSquare } from "@phosphor-icons/react";
 
 const FILTERS = [
@@ -45,20 +46,23 @@ function groupsFor(f, tasks, today) {
 function SelectToggle() { const s = useSelect(); return <button type="button" aria-pressed={s.on} onClick={() => (s.on ? s.exit() : s.enter())} className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium ${s.on ? "bg-accent-soft text-act" : "text-muted hover:bg-surface-secondary"}`} style={{ boxShadow: `inset 0 0 0 1px ${s.on ? "var(--accent)" : "var(--border)"}` }}><CheckSquare size={16} />Chọn nhiều</button>; }
 
 export default function Tasks() {
-  const { companyId, userId, org, route, refresh } = useApp();
+  const { companyId, userId, org, route, refresh, tagsMap } = useApp();
   const [f, setF] = useState(route.params.f || "open");
   const [view, setView] = useState(() => route.params.v || (() => { try { return localStorage.getItem("deo.view") || "list"; } catch { return "list"; } })());
   const [dept, setDept] = useState(null);
   const [assignee, setAssignee] = useState(null);
   const [project, setProject] = useState(route.params.p || null);
   const [q, setQ] = useState(route.params.q || "");
+  const [tag, setTag] = useState(route.params.tag || null);
+  const [bulk, setBulk] = useState(false);
+  const allTags = useMemo(() => [...new Set(Object.values(tagsMap || {}).flat())].sort((a, b) => a.localeCompare(b, "vi")), [tagsMap]);
   useEffect(() => { if (route.params.f) setF(route.params.f); else if (!route.params.q) setF("open"); setQ(route.params.q || ""); if (route.params.v) setView(route.params.v); }, [route.params.f, route.params.q, route.params.v]);
 
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);
 
   const base = useMemo(() => (data || []).filter((t) =>
-    (!dept || t.department_id === dept) && (!assignee || t.assignee_id === assignee) && (!project || t.project_id === project) &&
-    (!q || `${t.title} T-${t.id}`.toLowerCase().includes(q.toLowerCase()))), [data, dept, assignee, project, q]);
+    (!dept || t.department_id === dept) && (!assignee || t.assignee_id === assignee) && (!project || t.project_id === project) && (!tag || (tagsMap?.[t.id] || []).includes(tag)) &&
+    (!q || `${t.title} T-${t.id}`.toLowerCase().includes(q.toLowerCase()))), [data, dept, assignee, project, q, tag, tagsMap]);
   const pick = FILTERS.find((x) => x[0] === f) || FILTERS[0];
   const shown = useMemo(() => {
     const arr = base.filter(pick[2](userId));
@@ -73,6 +77,7 @@ export default function Tasks() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Việc" sub={data ? `${data.filter(isOpen).length} việc đang mở` : " "}
         actions={<>
+          <button type="button" onClick={() => setBulk(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-muted hover:bg-surface-secondary" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>Tạo hàng loạt</button>
           <SelectToggle />
           <ToggleButtonGroup aria-label="Cách xem" selectionMode="single" disallowEmptySelection selectedKeys={new Set([view])} onSelectionChange={(k) => setV([...k][0])}>
             <ToggleButton id="list" aria-label="Danh sách"><ListUl className="size-4" />Danh sách</ToggleButton>
@@ -93,6 +98,11 @@ export default function Tasks() {
             );
           })}
         </div>
+        {allTags.length > 0 && (
+          <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Lọc theo nhãn">
+            <span className="shrink-0 text-[13px] text-muted">Nhãn</span>
+            {allTags.map((n) => <button key={n} type="button" aria-pressed={tag === n} onClick={() => setTag(tag === n ? null : n)} className={`h-7 shrink-0 whitespace-nowrap rounded-full px-2.5 text-[13px] ${tag === n ? "bg-accent-soft text-act" : "text-muted hover:bg-surface-secondary"}`} style={{ boxShadow: `inset 0 0 0 1px ${tag === n ? "var(--accent)" : "var(--border)"}` }}>#{n}</button>)}
+          </div>)}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="relative flex items-end">
             <span className="sr-only">Tìm việc</span>
@@ -117,6 +127,7 @@ export default function Tasks() {
         <KanbanBoard tasks={base} />
       )}
     </div>
+    <BulkCreate isOpen={bulk} onClose={() => setBulk(false)} />
     </SelectProvider>
   );
 }

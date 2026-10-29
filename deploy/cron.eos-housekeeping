@@ -1,0 +1,5 @@
+# Cài vào /etc/cron.d/eos-housekeeping trên máy CSDL (vps169). Gỡ: xóa tệp này.
+# Dọn lớp MCP + sinh việc định kỳ đến hạn (docs/16, docs/18)
+30 3 * * * root /opt/apps/enterprise-os/scripts/housekeeping.sh >> /var/log/eos-housekeeping.log 2>&1
+# Nhắc việc đến giờ (docs/19): mỗi 10 phút, chỉ ghi nhật ký khi có nhắc
+*/10 * * * * root /opt/apps/enterprise-os/scripts/housekeeping.sh --reminders >> /var/log/eos-reminders.log 2>&1

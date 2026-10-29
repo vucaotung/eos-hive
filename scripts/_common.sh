@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Thứ tự nạp lược đồ. Đổi thứ tự = hỏng khóa ngoại.
-DB_FILES=(00_core 10_work 20_doc 30_hr 31_payroll_kpi 40_crm 45_kb 50_views 60_agent 61_app 62_workflow 63_features)
+DB_FILES=(00_core 10_work 20_doc 30_hr 31_payroll_kpi 40_crm 45_kb 50_views 60_agent 61_app 62_workflow 63_features 64_creation)
 # EOS_TEST_DSN: chuỗi kết nối tới Postgres 16 (tài khoản superuser) dùng để thử. Cơ sở dữ liệu trong đó sẽ bị XÓA và dựng lại.
 need_dsn() {
   [ -n "${EOS_TEST_DSN:-}" ] || { echo "Thiếu EOS_TEST_DSN, ví dụ: postgres://postgres:pw@127.0.0.1:5432/eos_test" >&2; exit 2; }

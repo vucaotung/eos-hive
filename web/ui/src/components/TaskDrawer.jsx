@@ -3,6 +3,7 @@ import { Button, Drawer, Separator, toast } from "@heroui/react";
 import { Pencil, Plus, TrashBin, Link as LinkIcon, FileText } from "@gravity-ui/icons";
 import { LinkSimple, Prohibit, CalendarBlank, Clock, X as XIcon, CaretDown, CaretUp } from "@phosphor-icons/react";
 import Checklist from "./Checklist.jsx";
+import { DrawerExtras, CloneButton } from "./TaskExtras.jsx";
 import MentionTextArea from "./MentionTextArea.jsx";
 import { useApp } from "../lib/store.jsx";
 import { rpc } from "../lib/api.js";
@@ -49,7 +50,7 @@ export default function TaskDrawer() {
   const [stamped, setStamped] = useState(false);
   const [tab, setTab] = useState("detail");   // mobile: Chi tiết / Trao đổi (desktop hiện cả hai)
 
-  const load = useCallback((id) => rpc("app_task", { id }), []);
+  const load = useCallback((id) => Promise.all([rpc("app_task", { id }), rpc("app_task_extras", { id }).catch(() => null)]).then(([x, extras]) => ({ ...x, extras })), []);
 
   useEffect(() => {
     if (!openTaskId) { setD(null); return; }
@@ -179,6 +180,7 @@ export default function TaskDrawer() {
                 <div className="flex flex-wrap gap-2">
                   {canEdit && <Button size="sm" variant="secondary" onPress={() => setEditing(true)}><Pencil className="size-4" />Sửa</Button>}
                   <Button size="sm" variant="secondary" onPress={() => setSub(true)}><Plus className="size-4" />Việc con</Button>
+                  <CloneButton task={t} hasChildren={(d.children || []).length > 0} />
                   {canEdit && isOpen(t) && t.status !== "in_review" && t.status !== "blocked" && (
                     <Button size="sm" variant="ghost" className="text-danger" onPress={() => act("blocked", () => rpc("app_task_save", { id: t.id, status: "blocked" }), "Đã đánh dấu bị chặn")}><Prohibit size={15} weight="bold" />Đánh dấu bị chặn</Button>
                   )}
@@ -295,6 +297,8 @@ export default function TaskDrawer() {
                 )}
 
                 <Checklist task={t} items={d.checklist || []} canEdit={canCheck} onChanged={refresh} />
+
+                {d.extras && <DrawerExtras task={t} extras={d.extras} canEdit={canCheck} onChanged={refresh} />}
 
                 {/* Tài liệu */}
                 <section className="flex flex-col gap-2">

@@ -26,7 +26,7 @@ function useSwipe(enabled) {
 // Dòng việc theo design/README.md: biểu tượng trạng thái bên trái, tiêu đề 500, dòng phụ (dự án · người · hạn · ưu tiên), pill trạng thái bên phải.
 // Quá hạn: dải trái đỏ + nền đỏ nhạt. Xong: tiêu đề gạch ngang, chữ mờ. (Không có nút tick: hoàn thành đi qua nộp kết quả/duyệt.)
 export function TaskRow({ task, showDept = true, showProject = true, swipe = false }) {
-  const { lookups, openTask, openTaskId, refresh } = useApp();
+  const { lookups, openTask, openTaskId, refresh, tagsMap } = useApp();
   const coarse = swipe && matchMedia("(pointer: coarse)").matches, sel = useSelect(), sw = useSwipe(coarse && !sel?.on);
   const lp = useLongPress(() => sel?.enter(task.id));
   const dateRef = useRef(null);
@@ -52,6 +52,8 @@ export function TaskRow({ task, showDept = true, showProject = true, swipe = fal
           <PriorityMark priority={task.priority === "medium" || task.priority === "low" ? null : task.priority} />
           <DueText task={task} />
           {task.recurrence_id && <span className="inline-flex items-center gap-1" title="Việc định kỳ"><Repeat size={13} aria-label="Việc định kỳ" /></span>}
+          {(tagsMap?.[task.id] || []).slice(0, 3).map((n) => <span key={n} className="inline-flex h-5 items-center rounded-full px-2 text-[12px] text-muted" style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}>#{n}</span>)}
+          {(tagsMap?.[task.id] || []).length > 3 && <span className="text-faint">+{tagsMap[task.id].length - 3}</span>}
           <span className="text-faint">T-{task.id}</span>
         </span>
       </span>

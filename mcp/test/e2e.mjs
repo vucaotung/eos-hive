@@ -454,6 +454,11 @@ try {
     assert.equal(e2.id, e1.id); assert.equal(e2.duplicate, true); assert.match(e2.reason, /cùng nguồn tin/);
     const e3 = json(await mai.callTool({ name: 'eos_task_save', arguments: { ...s1, source_ref: 'zalo:msg-1002' } })); assert.notEqual(e3.id, e1.id);
     const e4 = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: s1.title, assignee_email: s1.assignee_email } })); assert.notEqual(e4.id, e1.id, 'không source_ref khác với có source_ref');
+    // nhãn: Mai gắn được cho việc VỪA tạo; bản trùng không gắn lại; việc người khác thì không
+    const tg = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: 'Soạn báo giá kho Bình Dương', assignee_email: 'minh@demo.vn', source_ref: 'zalo:msg-2001', tags: ['#Báo giá', 'gấp'] } }));
+    assert.equal(tg.tags, 2); assert.equal((await sql('SELECT count(*)::int n FROM work.task_tags WHERE task_id = $1', [Number(tg.id.slice(2))]))[0].n, 2);
+    const tgDup = json(await mai.callTool({ name: 'eos_task_save', arguments: { title: 'Soạn báo giá kho Bình Dương', assignee_email: 'minh@demo.vn', source_ref: 'zalo:msg-2001', tags: ['khác'] } })); assert.equal(tgDup.duplicate, true); assert.equal(tgDup.tags, undefined);
+    const tooMany = await mai.callTool({ name: 'eos_task_save', arguments: { title: 'Quá nhiều nhãn', tags: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] } }); assert.equal(tooMany.isError, true, 'schema chặn quá 8 nhãn');
     // quá 15 phút → cho tạo lại
     await sql("UPDATE agent.task_create_keys SET created_at = now() - interval '16 minutes' WHERE task_id = $1", [Number(e1.id.slice(2))]);
     const e5 = json(await mai.callTool({ name: 'eos_task_save', arguments: s1 })); assert.notEqual(e5.id, e1.id); assert.ok(!e5.duplicate);
