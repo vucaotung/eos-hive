@@ -30,20 +30,22 @@ def job(stage, feedback=None, slug='du-an-a'):
 class Shell:
     """Giả lập các lệnh: ghi lại và trả đầu ra định sẵn."""
     def __init__(self, home, fail_on=None):
-        self.home, self.cmds, self.fail_on = Path(home), [], fail_on
+        self.home, self.cmds, self.kws, self.fail_on = Path(home), [], [], fail_on
 
     def __call__(self, argv, **kw):
-        self.cmds.append(argv)
+        self.cmds.append(argv); self.kws.append(kw)
         if self.fail_on and self.fail_on in argv:
-            return 1, 'token ya29.SECRETSECRETSECRET hết hạn\nlỗi rclone thật'
-        if argv[0] == 'bash' and argv[1].endswith('run_project.sh'):
-            md = self.home / 'work' / 'md' / argv[2]; md.mkdir(parents=True, exist_ok=True)
+            return 1, 'token ya29.SECRETSECRETSECRET hết hạn\nlỗi Drive thật'
+        if argv[:3] == [sys.executable, '-m', 'pipeline'] and argv[3] == 'run':
+            md = self.home / 'work' / 'md' / argv[4]; md.mkdir(parents=True, exist_ok=True)
             (md / '00_MUC_LUC.md').write_text('# Mục lục\n\nTổng 5 file: 4 đã có Markdown, 2 file có trang cần soát OCR, 1 lỗi.\n', encoding='utf-8')
             return 0, ''
-        if argv[0] == 'rclone' and argv[1] == 'lsjson' and '--dirs-only' in argv:
-            return 0, json.dumps([{'Name': 'khac', 'ID': 'x'}, {'Name': R.MD_SUBDIR, 'ID': 'MdFolderId000001'}])
-        if argv[0] == 'rclone' and argv[1] == 'lsjson':
-            return 0, json.dumps([{'ID': f'File{i:08d}', 'Name': f'f{i}.md', 'Path': f'sub/f{i}.md', 'Size': 10, 'MimeType': 'text/markdown'} for i in range(450)])
+        if argv[:3] == [sys.executable, '-m', 'pipeline'] and argv[3] == 'push':
+            out = self.home / 'work' / 'push'; out.mkdir(parents=True, exist_ok=True)
+            (out / f'{argv[4]}.json').write_text(json.dumps({'md_folder_id': 'MdFolderId000001', 'files': [
+                {'drive_id': f'File{i:08d}', 'name': f'sub/f{i}.md', 'mime': 'text/markdown', 'bytes': 10,
+                 'url': f'https://drive.google.com/file/d/File{i:08d}/view'} for i in range(450)]}), encoding='utf-8')
+            return 0, ''
         return 0, ''
 
 
@@ -55,7 +57,8 @@ class RunnerTest(unittest.TestCase):
     def runner(self, jobs, **kw):
         self.mcp = FakeMcp(jobs)
         self.sh = Shell(self.tmp, **kw)
-        return R.Runner(self.mcp, home=self.tmp, deo_sync='/opt/deo', remote='gdrive', sh=self.sh, log=lambda *_: None)
+        return R.Runner(self.mcp, home=self.tmp, deo_sync='/opt/repo/pipeline', sh=self.sh, log=lambda *_: None,
+                        child_env={'GOOGLE_REFRESH_TOKEN': 'khong-duoc-ghi-log', 'PATH': os.environ.get('PATH', '')})
 
     def test_idle(self):
         r = self.runner([])
@@ -65,12 +68,16 @@ class RunnerTest(unittest.TestCase):
     def test_fetch_convert_happy_path(self):
         r = self.runner([job('fetch_convert')])
         self.assertTrue(r.once())
-        first = self.sh.cmds[0]
-        self.assertEqual(first[:2], ['bash', '/opt/deo/fetch_drive.sh']); self.assertEqual(first[2:], ['du-an-a', SRC])
+        pipe = [sys.executable, '-m', 'pipeline']
+        self.assertEqual(self.sh.cmds[0], pipe + ['fetch', 'du-an-a', SRC])
         self.assertTrue(all(isinstance(a, str) for c in self.sh.cmds for a in c), 'lệnh là danh sách đối số, không qua shell')
-        self.assertIn(['bash', '/opt/deo/run_project.sh', 'du-an-a'], self.sh.cmds)
-        copy = next(c for c in self.sh.cmds if c[:2] == ['rclone', 'copy'])
-        self.assertIn(f'gdrive:{R.MD_SUBDIR}', copy); self.assertIn(SRC, copy)
+        self.assertIn(pipe + ['run', 'du-an-a'], self.sh.cmds)
+        self.assertIn(pipe + ['push', 'du-an-a', SRC], self.sh.cmds)
+        self.assertFalse(any(c[0] in ('bash', 'rclone') for c in self.sh.cmds), 'không còn bash/rclone')
+        for kw in self.sh.kws:   # tiến trình con chạy từ thư mục cha của pipeline, WORK_DIR đặt rõ, kế thừa khóa Google
+            self.assertEqual(Path(kw['cwd']), Path('/opt/repo'))
+            self.assertEqual(Path(kw['env']['WORK_DIR']), Path(self.tmp) / 'work')
+            self.assertIn('GOOGLE_REFRESH_TOKEN', kw['env'])
         setups = [a for n, a in self.mcp.calls if n == 'eos_runner_setup']
         self.assertEqual(setups[0], {'task': 42, 'md_folder_id': 'MdFolderId000001'})
         self.assertEqual([len(s['files']) for s in setups[1:]], [200, 200, 50], 'đăng ký theo lô 200')
@@ -82,10 +89,11 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(all(len(k) >= 6 for k in keys))
 
     def test_failure_reports_crash_and_scrubs_secrets(self):
-        r = self.runner([job('fetch_convert')], fail_on='rclone')
+        r = self.runner([job('fetch_convert')], fail_on='push')
         self.assertTrue(r.once())
         crash = self.mcp.reports('crashed')
         self.assertEqual(len(crash), 1)
+        self.assertNotIn('khong-duoc-ghi-log', json.dumps(crash[0]['payload']))
         self.assertNotIn('ya29', crash[0]['payload']['reason']); self.assertIn('[ẩn]', crash[0]['payload']['reason'])
         self.assertEqual(self.mcp.reports('completed'), [])
 

@@ -1,5 +1,8 @@
 # /etc/systemd/system/eos-runner.service — runner hồ sơ dự án trên VPS 169 (v0.6, docs/20). Thay runner Z2 cũ (Z2 đã cài lại Windows 11; deploy/eos-z2-runner.service chỉ còn để tham khảo).
-# Chạy bằng user hệ thống `eos-runner` (không đăng nhập được); tài khoản rclone (mặc định ai666) do CHỦ SỞ HỮU tự đăng nhập: sudo -u eos-runner rclone config (OAuth client riêng).
+# Chạy bằng user hệ thống `eos-runner` (không đăng nhập được). Từ 0.6 pipeline là Python (pipeline/, `python -m pipeline`), tải/đẩy Drive bằng Drive API, KHÔNG dùng rclone.
+# /etc/eos/runner.env (quyền 600, chủ eos-runner) do CHỦ SỞ HỮU tự điền: EOS_RUNNER_TOKEN và GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
+# (mặc định, chờ Tùng xác nhận: dùng tài khoản Google ai666 có quyền Người chỉnh sửa trên thư mục nguồn; nên tạo OAuth client riêng cho runner, đừng dùng chung khóa của MCP).
+# Cài phụ thuộc vào venv: python3 -m venv /opt/apps/enterprise-os/venv && /opt/apps/enterprise-os/venv/bin/pip install -r pipeline/requirements.txt ; cần thêm gói apt: libreoffice-core libreoffice-writer libreoffice-calc (đọc .doc/.xls).
 # MemoryMax: đặt theo RAM đo ở Pha 0 (RAM trống của VPS 169 trừ phần WeKnora/Postgres/MCP); ví dụ máy 8 GB thì 3G. Sửa __MEMORY_MAX__ trước khi cài.
 [Unit]
 Description=Enterprise OS runner ho-so (VPS 169)
@@ -13,10 +16,10 @@ EnvironmentFile=/etc/eos/runner.env
 Environment=PYTHONUNBUFFERED=1
 Environment=DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline
 Environment=WORK_DIR=/var/lib/eos-runner/work
-Environment=RCLONE_REMOTE=gdrive
+Environment=SOFFICE_BIN=/usr/bin/soffice
 Environment=HOME=/var/lib/eos-runner
 WorkingDirectory=/var/lib/eos-runner
-ExecStart=/usr/bin/python3 /opt/apps/enterprise-os/runner/eos_z2_runner.py
+ExecStart=/opt/apps/enterprise-os/venv/bin/python /opt/apps/enterprise-os/runner/eos_z2_runner.py
 Restart=always
 RestartSec=15
 # OCR và chuyển đổi nặng: nhường CPU và ổ đĩa cho Postgres, WeKnora, MCP
