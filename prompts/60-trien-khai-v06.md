@@ -2,7 +2,7 @@
 
 **Mục tiêu:** đưa v0.6.0 lên máy thật: WeKnora v0.9.0 có Wiki, KB mẫu `_mau-du-an`, migration 0031–0035, runner trên VPS 169, profile Hermes mới, token WeKnora chỉ đọc, nghiệm thu.
 **Chỉ chạy khi chủ sở hữu nói "triển khai".** Đọc trước: `prompts/00-MASTER.md`, `docs/20-du-lieu-v06.md`, `prompts/20-vps169.md`, `prompts/30-vps173.md`, `docs/13`.
-**Điều kiện đầu vào (Pha 0–3 đã đạt, làm trong WSL2 trên Z2 hoặc trên máy Linux khác, và đã gộp vào `main`):** `pipeline/` có trong git, model OCR đã chốt, ảnh/front matter mới đã kiểm. Chưa đạt thì **dừng và báo**, đừng triển khai nửa vời.
+**Điều kiện đầu vào (Pha 0–3 đã đạt, làm trên Z2 Windows 11 bằng pipeline Python chạy được trên cả Windows và Linux, và đã gộp vào `main`; pipeline phải đã qua test trên Linux của CI):** `pipeline/` có trong git, model OCR đã chốt, ảnh/front matter mới đã kiểm. Chưa đạt thì **dừng và báo**, đừng triển khai nửa vời.
 **Luật bổ sung:** không đặt khóa WeKnora ở VPS 173; không xóa gì trong WeKnora; bí mật chỉ đi bằng đường ống SSH, không in; sao lưu trước khi sửa; **dừng và hỏi** ở mọi dấu ⛔.
 
 ## Bước 0 — Hiện trạng (chỉ đọc), báo cáo trước khi làm tiếp

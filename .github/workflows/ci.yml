@@ -14,10 +14,13 @@ jobs:
       EOS_TEST_DSN: postgres://postgres:pw@127.0.0.1:5432/eos_test
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # check_migrations_v06.sh lấy merge-base với origin/main
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: scripts/check_secrets.sh
       - run: scripts/test_db.sh
+      - run: scripts/check_migration_30.sh
+      - run: scripts/check_migrations_v06.sh
       - run: scripts/test_mcp.sh
       - run: scripts/test_web.sh
       - run: scripts/test_runner.sh
