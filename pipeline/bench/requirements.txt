@@ -1,0 +1,7 @@
+﻿# Môi trường benchmark OCR (Pha 2, Z2 Windows, Python 3.12, venv riêng .venv-bench). Chỉ để đo, không dùng khi chạy production.
+paddlepaddle==3.2.0            # cài từ https://www.paddlepaddle.org.cn/packages/stable/cpu/ (bản 3.3.1 có báo cáo lỗi oneDNN)
+paddleocr==3.7.0
+rapidfuzz
+psutil
+pymupdf==2.1
+pyyaml
