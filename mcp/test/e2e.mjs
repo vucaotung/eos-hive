@@ -17,6 +17,13 @@ const files = new Map([['FOLDER_MINH', { id: 'FOLDER_MINH', name: 'DEO - Demo - 
                        ['MDIDX0000001', { id: 'MDIDX0000001', name: '00_MUC_LUC.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Mục lục\nbảng mục lục dài hơn hai mươi ký tự' }],
                        ['MDFILE0000003', { id: 'MDFILE0000003', name: 'FM.md', mimeType: 'text/markdown', parents: ['MDSUB00000001'], content: '---\nsha256: abc123\nsource_path: A/B/gốc.pdf\npages: 7\n---\n\nNội dung thật của văn bản, đủ dài để nạp vào kho.' }],
                        ['MDFILE0000005', { id: 'MDFILE0000005', name: 'SONGSONG.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '# Tài liệu nạp song song\nNội dung đủ dài để nạp vào kho tri thức.' }],
+                       ['MDFILE0000006', { id: 'MDFILE0000006', name: 'TT-06.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: '---\nduong_dan: A/B/TT-06.pdf\nbuoc: ""\n---\n\nTờ trình số 06, nội dung đủ dài để nạp vào kho tri thức.' }],
+                       ['MDFILE0000007', { id: 'MDFILE0000007', name: 'TT-07.md', mimeType: 'text/markdown', parents: ['MDROOT0000001'], content: 'Tệp thứ bảy, nội dung đủ dài để nạp vào kho tri thức.' }],
+                       ['MDSUB00000002', { id: 'MDSUB00000002', name: 'anh', mimeType: 'application/vnd.google-apps.folder', parents: ['MDROOT0000001'] }],
+                       ['MDNOTE0000001', { id: 'MDNOTE0000001', name: 'ghi-chu.md', mimeType: 'text/markdown', parents: ['MDSUB00000002'], content: '---\nduong_dan: anh/ghi-chu\ndrive_link: https://drive.google.com/file/d/MDNOTE0000001/view\n---\n\nGhi chú ảnh hiện trường, nội dung đủ dài.' }],
+                       ['IMGFILE000001', { id: 'IMGFILE000001', name: 'hien-truong-01.jpg', mimeType: 'image/jpeg', parents: ['MDSUB00000002'], content: Buffer.from('JPEGDATA-01-'.repeat(50)) }],
+                       ['IMGDUP0000001', { id: 'IMGDUP0000001', name: 'dup.jpg', mimeType: 'image/jpeg', parents: ['MDSUB00000002'], content: Buffer.from('JPEGDATA-DUP-'.repeat(50)) }],
+                       ['IMGBIG0000001', { id: 'IMGBIG0000001', name: 'lon.jpg', mimeType: 'image/jpeg', parents: ['MDSUB00000002'], content: Buffer.alloc(11 * 1024 * 1024) }],
                        ['OUTMD00000001', { id: 'OUTMD00000001', name: 'ngoai.md', mimeType: 'text/markdown', parents: ['SOMEONE_ELSE'], content: 'bí mật ngoài phạm vi' }]]);
 let seq = 0;
 const drive = express();
@@ -35,7 +42,7 @@ drive.get('/drive/v3/files', (req, res) => {
 drive.get('/drive/v3/files/:id', (req, res) => {
   const f = files.get(req.params.id);
   if (!f) return res.status(404).json({ error: 'notFound' });
-  if (req.query.alt === 'media') return res.type('text/markdown').send(f.content || '');
+  if (req.query.alt === 'media') return res.type(f.mimeType.startsWith('image/') ? f.mimeType : 'text/markdown').send(f.content || '');
   res.json({ ...f, size: f.content ? String(f.content.length) : f.size, webViewLink: `https://drive.google.com/file/d/${f.id}/view` });
 });
 drive.post('/drive/v3/files', express.json(), (req, res) => {
@@ -60,7 +67,19 @@ Object.assign(process.env, { GOOGLE_CLIENT_ID: 'x', GOOGLE_CLIENT_SECRET: 'y', G
 const wkCalls = [];
 const wk = express(); wk.use(express.json());
 wk.use((req, res, next) => (req.get('x-api-key') === 'wk-test-key' ? next() : res.status(401).json({ message: 'bad key' })));
-wk.get('/api/v1/knowledge-bases', (req, res) => res.json({ data: [{ id: 'tplkb000001', name: 'kdc-thanh-lap', embedding_model_id: 'emb-1', summary_model_id: 'sum-1', chunking_config: { chunk_size: 512 } }] }));
+let wkMetaSupported = true;   // false = mô phỏng WeKnora v0.8.x (không có custom_metadata)
+wk.get('/api/v1/knowledge-bases', (req, res) => res.json({ data: [{ id: 'tplkb000001', name: 'kdc-thanh-lap', embedding_model_id: 'emb-1', summary_model_id: 'sum-1', chunking_config: { chunk_size: 512 },
+  indexing_strategy: { vector_enabled: true, keyword_enabled: true, wiki_enabled: true, graph_enabled: false }, wiki_config: { auto_generate: true, extraction_granularity: 'focused' }, vlm_config: { enabled: true, model_id: 'vlm-1' } }] }));
+wk.post('/api/v1/knowledge-bases/:id/knowledge/file', express.raw({ type: 'multipart/form-data', limit: '20mb' }), (req, res) => {
+  const body = req.body.toString('latin1'); const fileName = (body.match(/name="fileName"\r\n\r\n([^\r]*)\r\n/) || [])[1];
+  wkCalls.push(['file', req.params.id, fileName, req.body.length, req.get('content-type')]);
+  if (fileName === 'dup.jpg') return res.status(409).json({ success: false, message: 'trùng nội dung', data: { id: 'wkdoc-existing' } });
+  res.json({ data: { id: `wkdoc-${wkCalls.length}` } });
+});
+wk.put('/api/v1/knowledge/:id', (req, res) => {
+  if (!wkMetaSupported) return res.status(404).json({ message: 'not found' });
+  wkCalls.push(['meta', req.params.id, req.body]); res.json({ data: { id: req.params.id } });
+});
 wk.post('/api/v1/knowledge-bases', (req, res) => { wkCalls.push(['kb', req.body]); res.json({ data: { id: 'wkkb-new-0001' } }); });
 wk.post('/api/v1/knowledge-bases/:id/knowledge/manual', (req, res) => { wkCalls.push(['doc', req.params.id, req.body]); res.json({ data: { id: `wkdoc-${wkCalls.length}` } }); });
 const wkSrv = await new Promise((ok) => { const s = wk.listen(0, '127.0.0.1', () => ok(s)); });
@@ -180,7 +199,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -350,6 +369,7 @@ try {
     assert.equal(r.skipped.length, 1); assert.match(r.skipped[0].reason, /mục lục/); assert.equal(r.failed.length, 1); assert.match(r.failed[0].error, /ngoài phạm vi/);
     const kbBody = wkCalls.find((c) => c[0] === 'kb')[1];
     assert.equal(kbBody.embedding_model_id, 'emb-1'); assert.equal(kbBody.name, 'Dự án Dự án thử nạp hồ sơ'); assert.deepEqual(kbBody.chunking_config, { chunk_size: 512 });
+    assert.equal(kbBody.indexing_strategy.wiki_enabled, true, 'sao chép indexing_strategy'); assert.equal(kbBody.wiki_config.extraction_granularity, 'focused'); assert.equal(kbBody.vlm_config.model_id, 'vlm-1');
     const docs = wkCalls.filter((c) => c[0] === 'doc'); assert.equal(docs.length, 2); assert.equal(docs[0][1], 'wkkb-new-0001');
     const fm = docs.find((d) => d[2].title === 'FM')[2].content;
     assert.match(fm, /^Nguồn: gốc\.pdf\n\nNội dung thật/); assert.ok(!/sha256|---/.test(fm), 'front-matter bị bỏ');
@@ -368,6 +388,55 @@ try {
     await sql("DELETE FROM kb.sources WHERE file_id = (SELECT id FROM core.files WHERE drive_id = 'MDFILE0000005')");
     await sql("UPDATE agent.kb_ingest_claims SET state = 'claiming', claimed_at = now() - interval '31 minutes' WHERE drive_id = 'MDFILE0000005'");
     const re = json(await call({ file_ids: ['MDFILE0000005'] })); assert.equal(re.ingested, 1, 'giữ chỗ treo được lấy lại');
+    await kb.close();
+  });
+  await step('Pha 4: gắn mã bước (data_quality), nạp ảnh, custom_metadata, WeKnora cũ không có metadata', async () => {
+    const kb = await connect(process.env.TOKEN_KB);
+    const cid = (await sql('SELECT company_id FROM agent.workflow_runs LIMIT 1'))[0].company_id;
+    for (const [id, nm, mime] of [['MDFILE0000006', 'TT-06.md', 'text/markdown'], ['MDNOTE0000001', 'ghi-chu.md', 'text/markdown']])
+      await sql("INSERT INTO core.files (company_id, drive_id, name, mime_type, web_url, storage) VALUES ($1,$2,$3,$4,'https://drive.google.com/file/d/'||$2||'/view','company') ON CONFLICT DO NOTHING", [cid, id, nm, mime]);
+    // việc data_quality giao quan-tri-du-lieu (cùng cách tạo việc kb_ingest ở bước trước)
+    const mk = async (stage, card) => {
+      const t = (await sql(`INSERT INTO work.tasks (company_id, department_id, project_id, parent_id, source, title, assignee_id, created_by, created_by_agent)
+         SELECT company_id, department_id, project_id, $1, 'agent', 'Việc ' || $2::text, assignee_id, created_by, 'dieu-phoi' FROM work.tasks WHERE id = $1 RETURNING id`, [ROOT, stage]))[0].id;
+      await sql(`INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by) VALUES ($1, (SELECT run_id FROM agent.task_scopes WHERE task_id = $2), 'kb-quan-tri-du-lieu', $3::jsonb, 'agent:dieu-phoi')`, [t, ROOT, JSON.stringify({ stage, agent: 'quan-tri-du-lieu' })]);
+      await sql("UPDATE work.tasks SET agent_id = (SELECT id FROM agent.agents WHERE code = 'quan-tri-du-lieu') WHERE id = $1", [t]);
+      const ob = (await sql("SELECT id FROM agent.outbox WHERE task_id = $1 AND kind = 'dispatch'", [t]))[0];
+      await sql('SELECT agent.outbox_ack($1, $2)', [ob.id, card]); await sql("SELECT agent.ingest_event('eos-demo', $1, 'claimed', $2)", [card, 'k-' + card]);
+      return t;
+    };
+    const dq = await mk('data_quality', 't_dq_mcp');
+    const tag = (task, items) => kb.callTool({ name: 'eos_project_tag_step', arguments: { task, items } });
+    // sai giai đoạn / sai agent / sai mã bước bị từ chối
+    const ingestTask = (await sql("SELECT task_id FROM agent.task_scopes WHERE scope->>'stage' = 'kb_ingest' LIMIT 1"))[0].task_id;
+    const wrongStage = await tag(ingestTask, [{ drive_id: 'MDFILE0000006', buoc: '12' }]); assert.equal(wrongStage.isError, true); assert.match(text(wrongStage), /data_quality/);
+    const vtDenied = await vt.callTool({ name: 'eos_project_tag_step', arguments: { task: kvt, items: [{ drive_id: 'MDFILE0000006', buoc: '12' }] } }); assert.equal(vtDenied.isError, true, 'văn thư không gắn mã bước');
+    const badCode = await tag(dq, [{ drive_id: 'MDFILE0000006', buoc: '21' }]); assert.equal(badCode.isError, true, 'bước 21 không hợp lệ');
+    const ok = json(await tag(dq, [{ drive_id: 'MDFILE0000006', buoc: '12', note: 'giấy phép xây dựng' }, { drive_id: 'MDNOTE0000001', buoc: '07' }, { drive_id: 'KHONGCO000001', buoc: '03' }]));
+    assert.equal(ok.tagged, 2); assert.deepEqual(ok.unknown_files, ['KHONGCO000001']);
+    json(await tag(dq, [{ drive_id: 'MDFILE0000006', buoc: '12' }])); assert.equal((await sql("SELECT count(*)::int n FROM kb.file_steps WHERE drive_id = 'MDFILE0000006'"))[0].n, 1, 'gắn lại thì cập nhật, không trùng');
+    assert.equal((await sql("SELECT kb.step_phase('01') a, kb.step_phase('09') b, kb.step_phase('10') c, kb.step_phase('15') d, kb.step_phase('16') e, kb.step_phase('20') f, kb.step_phase('00') g"))[0].c, 'II');
+    // nạp: md có mã bước, ảnh lấy mã bước và metadata từ tệp .md cùng thư mục, ảnh trùng (409), ảnh quá lớn
+    const call = (args) => kb.callTool({ name: 'eos_kb_ingest', arguments: { task: ingestTask, ...args } });
+    const before = wkCalls.length;
+    const r = json(await call({ file_ids: ['MDFILE0000006', 'IMGFILE000001', 'IMGDUP0000001', 'IMGBIG0000001'] }));
+    assert.equal(r.ingested, 3, JSON.stringify(r)); assert.equal(r.failed.length, 1); assert.match(r.failed[0].error, /quá 10 MB/);
+    const fileCall = wkCalls.slice(before).find((c) => c[0] === 'file' && c[2] === 'hien-truong-01.jpg'); assert.ok(fileCall, 'ảnh đi qua knowledge/file'); assert.match(fileCall[4], /^multipart\/form-data/); assert.ok(fileCall[3] > 600);
+    const metas = wkCalls.slice(before).filter((c) => c[0] === 'meta').map((c) => [c[0], c[1], c[2].custom_metadata]);
+    const mdMeta = metas.find((m) => m[2].duong_dan === 'A/B/TT-06.pdf')[2];
+    assert.equal(mdMeta.buoc, '12'); assert.equal(mdMeta.giai_doan, 'II'); assert.equal(mdMeta.drive_link, 'https://drive.google.com/file/d/MDFILE0000006/view');
+    const imgMeta = metas.find((m) => m[2].duong_dan === 'anh/ghi-chu')[2];
+    assert.equal(imgMeta.buoc, '07'); assert.equal(imgMeta.giai_doan, 'I'); assert.equal(imgMeta.drive_link, 'https://drive.google.com/file/d/MDNOTE0000001/view');
+    assert.ok(r.metadata.set >= 3 && !r.metadata.unsupported);
+    assert.equal(r.skipped.length, 0);
+    const src = await sql("SELECT s.weknora_doc_id, f.drive_id FROM kb.sources s JOIN core.files f ON f.id = s.file_id WHERE f.drive_id IN ('IMGFILE000001','IMGDUP0000001')");
+    assert.equal(src.length, 2, 'kb.sources ghi cả ảnh'); assert.ok(src.some((x) => x.weknora_doc_id === 'wkdoc-existing'), 'ảnh trùng dùng bản đã có');
+    // WeKnora cũ: không có custom_metadata → ghi log một lần, đặt cờ, KHÔNG làm lỗi tệp, các tệp sau không gọi PUT nữa
+    wkMetaSupported = false;
+    const old1 = json(await call({ file_ids: ['MDFILE0000007'] })); assert.equal(old1.ingested, 1); assert.equal(old1.failed.length, 0); assert.equal(old1.metadata.unsupported, true);
+    const putsAfter = wkCalls.filter((c) => c[0] === 'meta').length;
+    await sql("DELETE FROM kb.sources WHERE file_id = (SELECT id FROM core.files WHERE drive_id = 'MDFILE0000005')"); await sql("DELETE FROM agent.kb_ingest_claims WHERE drive_id = 'MDFILE0000005'");
+    const old2 = json(await call({ file_ids: ['MDFILE0000005'] })); assert.equal(old2.ingested, 1); assert.equal(wkCalls.filter((c) => c[0] === 'meta').length, putsAfter, 'đã có cờ thì không gọi PUT');
     await kb.close();
   });
   await step('bản tin: phạm vi theo vai trò; tạo/sửa việc qua MCP với email, dự án, agent, phải duyệt', async () => {

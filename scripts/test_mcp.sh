@@ -11,6 +11,9 @@ ADMIN_DSN="$EOS_TEST_DSN" DATABASE_URL="postgres://eos_mcp:test-only@${HOSTPORT}
 # Thể thức văn bản NĐ30 do eos_draft_document sinh ra (không cần Postgres)
 node --test test/vanban.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)" | tr '\n' ' '; echo
 node --test test/vanban.test.mjs >/dev/null 2>&1 || { echo "vanban: THẤT BẠI" >&2; exit 1; }
+# Máy khách WeKnora (KB mẫu, WeKnora cũ, metadata) với máy chủ giả
+node --test test/weknora.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)" | tr '\n' ' '; echo
+node --test test/weknora.test.mjs >/dev/null 2>&1 || { echo "weknora: THẤT BẠI" >&2; exit 1; }
 # Dữ liệu hồ sơ agent (deploy/setup_agent_profiles.sql): chạy hai lần trên CSDL thử, không tạo trùng, Mai không nhận thẻ Kanban, không đụng max_level
 P="psql $EOS_TEST_DSN -X -q -At -v ON_ERROR_STOP=1 -v company=33333333-3333-3333-3333-333333333333 -v owner_email=minh@demo.vn"
 $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null && $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null

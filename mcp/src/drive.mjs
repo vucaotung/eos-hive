@@ -129,3 +129,16 @@ export async function readText(fileId) {
   if (buf.length > READ_MAX_BYTES) { const err = new Error('Tệp quá lớn để đọc qua MCP'); err.status = 413; throw err; }
   return { name: meta.name, text: buf.toString('utf8') };
 }
+
+// Tải nhị phân (ảnh) tối đa maxBytes. Trả {name, mime, bytes, parent}. 413 nếu quá lớn, 415 nếu không phải ảnh.
+export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export async function readImage(fileId, maxBytes = IMAGE_MAX_BYTES) {
+  const meta = await gapi(`/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size,parents&supportsAllDrives=true`);
+  if (!/^image\//.test(meta.mimeType || '')) { const err = new Error('Không phải tệp ảnh'); err.status = 415; throw err; }
+  if (Number(meta.size || 0) > maxBytes) { const err = new Error(`Ảnh quá ${maxBytes / 1048576} MB`); err.status = 413; throw err; }
+  const r = await fetch(API + `/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  if (!r.ok) { const err = new Error(`Drive ${r.status}`); err.status = r.status; throw err; }
+  const bytes = Buffer.from(await r.arrayBuffer());
+  if (bytes.length > maxBytes) { const err = new Error(`Ảnh quá ${maxBytes / 1048576} MB`); err.status = 413; throw err; }
+  return { name: meta.name, mime: meta.mimeType, bytes, parent: (meta.parents || [])[0] || null };
+}
