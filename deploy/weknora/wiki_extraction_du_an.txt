@@ -1,0 +1,7 @@
+QUY TẮC GỘP TRANG WIKI (KB dự án)
+1. Trước khi tạo trang mới, tìm trang cùng chủ thể (dự án, bên liên quan, thửa đất, văn bản, bước 01-20) và cập nhật vào trang đó.
+2. Chỉ tạo trang mới khi chủ đề chưa có trang.
+3. Thông tin trùng thì gộp vào một trang: giữ một nguồn chính và liệt kê nguồn phụ ở cuối trang.
+4. Số liệu khác nhau giữa các nguồn (tổng mức đầu tư, diện tích, ngày cấp phép, giá trị hợp đồng...): ghi cả hai giá trị kèm nguồn, đánh dấu "mâu thuẫn", không tự chọn giá trị nào.
+5. Mỗi trang phải liên kết về trang Tổng quan dự án và về bước 01-20 liên quan (dùng liên kết [[...]]).
+6. Mỗi nhận định ghi tên tài liệu nguồn. Không suy diễn ngoài tài liệu. Không ghi số hiệu văn bản pháp luật nếu tài liệu không nêu.

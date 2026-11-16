@@ -21,17 +21,18 @@ Ever Teams **đã gỡ**. Mọi việc, dự án, duyệt, báo cáo nằm ở *
 | `eos-quan-tri-du-lieu` | Agent: nạp kho tri thức WeKnora | enterprise-os | du-an | – |
 | `eos-nhan-su` | Agent: nhân sự | enterprise-os | – | – |
 | `team_admin` (Mai, Zalo) | Điều phối viên giao tiếp | deo-facts, weknora (+ enterprise-os khi chủ duyệt token, §5) | enterprise-os-guide, project-dossier-evidence | – |
-| `ks-kinh-te-xd` | Phòng Kinh tế xây dựng | drive, weknora (+ enterprise-os khi duyệt token) | xay-dung, enterprise-os-guide | cảnh báo 08:00, tuần T2 07:30, dọn file tạm 08:30 |
+| `ks-kinh-te-xd` | Phòng Kinh tế xây dựng; từ v0.6 là agent `ks-kinh-te-xd` (20 bước quản lý dự án đầu tư xây dựng, soạn nháp, không ký/nộp/gửi) | drive, weknora (+ enterprise-os khi duyệt token); v0.6: `eos_bridge`, MCP Enterprise OS, MCP WeKnora chỉ đọc, web; terminal tắt | xay-dung, enterprise-os-guide; v0.6: `so-do-20-buoc`, `qlda-chuan-bi/thuc-hien/ket-thuc`, `tra-cuu-phap-luat` | cảnh báo 08:00, tuần T2 07:30, dọn file tạm 08:30 |
+| `eos-phap-che` (v0.6) | Agent: nạp và rà hiệu lực văn bản pháp luật | enterprise-os (`law_ingest`), weknora chỉ đọc, web | nap-van-ban-phap-luat, ra-hieu-luc-phap-luat, tra-cuu-phap-luat, ra-soat-phap-che | `law_review` hằng tháng (việc định kỳ, không bật sẵn) |
 | `ops-admin` | Vận hành, bản tin | deo-facts, weknora, cloudflare | deo, hermes, erpnext, … | **bản tin EOS 08:00, tổng kết tuần EOS** (Ever: tạm dừng) |
 | `staff-work` | Nhắc việc nhân viên (ERPNext) | erpnext | – | nhắc 08:00 và 17:30 |
 | `default`, `personal_assitant` | Cá nhân, không thuộc luồng công ty | – | – | – |
 
-Ngoài Hermes: **runner Z2** (agent `runner`, nhận việc qua MCP), **cầu nối** `eos-kanban-bridge` (Work ↔ Kanban Hermes), `zalo-sidecar`, `hermes-gateway`.
+Ngoài Hermes: **runner** (agent `runner`, nhận việc qua MCP; từ v0.6 chạy trên VPS 169, Z2 là dự phòng), **cầu nối** `eos-kanban-bridge` (Work ↔ Kanban Hermes), `zalo-sidecar`, `hermes-gateway`.
 
-**Agent trong CSDL** (`agent.agents`): dieu-phoi, van-thu, quan-tri-du-lieu, nhan-su (executor `hermes`), runner (executor `runner`), `phap-che` (chưa có profile → không giao việc cho agent này).
+**Agent trong CSDL** (`agent.agents`): dieu-phoi, van-thu, quan-tri-du-lieu, nhan-su (executor `hermes`), runner (executor `runner`), `phap-che` (v0.6: có luồng pháp luật; bật khi profile `eos-phap-che` và mã MCP sẵn sàng), `ks-kinh-te-xd` (v0.6, tắt cho đến khi profile cấu hình xong). Chi tiết quyền đọc/ghi KB theo profile: `docs/20` mục 6.
 
 ## 3. Công cụ MCP Enterprise OS (18)
-Đọc: `eos_my_day`, `eos_list_tasks`, `eos_get_task`, `eos_guide`, `eos_company_digest`, `eos_list_members`, `eos_list_projects`, … · Ghi: `eos_task_save`, `eos_comment`, `eos_delegate`, `eos_submit_result`, … · Dự án/runner/nạp: `eos_project_*`, `eos_runner_*`, `eos_kb_ingest`. Phạm vi mã: người dùng `read, write, drive, hr_self, kb`; agent thêm `delegate, draft, project, runner, ingest` (ràng buộc CHECK, người không được cấp). Mã hết hạn tối đa 90 ngày.
+Đọc: `eos_my_day`, `eos_list_tasks`, `eos_get_task`, `eos_guide`, `eos_company_digest`, `eos_list_members`, `eos_list_projects`, … · Ghi: `eos_task_save`, `eos_comment`, `eos_delegate`, `eos_submit_result`, … · Dự án/runner/nạp: `eos_project_*` (v0.6 thêm `eos_project_tag_step`), `eos_runner_*`, `eos_kb_ingest` (ảnh, metadata); pháp luật (v0.6): `eos_law_save`, `eos_law_ingest`, `eos_law_mark`, `eos_law_list`. Phạm vi mã: người dùng `read, write, drive, hr_self, kb`; agent thêm `delegate, draft, project, runner, ingest` (v0.6: `law_ingest`, chỉ `phap-che`) (ràng buộc CHECK, người không được cấp). Mã hết hạn tối đa 90 ngày.
 
 ## 4. Cron báo cáo: kiểm tra 24/10/2026
 | Cron | Lịch | Kết quả lần chạy gần nhất | Ghi chú |

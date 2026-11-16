@@ -1,0 +1,7 @@
+QUY TẮC GỘP TRANG WIKI (KB pháp luật)
+1. Chủ thể của trang là: một văn bản (theo số hiệu), một lĩnh vực, hoặc một bước 01-20. Trước khi tạo trang mới, tìm trang cùng chủ thể và cập nhật vào đó.
+2. Mỗi văn bản chỉ có một trang, kể cả khi có nhiều phiên bản nạp; các phiên bản ghi thành mục lịch sử trong cùng trang, bản mới nhất ở đầu.
+3. Tình trạng hiệu lực lấy đúng theo thông tin văn bản (còn hiệu lực, hết một phần, hết hiệu lực, chưa hiệu lực) kèm ngày tra và nguồn. Văn bản hết hiệu lực vẫn giữ trang, ghi rõ văn bản thay thế.
+4. Thông tin trùng thì gộp, giữ một nguồn chính và liệt kê nguồn phụ.
+5. Số hiệu, ngày ban hành, ngày hiệu lực khác nhau giữa các nguồn: ghi cả hai kèm nguồn, đánh dấu "mâu thuẫn", không tự chọn.
+6. Mỗi trang văn bản liên kết tới trang lĩnh vực và các bước 01-20 liên quan (dùng liên kết [[...]]). Không diễn giải hay suy luận ngoài nguyên văn.

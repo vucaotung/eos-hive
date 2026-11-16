@@ -58,8 +58,22 @@ def check():
                     errs.append(f'{name}: số hiệu văn bản bị đóng cứng "{m.group(0)}" trong {os.path.relpath(p, SK)}')
     return errs
 
+def check_weknora_texts():
+    """deploy/weknora/*.txt là nội dung dán vào wiki_config của KB mẫu: content_instructions tối đa 4000 byte (giới hạn WeKnora); giữ cùng giới hạn cho extraction_instructions.
+    Không chứa số hiệu văn bản pháp luật; quy tắc gộp trang của KB dự án phải đủ 5 ý theo plan v6."""
+    errs, d = [], os.path.join(ROOT, 'deploy', 'weknora')
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if not f.endswith('.txt'): continue
+        t = open(os.path.join(d, f), encoding='utf8').read()
+        if len(t.encode('utf8')) > 4000: errs.append(f'weknora/{f}: {len(t.encode("utf8"))} byte > 4000')
+        for m in LAW_NO.finditer(t): errs.append(f'weknora/{f}: số hiệu bị đóng cứng "{m.group(0)}"')
+        if f.startswith('wiki_extraction_'):
+            for k in ('cùng chủ thể', 'mâu thuẫn', 'liên kết', 'gộp', 'nguồn'):
+                if k not in t: errs.append(f'weknora/{f}: thiếu ý "{k}" trong quy tắc gộp trang')
+    return errs
+
 if __name__ == '__main__':
-    errs = check()
+    errs = check() + check_weknora_texts()
     n = len([x for x in os.listdir(SK) if os.path.isdir(os.path.join(SK, x))])
     if errs:
         print('\n'.join(errs), file=sys.stderr); print(f'check_skills: THẤT BẠI ({len(errs)} lỗi)', file=sys.stderr); sys.exit(1)

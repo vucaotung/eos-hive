@@ -1,0 +1,36 @@
+# /etc/systemd/system/eos-runner.service — runner hồ sơ dự án trên VPS 169 (v0.6, docs/20). Thay runner Z2 (deploy/eos-z2-runner.service giữ lại cho dự phòng).
+# Chạy bằng user hệ thống `eos-runner` (không đăng nhập được); tài khoản rclone (mặc định ai666) do CHỦ SỞ HỮU tự đăng nhập: sudo -u eos-runner rclone config (OAuth client riêng).
+# MemoryMax: đặt theo RAM đo ở Pha 0 (RAM trống của VPS 169 trừ phần WeKnora/Postgres/MCP); ví dụ máy 8 GB thì 3G. Sửa __MEMORY_MAX__ trước khi cài.
+[Unit]
+Description=Enterprise OS runner ho-so (VPS 169)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=eos-runner
+Group=eos-runner
+EnvironmentFile=/etc/eos/runner.env
+Environment=PYTHONUNBUFFERED=1
+Environment=DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline
+Environment=WORK_DIR=/var/lib/eos-runner/work
+Environment=RCLONE_REMOTE=gdrive
+Environment=HOME=/var/lib/eos-runner
+WorkingDirectory=/var/lib/eos-runner
+ExecStart=/usr/bin/python3 /opt/apps/enterprise-os/runner/eos_z2_runner.py
+Restart=always
+RestartSec=15
+# OCR và chuyển đổi nặng: nhường CPU và ổ đĩa cho Postgres, WeKnora, MCP
+Nice=10
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=__MEMORY_MAX__
+TasksMax=256
+# thu hẹp quyền
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/eos-runner
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -13,11 +13,12 @@ Tab **Quản trị → Thành viên** nay hiện cả người và AI agent. Gia
 | `dieu-phoi` | Điều phối AI | Điều phối dự án | Chia việc dự án cho agent chuyên môn, theo dõi, tổng hợp; không tự làm việc chuyên môn. | Có |
 | `van-thu` | Văn thư AI | Văn thư | Công văn NĐ 30, biên mục hồ sơ; không cấp số, không ký, không gửi ra ngoài. | Có |
 | `quan-tri-du-lieu` | Quản trị dữ liệu AI | Quản trị dữ liệu | Kiểm chất lượng dữ liệu, nạp kho tri thức; chỉ nạp thông tin đã duyệt. | Có |
-| `ho-so-runner` | Xử lý hồ sơ (Z2) | Xử lý hồ sơ (Z2) | Đọc Drive, chuyển Markdown, OCR trong thư mục dự án. | Có (runner) |
+| `ho-so-runner` | Xử lý hồ sơ | Xử lý hồ sơ | Đọc Drive, chuyển Markdown, OCR, nén ảnh trong thư mục dự án (từ v0.6 chạy trên VPS 169). | Có (runner) |
 | `nhan-su` | Nhân sự AI | Nhân sự | Nháp chấm công, KPI; chưa có skill. | Không (tắt) |
-| `phap-che` | Pháp chế AI | Pháp chế | Rà soát pháp lý hồ sơ, không kết luận thay luật sư; chưa có profile. | Không (tắt) |
+| `phap-che` | Pháp chế AI | Pháp chế | Rà soát pháp lý hồ sơ và quản lý KB pháp luật theo yêu cầu của chủ sở hữu (nạp văn bản, kiểm hiệu lực, đánh dấu hết hiệu lực); không kết luận thay luật sư. Phạm vi mã `law_ingest`. | Có khi đã bật (v0.6, `deploy/setup_law.sql`) |
+| `ks-kinh-te-xd` | Kỹ sư kinh tế xây dựng AI | Kinh tế xây dựng | Thực hiện 20 bước quản lý dự án đầu tư xây dựng: bảng kiểm từng bước, soạn hồ sơ nháp, kiểm tra hồ sơ, theo dõi tiến độ pháp lý, đề xuất việc; không ký, không nộp, không gửi ra ngoài. | Có khi đã bật (v0.6, tắt khi mới tạo) |
 
-Dữ liệu này đặt bằng `deploy/setup_agent_profiles.sql` (không chạy tự động): mô tả luôn đặt theo bảng; chức danh và người phụ trách chỉ đặt khi đang trống (không ghi đè chỉnh tay); `mai`, `nhan-su`, `phap-che` luôn đặt `enabled = false`.
+Dữ liệu này đặt bằng `deploy/setup_agent_profiles.sql` (không chạy tự động): mô tả luôn đặt theo bảng; chức danh và người phụ trách chỉ đặt khi đang trống (không ghi đè chỉnh tay); `nhan-su` luôn đặt `enabled = false`. Từ v0.6 `phap-che` và `ks-kinh-te-xd` **không bị script ép tắt** (tắt/bật bằng `agent.agents.active`: `setup_agents.sql` tạo chúng ở trạng thái tắt, `setup_law.sql` bật `phap-che`). (`mai` bật ở chế độ nội bộ như cũ.)
 
 ## Cách đọc tab Thành viên
 - **Trạng thái:** *Đang chạy* (có mã MCP còn hiệu lực), *Tắt* (agent bị tắt, hoặc công ty tắt nhận việc và không có mã), *Chưa có mã* (nhận việc nhưng chưa có mã MCP), *Mã sắp hết hạn* (mã gần nhất hết hạn trong 14 ngày: cấp lại bằng `issue_agent_token.sh`).

@@ -1,0 +1,6 @@
+YÊU CẦU TRANG TỔNG QUAN DỰ ÁN
+Tạo và giữ một trang "Tổng quan dự án" duy nhất cho KB, trình bày theo 3 giai đoạn và 20 bước quản lý dự án đầu tư xây dựng:
+- Giai đoạn I (Chuẩn bị đầu tư): 01 khảo sát; 02 quy hoạch chi tiết 1/500; 03 chủ trương và lựa chọn nhà đầu tư; 04 ĐTM/GPMT; 05 thỏa thuận đấu nối hạ tầng; 06 lập BCNCKT và thiết kế cơ sở; 07 thẩm duyệt PCCC; 08 thẩm định BCNCKT; 09 quyết định đầu tư.
+- Giai đoạn II (Thực hiện đầu tư): 10 giao/thuê đất, nghĩa vụ tài chính, GPMB; 11 thẩm tra TKBVTC và dự toán; 12 giấy phép xây dựng; 13 đấu thầu và hợp đồng thi công; 14 khởi công; 15 thi công, giám sát, nghiệm thu bộ phận.
+- Giai đoạn III (Kết thúc xây dựng): 16 nghiệm thu hoàn thành; 17 nghiệm thu PCCC; 18 cơ quan quản lý xây dựng kiểm tra nghiệm thu; 19 quyết toán và bảo hành; 20 cấp giấy chứng nhận, bàn giao vận hành.
+Mỗi bước một dòng "Bước NN: đã có | một phần | chưa có hồ sơ", nếu "đã có" thì dẫn tên tài liệu hoặc liên kết trang. Ghi thông tin chính của dự án (chủ đầu tư, địa điểm, tổng mức đầu tư, diện tích, tiến độ) kèm nguồn; số liệu mâu thuẫn ghi cả hai giá trị. Các trang khác liên kết về trang này.

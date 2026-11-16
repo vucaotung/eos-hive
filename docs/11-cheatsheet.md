@@ -76,5 +76,12 @@ Vai trò: owner/admin cả công ty · trưởng phòng và thành viên theo ph
 - Phạm vi của việc: ngăn chi tiết việc, hoặc `SELECT task_id, skill, scope FROM agent.task_scopes WHERE run_id = …`.
 - Cài skill: `scripts/install_skill.sh vps173 eos-van-thu ho-so-danh-muc`.
 
+## Dữ liệu v0.6 (docs/20)
+- Pháp luật: Dự án → **Nạp văn bản pháp luật** (chỉ chủ sở hữu/quản trị) → việc cho `phap-che`; thư mục pháp luật và bật agent: `psql -v company=… -v law_folder=… -f deploy/setup_law.sql`; nguồn chính thống: biến `LAW_SOURCE_DOMAINS` của MCP.
+- Mã bước: `eos_project_tag_step` (quan-tri-du-lieu, giai đoạn `data_quality`) → `kb.file_steps`; danh mục `doc.records.buoc`; sơ đồ 20 bước là bản khung (skill `so-do-20-buoc`).
+- Việc định kỳ bảo trì (không bật sẵn): `psql … -f deploy/setup_wiki_maintenance.sql`; bật: `UPDATE work.recurrences SET active = true WHERE agent_code IS NOT NULL AND company_id = '<uuid>'`.
+- Cấp mã `phap-che`: `scripts/issue_agent_token.sh vps169 vps173 phap-che eos-phap-che` (kiểm "Phạm vi mã" có `law_ingest`). Bật `ks-kinh-te-xd`: `UPDATE agent.agents SET active = true WHERE code = 'ks-kinh-te-xd'`.
+- Kiểm skill: `make test-skills`. Triển khai v0.6: `prompts/60-trien-khai-v06.md`.
+
 ## Việc còn mở
 Kiểm tra thư mục Drive của người dùng; thông báo đẩy; tải tệp; việc lặp lại; L2 có cấu trúc trên giao diện; RLS; đổi mật khẩu root/SSH khóa; UFW vps169; giới hạn tốc độ ở Caddy; thông số Valnex cho Văn thư AI (chờ tài liệu KB); định nghĩa agent `phap-che`.
