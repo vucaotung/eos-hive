@@ -29,10 +29,20 @@ class PeakRss:
         self.p, self.interval, self.peak, self._stop = psutil.Process(), interval, 0, threading.Event()
         self._t = threading.Thread(target=self._run, daemon=True)
 
+    def _rss(self):
+        """RSS của tiến trình này cộng mọi tiến trình con (Tesseract chạy như tiến trình con)."""
+        total = self.p.memory_info().rss
+        for c in self.p.children(recursive=True):
+            try:
+                total += c.memory_info().rss
+            except Exception:  # noqa: BLE001
+                pass
+        return total
+
     def _run(self):
         while not self._stop.is_set():
             try:
-                self.peak = max(self.peak, self.p.memory_info().rss)
+                self.peak = max(self.peak, self._rss())
             except Exception:  # noqa: BLE001
                 pass
             time.sleep(self.interval)
@@ -44,7 +54,7 @@ class PeakRss:
     def __exit__(self, *a):
         self._stop.set()
         self._t.join(1)
-        self.peak = max(self.peak, self.p.memory_info().rss)
+        self.peak = max(self.peak, self._rss())
 
     @property
     def mb(self):

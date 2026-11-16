@@ -14,15 +14,22 @@ class EngineUnavailable(RuntimeError):
 
 
 class Tesseract:
-    def __init__(self, cmd=None, lang='vie', psm='3', timeout=180):
+    def __init__(self, cmd=None, lang='vie', psm='3', timeout=180, tessdata=None):
         self.name = f'tesseract-{lang}-psm{psm}'
-        self.cmd = cmd or os.environ.get('TESSERACT_CMD') or 'tesseract'
+        self.cmd = cmd or os.environ.get('TESSERACT_CMD') or r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        if not os.path.exists(self.cmd):
+            self.cmd = 'tesseract'
         self.lang, self.psm, self.timeout = lang, psm, timeout
+        # TESSDATA_DIR: thư mục chứa vie.traineddata (không cần ghi vào Program Files)
+        self.tessdata = tessdata or os.environ.get('TESSDATA_DIR') or ''
         self.version = ''
+
+    def _td(self):
+        return ['--tessdata-dir', self.tessdata] if self.tessdata else []
 
     def load(self):
         try:
-            p = subprocess.run([self.cmd, '--list-langs'], capture_output=True, text=True, timeout=30)
+            p = subprocess.run([self.cmd, *self._td(), '--list-langs'], capture_output=True, text=True, timeout=30)
             v = subprocess.run([self.cmd, '--version'], capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired) as e:
             raise EngineUnavailable(f'Không chạy được Tesseract ({self.cmd}): {e}')
@@ -32,7 +39,7 @@ class Tesseract:
         self.version = (v.stdout or v.stderr).splitlines()[0] if (v.stdout or v.stderr) else ''
 
     def ocr(self, png):
-        p = subprocess.run([self.cmd, str(png), 'stdout', '-l', self.lang, '--psm', self.psm, 'tsv'],
+        p = subprocess.run([self.cmd, *self._td(), str(png), 'stdout', '-l', self.lang, '--psm', self.psm, 'tsv'],
                            capture_output=True, text=True, encoding='utf-8', timeout=self.timeout)
         if p.returncode != 0:
             raise RuntimeError(f'tesseract mã {p.returncode}: {p.stderr[-200:]}')
