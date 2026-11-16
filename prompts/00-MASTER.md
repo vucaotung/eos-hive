@@ -9,7 +9,7 @@
 
 | Bí danh SSH | Máy | Vai trò | Ghi chú đã biết |
 | --- | --- | --- | --- |
-| `z2` | HP Z2 Mini G4, Ubuntu 26.04, user `vincent`, Docker + NVIDIA đã có, 4 core / 16 GB | Phát triển, kiểm thử, Claude Code, kéo sao lưu | Wayland (không Xorg); đã có `rclone` tới Drive của chủ; cron kéo sao lưu 04:00 từ VPS 169 về `~/backups/deo169` |
+| `z2` | HP Z2 Mini G4, 4 core / 16 GB, NVIDIA. **Từ 11/2026 máy đã cài lại Windows 11** (hostname `Z2_Workstation`, user `vucao`); bản Ubuntu 26.04 (user `vincent`, `~/work/deo-sync`, runner `eos-z2-runner`, cron sao lưu) **đã bị xóa** | Phát triển, kiểm thử, Claude Code. Công cụ Linux (rclone, LibreOffice, pandoc, poppler, Tesseract, Postgres 16, Node 22) chạy trong **WSL2 Ubuntu** (repo đặt trong ổ WSL, không đặt ở `/mnt/c`) | Cron kéo sao lưu 04:00 từ VPS 169 về `~/backups/deo169` **không còn** (xem `prompts/70-handoff-z2-windows.md`); runner hồ sơ chạy trên VPS 169 từ v0.6; công cụ Bash của Claude Code trên Windows có thể bị Application Control chặn `git.exe`: dùng PowerShell hoặc chạy Claude Code trong WSL |
 | `vps169` | 169.58.107.168 | Postgres, PostgREST, MCP, web, Caddy, WeKnora (Ever Teams đã gỡ 24/10/2026, container dừng, volume còn) | Caddy chạy bằng **systemd** (`/etc/caddy/Caddyfile`); sao lưu `/opt/backup/backup.sh` → `/var/backups/deo`; mọi cổng hạ tầng bind `127.0.0.1` |
 | `vps173` | 173.249.51.69 | Hermes Agent (gateway `--multiplex` cho 5 profile), Caddy trong Docker `company-caddy`, SearXNG, 9router | Hermes chạy bằng `hermes-gateway.service` (systemd **user**); UFW chặn cầu Docker `172.19.0.0/16` quay vào host |
 

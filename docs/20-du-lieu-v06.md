@@ -8,7 +8,7 @@ Bản mã và tài liệu này **chưa gồm** các phần cần máy thật (Z2
 | # | Nội dung | Trong bản 0.6.0 | Còn thiếu / cần máy thật |
 | --- | --- | --- | --- |
 | 1 | Runner hồ sơ chuyển từ Z2 lên VPS 169 | `deploy/eos-runner.service`, `scripts/issue_runner_token.sh` dùng chung | đưa `deo-sync` vào git (`pipeline/`), `DEO_SYNC_DIR` mặc định, cài và chạy trên VPS 169 (Pha 1, 8) |
-| 2 | Đổi OCR sang PaddleOCR | chưa | benchmark trên Z2 và chốt model (Pha 2), sửa pipeline (Pha 3) |
+| 2 | Đổi OCR sang PaddleOCR | chưa | benchmark (Pha 2; Z2 nay là Windows 11, chạy trong WSL2) và chốt model, sửa pipeline (Pha 3) |
 | 3 | Nạp ảnh vào kho tri thức | `eos_kb_ingest` nạp ảnh ≤ 10 MB qua `knowledge/file`, `custom_metadata`, mã bước | pipeline nén ảnh, front matter `buoc`/`giai_doan` (Pha 3) |
 | 4 | Wiki WeKnora qua KB mẫu | `ensureKb` sao chép `indexing_strategy`, `wiki_config`, `vlm_config`; `deploy/weknora/*.txt` | nâng WeKnora v0.8.2 → v0.9.0, tạo KB `_mau-du-an` (Pha 8) |
 | 5 | Hồ sơ theo khung 20 bước | `doc.records.buoc` (0032), `kb.file_steps` + `eos_project_tag_step` (0033), skill `so-do-20-buoc`, `qlda-*` | duyệt bảng khung (Tùng và `ks-kinh-te-xd`) |

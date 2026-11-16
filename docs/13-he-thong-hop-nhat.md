@@ -27,7 +27,7 @@ Ever Teams **đã gỡ**. Mọi việc, dự án, duyệt, báo cáo nằm ở *
 | `staff-work` | Nhắc việc nhân viên (ERPNext) | erpnext | – | nhắc 08:00 và 17:30 |
 | `default`, `personal_assitant` | Cá nhân, không thuộc luồng công ty | – | – | – |
 
-Ngoài Hermes: **runner** (agent `runner`, nhận việc qua MCP; từ v0.6 chạy trên VPS 169, Z2 là dự phòng), **cầu nối** `eos-kanban-bridge` (Work ↔ Kanban Hermes), `zalo-sidecar`, `hermes-gateway`.
+Ngoài Hermes: **runner** (agent `runner`, nhận việc qua MCP; từ v0.6 chạy trên VPS 169; Z2 đã cài lại Windows nên không còn runner dự phòng), **cầu nối** `eos-kanban-bridge` (Work ↔ Kanban Hermes), `zalo-sidecar`, `hermes-gateway`.
 
 **Agent trong CSDL** (`agent.agents`): dieu-phoi, van-thu, quan-tri-du-lieu, nhan-su (executor `hermes`), runner (executor `runner`), `phap-che` (v0.6: có luồng pháp luật; bật khi profile `eos-phap-che` và mã MCP sẵn sàng), `ks-kinh-te-xd` (v0.6, tắt cho đến khi profile cấu hình xong). Chi tiết quyền đọc/ghi KB theo profile: `docs/20` mục 6.
 

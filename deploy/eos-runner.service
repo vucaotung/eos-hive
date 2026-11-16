@@ -1,4 +1,4 @@
-# /etc/systemd/system/eos-runner.service — runner hồ sơ dự án trên VPS 169 (v0.6, docs/20). Thay runner Z2 (deploy/eos-z2-runner.service giữ lại cho dự phòng).
+# /etc/systemd/system/eos-runner.service — runner hồ sơ dự án trên VPS 169 (v0.6, docs/20). Thay runner Z2 cũ (Z2 đã cài lại Windows 11; deploy/eos-z2-runner.service chỉ còn để tham khảo).
 # Chạy bằng user hệ thống `eos-runner` (không đăng nhập được); tài khoản rclone (mặc định ai666) do CHỦ SỞ HỮU tự đăng nhập: sudo -u eos-runner rclone config (OAuth client riêng).
 # MemoryMax: đặt theo RAM đo ở Pha 0 (RAM trống của VPS 169 trừ phần WeKnora/Postgres/MCP); ví dụ máy 8 GB thì 3G. Sửa __MEMORY_MAX__ trước khi cài.
 [Unit]

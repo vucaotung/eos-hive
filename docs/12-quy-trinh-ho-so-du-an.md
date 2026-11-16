@@ -9,7 +9,7 @@ Dẹo Work → **Dự án → Nạp hồ sơ dự án** (chủ sở hữu/quản
 | Giai đoạn | Agent (kỹ năng) | Làm gì | Kết quả |
 | --- | --- | --- | --- |
 | 0 Điều phối | `dieu-phoi` (`dieu-phoi-du-an`) | đọc phạm vi, **chia việc bằng `eos_delegate`, mỗi việc con ghi `scope`**; sau cùng tổng hợp cho người theo dõi | các việc con + `agent.task_scopes` |
-| 1 Xử lý hồ sơ | `ho-so-runner` (runner trên **VPS 169** từ v0.6; Z2 là dự phòng) | tải thư mục nguồn, chuyển Markdown + OCR, dựng mục lục (pipeline `pipeline/` trong repo; trước 0.6: `~/work/deo-sync` trên Z2), đẩy Markdown lên thư mục `_md_deo` trong thư mục nguồn, đăng ký tệp | `md_folder_id`, `core.files` |
+| 1 Xử lý hồ sơ | `ho-so-runner` (runner trên **VPS 169** từ v0.6; runner Z2 cũ đã ngừng khi Z2 cài lại Windows) | tải thư mục nguồn, chuyển Markdown + OCR, dựng mục lục (pipeline `pipeline/` trong repo; trước 0.6: `~/work/deo-sync` trên Z2), đẩy Markdown lên thư mục `_md_deo` trong thư mục nguồn, đăng ký tệp | `md_folder_id`, `core.files` |
 | 2 Chất lượng dữ liệu | `quan-tri-du-lieu` (`kb-quan-tri-du-lieu`) | rà trang scan lỗi, trùng bản, mâu thuẫn số liệu; đề xuất cấu trúc KB và bộ sự thật chính; **đề xuất mã bước 01–20 cho từng tệp** (`eos_project_tag_step`, ghi `kb.file_steps`, không sửa tệp Drive) | báo cáo `.md` trên Drive người theo dõi |
 | 3 Danh mục và tổng hợp | `van-thu` (`ho-so-danh-muc`) | phân loại, trích số hiệu/ngày/giá trị, **ghi `doc.records` (kèm `buoc`)**, viết bản tổng hợp văn bản | danh mục hồ sơ + báo cáo `.md` |
 | 4 Pháp lý | `phap-che` (`ra-soat-phap-che`) | rà văn bản pháp lý và hợp đồng: thẩm quyền, căn cứ, hiệu lực, mốc hạn, rủi ro | báo cáo rà soát `.md` |
@@ -37,7 +37,7 @@ Các giai đoạn 2–4 phụ thuộc giai đoạn 1 (`after`). Việc con do đ
 Mã của **người** không có `project`/`runner` (ràng buộc ở CSDL). Mã agent do `scripts/issue_agent_token.sh` cấp; mã runner do `scripts/issue_runner_token.sh`.
 
 ## Runner (`runner/eos_z2_runner.py`; từ v0.6 chạy trên VPS 169, xem `docs/20`)
-> v0.6: runner chuyển lên VPS 169 (`deploy/eos-runner.service`, user `eos-runner`, `Nice=10`, `IOSchedulingClass=idle`, `MemoryMax`); tài khoản rclone mặc định ai666, chủ sở hữu tự đăng nhập. Phần dưới mô tả bản Z2 vẫn đúng với runner dự phòng.
+> v0.6: runner chuyển lên VPS 169 (`deploy/eos-runner.service`, user `eos-runner`, `Nice=10`, `IOSchedulingClass=idle`, `MemoryMax`); tài khoản rclone mặc định ai666, chủ sở hữu tự đăng nhập. Phần dưới mô tả cách cài của bản Z2 cũ; trên VPS 169 xem `deploy/eos-runner.service` và `prompts/60-trien-khai-v06.md`.
 Agent kiểu `runner` (`agent.agents.executor='runner'`): việc giao cho nó **không đi qua hộp thư đi/Kanban**; thẻ ở trạng thái `ready`, runner tự nhận qua MCP. Runner gọi pipeline có sẵn (`fetch_drive.sh`, `run_project.sh`) bằng danh sách đối số (không qua shell; tên dự án và id thư mục được kiểm mẫu trước), báo heartbeat, lỗi được che mã/khóa trước khi lên CSDL, và **không bao giờ báo xong mà không có tóm tắt**.
 - Cài: `scripts/issue_runner_token.sh vps169` (ghi `~/.config/eos-hive/runner.env`, 600), chép `deploy/eos-z2-runner.service` vào `~/.config/systemd/user/`, `systemctl --user enable --now eos-z2-runner`. Chạy thử một lần: `python3 runner/eos_z2_runner.py --once`.
 - Điều kiện: tài khoản rclone `gdrive:` có quyền **chỉnh sửa** thư mục nguồn (để tạo `_md_deo`); `~/work/deo-sync` đã cài (`install_z2.sh`).

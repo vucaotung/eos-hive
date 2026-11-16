@@ -2,7 +2,7 @@
 
 **Mục tiêu:** đưa v0.6.0 lên máy thật: WeKnora v0.9.0 có Wiki, KB mẫu `_mau-du-an`, migration 0031–0035, runner trên VPS 169, profile Hermes mới, token WeKnora chỉ đọc, nghiệm thu.
 **Chỉ chạy khi chủ sở hữu nói "triển khai".** Đọc trước: `prompts/00-MASTER.md`, `docs/20-du-lieu-v06.md`, `prompts/20-vps169.md`, `prompts/30-vps173.md`, `docs/13`.
-**Điều kiện đầu vào (Pha 0–3 đã đạt trên Z2 và đã gộp vào `main`):** `pipeline/` có trong git, model OCR đã chốt, ảnh/front matter mới đã kiểm. Chưa đạt thì **dừng và báo**, đừng triển khai nửa vời.
+**Điều kiện đầu vào (Pha 0–3 đã đạt, làm trong WSL2 trên Z2 hoặc trên máy Linux khác, và đã gộp vào `main`):** `pipeline/` có trong git, model OCR đã chốt, ảnh/front matter mới đã kiểm. Chưa đạt thì **dừng và báo**, đừng triển khai nửa vời.
 **Luật bổ sung:** không đặt khóa WeKnora ở VPS 173; không xóa gì trong WeKnora; bí mật chỉ đi bằng đường ống SSH, không in; sao lưu trước khi sửa; **dừng và hỏi** ở mọi dấu ⛔.
 
 ## Bước 0 — Hiện trạng (chỉ đọc), báo cáo trước khi làm tiếp
@@ -73,7 +73,7 @@ Cài lại logrotate/housekeeping nếu `scripts/` đổi (xem `docs/17` mục t
 5. Service: sửa `__MEMORY_MAX__` trong `deploy/eos-runner.service` theo RAM đo ở Bước 0 (RAM trống trừ dự phòng cho Postgres, WeKnora, MCP), chép vào `/etc/systemd/system/`, `systemctl daemon-reload`.
 6. Chạy thử một lần sạch: `sudo -u eos-runner env $(cat /etc/eos/runner.env | xargs) DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline python3 /opt/apps/enterprise-os/runner/eos_z2_runner.py --once` (không in mã). Kỳ vọng "không có việc" hoặc xử lý đúng một việc thử.
 7. `systemctl enable --now eos-runner`; kiểm `systemctl status`, `journalctl -u eos-runner -n 30`, thư mục tạm trống sau khi chạy.
-8. **Z2:** chạy một dự án thử trên runner VPS 169 trước; đạt thì mới `systemctl --user disable --now eos-z2-runner` trên Z2. Không đạt: giữ runner Z2, báo.
+8. Z2 đã cài lại Windows 11 nên **không còn runner Z2 để tắt hay để dự phòng**. Chạy một dự án thử trên runner VPS 169 (đối chiếu số tệp `.md` và mục lục với `_md_deo` đã có trên Drive do pipeline cũ sinh ra); không đạt thì `systemctl disable --now eos-runner` và báo, chưa có đường xử lý hồ sơ nào khác cho đến khi sửa xong.
 
 ## Bước 6 — Profile Hermes (VPS 173)
 Sao lưu `config.yaml` của từng profile trước khi sửa (`cp -a config.yaml config.yaml.bak.$(date +%F-%H%M)`). **Khởi động lại gateway chỉ khi chủ sở hữu đồng ý** ⛔; gateway chạy `--multiplex` cho nhiều profile, khởi động lại ảnh hưởng tất cả.
@@ -102,5 +102,5 @@ Duyệt skill 20 bước, chọn văn bản pháp luật đầu tiên, thêm ng�
 ## Quay lại
 - Mã/migration: triển khai lại bản trước (`v0.5.0`) và khởi động lại `eos-mcp`, `eos-web`; cột/bảng mới tương thích ngược (các lệnh `down:` ở đầu từng migration nếu phải gỡ).
 - WeKnora: khôi phục dump, volume `data-files` và image v0.8.2 theo kế hoạch đã chủ sở hữu duyệt ở Bước 2.
-- Runner: `systemctl disable --now eos-runner`; bật lại `eos-z2-runner` trên Z2.
+- Runner: `systemctl disable --now eos-runner` (không còn runner Z2 để bật lại; việc xử lý hồ sơ dừng đến khi sửa xong).
 - Profile: chép lại `config.yaml.bak.*`, khởi động lại gateway khi chủ sở hữu đồng ý. `UPDATE agent.agents SET active = false WHERE code IN ('phap-che','ks-kinh-te-xd')`; `UPDATE work.recurrences SET active = false WHERE agent_code IS NOT NULL`.
