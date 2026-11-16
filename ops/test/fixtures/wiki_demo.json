@@ -1,0 +1,14 @@
+{"kb": "Dự án KDC Thành Lập", "date": "2026-11-16",
+ "pages": [
+  {"title": "Tổng quan dự án KDC Thành Lập", "kind": "overview", "updated": "2026-11-01", "sources": ["QD-01.md"],
+   "body": "# Tổng quan\n- Bước 01: đã có [[Khảo sát địa chất]]\n- Bước 02: đã có\n- Bước 03: chưa có hồ sơ\n- Bước 04: chưa có hồ sơ\n- Bước 05: chưa có hồ sơ\n- Bước 06: chưa có hồ sơ\n- Bước 07: chưa có hồ sơ\n- Bước 08: chưa có hồ sơ\n- Bước 09: đã có [QD-01.md]\n- Bước 10: chưa có hồ sơ\n- Bước 11: chưa có hồ sơ\n- Bước 12: chưa có hồ sơ\n- Bước 13: chưa có hồ sơ\n- Bước 14: chưa có hồ sơ\n- Bước 15: chưa có hồ sơ\n- Bước 16: chưa có hồ sơ\n- Bước 17: chưa có hồ sơ\n- Bước 18: chưa có hồ sơ\n- Bước 19: chưa có hồ sơ\n- Bước 20: chưa có hồ sơ\n- Tổng mức đầu tư: 120 tỷ đồng\n"},
+  {"title": "Khảo sát địa chất", "kind": "page", "updated": "2026-10-10", "sources": ["KS-01.md"], "body": "Kết quả khảo sát. Xem [[Tổng quan dự án KDC Thành Lập]] và [[Báo cáo đánh giá tác động môi trường]].\n- Diện tích: 12,5 ha\n"},
+  {"title": "Quyết định phê duyệt dự án", "kind": "page", "updated": "2026-10-05", "sources": ["QD-01.md"], "body": "Quyết định đầu tư. [[Tổng quan dự án KDC Thành Lập]]\n- Tổng mức đầu tư: 135 tỷ đồng\n- Diện tích: 12,5 ha\n"},
+  {"title": "Biên bản họp giao ban", "kind": "page", "updated": "2026-09-01", "sources": ["BB-01.md"], "body": "Nội dung họp."}
+ ],
+ "documents": [
+  {"name": "QD-01.md", "ingested": "2026-10-04", "superseded_by": null},
+  {"name": "KS-01.md", "ingested": "2026-10-09", "superseded_by": null},
+  {"name": "BB-01.md", "ingested": "2026-09-01", "superseded_by": null},
+  {"name": "HD-05.md", "ingested": "2026-11-10", "superseded_by": null}
+ ]}

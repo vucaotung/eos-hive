@@ -20,8 +20,25 @@ node --test test/law.test.mjs >/dev/null 2>&1 || { echo "law: THẤT BẠI" >&2;
 # Dữ liệu hồ sơ agent (deploy/setup_agent_profiles.sql): chạy hai lần trên CSDL thử, không tạo trùng, Mai không nhận thẻ Kanban, không đụng max_level
 P="psql $EOS_TEST_DSN -X -q -At -v ON_ERROR_STOP=1 -v company=33333333-3333-3333-3333-333333333333 -v owner_email=minh@demo.vn"
 $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null && $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null
+# deploy/setup_agents.sql: thêm ks-kinh-te-xd (tắt khi mới tạo), chạy lại không bật/tắt lại; mô tả phap-che/ks theo bảng phân vai
+PS="psql $EOS_TEST_DSN -X -q -At -v ON_ERROR_STOP=1 -v company=33333333-3333-3333-3333-333333333333"
+$PS -f "$ROOT/deploy/setup_agents.sql" >/dev/null 2>&1; $PS -f "$ROOT/deploy/setup_agent_profiles.sql" -v owner_email=minh@demo.vn >/dev/null
+K1=$(psql "$EOS_TEST_DSN" -X -q -At -c "select kind||'|'||module||'|'||hermes_profile||'|'||max_level||'|'||can_delegate||'|'||active from agent.agents where code='ks-kinh-te-xd'")
+[ "$K1" = "specialist|doc|ks-kinh-te-xd|1|false|false" ] || { echo "setup_agents ks-kinh-te-xd sai: $K1" >&2; exit 1; }
+psql "$EOS_TEST_DSN" -X -q -c "update agent.agents set active = true where code in ('ks-kinh-te-xd')"
+$PS -f "$ROOT/deploy/setup_agents.sql" >/dev/null 2>&1; $PS -f "$ROOT/deploy/setup_agent_profiles.sql" -v owner_email=minh@demo.vn >/dev/null
+[ "$(psql "$EOS_TEST_DSN" -X -q -At -c "select active from agent.agents where code='ks-kinh-te-xd'")" = "t" ] || { echo "chạy lại setup_agents tắt mất agent đã bật" >&2; exit 1; }
+[ "$(psql "$EOS_TEST_DSN" -X -q -At -c "select count(*) from agent.agents a where code in ('ks-kinh-te-xd','phap-che') and (description like '%20 bước%' or description like '%KB pháp luật%')")" = "2" ] || { echo "mô tả phap-che/ks-kinh-te-xd chưa theo bảng phân vai" >&2; exit 1; }
+echo "setup_agents (ks-kinh-te-xd, phap-che): ĐẠT"
 CHK=$(psql "$EOS_TEST_DSN" -X -q -At -c "select (select count(*) from agent.agents where code='mai')||'|'||(select count(*) from agent.company_agents ca join agent.agents g on g.id=ca.agent_id where g.code='mai' and ca.enabled and ca.auto_done and ca.config->>'internal'='true' and ca.title='Trợ lý tiếp nhận' and ca.owner_user_id is not null)||'|'||(select max_level from agent.agents where code='mai')")
 [ "$CHK" = "1|1|1" ] && echo "setup_agent_profiles: ĐẠT (chạy lại không trùng)" || { echo "setup_agent_profiles THẤT BẠI: $CHK" >&2; exit 1; }
+# deploy/setup_wiki_maintenance.sql: hai việc định kỳ mẫu, KHÔNG bật sẵn, chạy lại không trùng
+SLUG=$(psql "$EOS_TEST_DSN" -X -q -At -c "select slug from core.projects where company_id='33333333-3333-3333-3333-333333333333' limit 1")
+PW="psql $EOS_TEST_DSN -X -q -At -v ON_ERROR_STOP=1 -v company=33333333-3333-3333-3333-333333333333 -v project=$SLUG -v owner_email=admin@demo.vn"
+$PW -f "$ROOT/deploy/setup_wiki_maintenance.sql" >/dev/null && $PW -f "$ROOT/deploy/setup_wiki_maintenance.sql" >/dev/null
+WM=$(psql "$EOS_TEST_DSN" -X -q -At -c "select count(*)||'|'||count(*) filter (where active)||'|'||count(*) filter (where scope->>'stage'='wiki_lint')||'|'||count(*) filter (where scope->>'stage'='law_review') from work.recurrences where company_id='33333333-3333-3333-3333-333333333333' and agent_code is not null")
+[ "$WM" = "3|0|1|2" ] || { echo "setup_wiki_maintenance sai (cần 3 mẫu: 1 wiki_lint + 2 law_review, không bật sẵn): $WM" >&2; exit 1; }
+echo "setup_wiki_maintenance (2 việc định kỳ mẫu, chưa bật): ĐẠT"
 # scripts/issue_agent_token.sh --revoke-old (ssh giả chạy tại chỗ; CSDL thử; HOME tạm). Mã không bao giờ được in ra.
 TMPH=$(mktemp -d); mkdir -p "$TMPH/bin"
 printf '#!/usr/bin/env bash\nwhile [ "${1:-}" = "-o" ]; do shift 2; done\nshift\nexec bash -c "$1"\n' > "$TMPH/bin/ssh"; chmod +x "$TMPH/bin/ssh"

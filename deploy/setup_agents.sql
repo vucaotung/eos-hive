@@ -8,10 +8,11 @@ INSERT INTO core.users (email, name, kind) VALUES
  ('van-thu@agent.enterpriseos.bond','Văn thư AI','agent'),
  ('nhan-su@agent.enterpriseos.bond','Nhân sự AI','agent'),
  ('quan-tri-du-lieu@agent.enterpriseos.bond','Quản trị dữ liệu AI','agent'),
- ('phap-che@agent.enterpriseos.bond','Pháp chế AI','agent')
+ ('phap-che@agent.enterpriseos.bond','Pháp chế AI','agent'),
+ ('ks-kinh-te-xd@agent.enterpriseos.bond','Kỹ sư kinh tế xây dựng AI','agent')
 ON CONFLICT DO NOTHING;
-INSERT INTO agent.agents (user_id, code, name, kind, module, hermes_profile, skills, max_level, can_delegate, description)
-SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg, v.descr
+INSERT INTO agent.agents (user_id, code, name, kind, module, hermes_profile, skills, max_level, can_delegate, description, active)
+SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg, v.descr, v.code NOT IN ('phap-che', 'ks-kinh-te-xd')   -- hai agent này tắt cho đến khi profile Hermes và mã MCP sẵn sàng (deploy/setup_law.sql bật phap-che)
   FROM (VALUES
    ('dieu-phoi@agent.enterpriseos.bond','dieu-phoi','Điều phối AI','orchestrator','work','eos-dieu-phoi','{}'::text[],2,true,
     'Nhận yêu cầu, chia việc con cho agent phân hệ, tổng hợp kết quả, bản tin sáng'),
@@ -21,13 +22,15 @@ SELECT u.id, v.code, v.name, v.kind, v.module, v.profile, v.skills, v.lv, v.dlg,
     'Rà chấm công bất thường, kiểm đơn với số phép, nháp KPI và bảng lương'),
    ('quan-tri-du-lieu@agent.enterpriseos.bond','quan-tri-du-lieu','Quản trị dữ liệu AI','module','kb','eos-quan-tri-du-lieu','{}',1,false,
     'Quản trị Kho dữ liệu chung: trả lời có trích dẫn, gom câu không tìm thấy, đề xuất trang wiki'),
-   ('phap-che@agent.enterpriseos.bond','phap-che','Pháp chế AI','specialist','doc','eos-phap-che','{}',0,false,
-    'Chưa định nghĩa (chỗ giữ chỗ, đang tắt)')
+   ('phap-che@agent.enterpriseos.bond','phap-che','Pháp chế AI','specialist','doc','eos-phap-che','{}',1,false,
+    'Rà soát pháp lý hồ sơ; quản lý KB pháp luật theo yêu cầu của chủ sở hữu (nạp văn bản, kiểm hiệu lực, đánh dấu hết hiệu lực; không kết luận thay luật sư)'),
+   ('ks-kinh-te-xd@agent.enterpriseos.bond','ks-kinh-te-xd','Kỹ sư kinh tế xây dựng AI','specialist','doc','ks-kinh-te-xd','{}',1,false,
+    'Thực hiện 20 bước quản lý dự án đầu tư xây dựng: bảng kiểm từng bước, soạn hồ sơ nháp, kiểm tra hồ sơ, theo dõi tiến độ pháp lý, đề xuất việc; không ký, không nộp, không gửi ra ngoài')
   ) v(email, code, name, kind, module, profile, skills, lv, dlg, descr)
   JOIN core.users u ON lower(u.email) = v.email
 ON CONFLICT (code) DO NOTHING;
--- phap-che chưa có nhiệm vụ: tắt cho đến khi được định nghĩa (module doc là giá trị tạm; ràng buộc cột module không cho để trống).
-UPDATE agent.agents SET active = false WHERE code = 'phap-che';
+-- phap-che, ks-kinh-te-xd: chỉ tắt khi MỚI tạo (cột active ở trên); chạy lại script không tắt lại agent đã bật. Bật: phap-che bằng deploy/setup_law.sql; ks-kinh-te-xd bằng
+--   UPDATE agent.agents SET active = true WHERE code = 'ks-kinh-te-xd';  (sau khi profile ks-kinh-te-xd có eos_bridge + mã MCP, prompts/60-trien-khai-v06.md)
 INSERT INTO agent.company_settings (company_id, enabled, kanban_board)
 SELECT id, true, 'eos-' || slug FROM core.companies WHERE id = :'company' ON CONFLICT (company_id) DO NOTHING;
 INSERT INTO agent.company_agents (company_id, agent_id)

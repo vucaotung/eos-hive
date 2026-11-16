@@ -17,7 +17,9 @@ test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgre
 	scripts/test_bridge.sh
 test-runner: ## Kiểm thử runner Z2 (MCP giả, lệnh ngoài giả)
 	scripts/test_runner.sh
-test: test-db test-migration test-mcp test-web test-bridge test-runner ## Chạy toàn bộ
+test-skills: ## Kiểm định dạng skill Hermes (frontmatter, công cụ thật, không đóng cứng số hiệu pháp luật)
+	python3 -I scripts/check_skills.py
+test: test-db test-migration test-mcp test-web test-bridge test-runner test-skills ## Chạy toàn bộ
 acceptance: ## Nghiệm thu đầu–cuối trên MÁY THẬT (tốn LLM; ONLY=A1,A3 để chọn kịch bản)
 	scripts/acceptance.sh $(if $(ONLY),--only $(ONLY))
 audit: ## Kiểm toán bảo mật trên MÁY THẬT (chỉ đọc; checklist docs/06)

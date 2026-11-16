@@ -20,5 +20,7 @@ C="select table_schema||'.'||table_name||'.'||column_name||':'||data_type||':'||
 diff <(psql "$OLD" -X -At -c "$C") <(psql "$NEW" -X -At -c "$C") >/dev/null && echo "cột: giống hệt" || { echo "cột LỆCH" >&2; diff <(psql "$OLD" -X -At -c "$C") <(psql "$NEW" -X -At -c "$C") | head -6 >&2; exit 1; }
 K="select conrelid::regclass::text||':'||pg_get_constraintdef(oid) from pg_constraint where connamespace in ('kb'::regnamespace,'agent'::regnamespace,'doc'::regnamespace) and contype in ('c','u') order by 1"
 diff <(psql "$OLD" -X -At -c "$K") <(psql "$NEW" -X -At -c "$K") >/dev/null && echo "ràng buộc: giống hệt" || { echo "ràng buộc LỆCH" >&2; diff <(psql "$OLD" -X -At -c "$K") <(psql "$NEW" -X -At -c "$K") | cut -c1-200 | head -6 >&2; exit 1; }
+PB="select md5(playbook) from agent.workflows where code = 'project-intake'"
+[ "$(psql "$OLD" -X -At -c "$PB")" = "$(psql "$NEW" -X -At -c "$PB")" ] && echo "playbook: giống hệt" || { echo "playbook LỆCH giữa migration và lược đồ mới" >&2; exit 1; }
 [ -n "${KEEP:-}" ] || for d in eos_mig06_old eos_mig06_new; do psql "$BASE/postgres" -X -q -c "DROP DATABASE $d"; done
 echo "migration 0.6 (0031…): ĐẠT"

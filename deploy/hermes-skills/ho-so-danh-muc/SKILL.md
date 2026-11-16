@@ -1,7 +1,7 @@
 ---
 name: ho-so-danh-muc
-description: Lập danh mục hồ sơ dự án và viết bản tổng hợp văn bản cho Văn thư AI - đọc Markdown trong phạm vi bằng eos_project_files/eos_project_read, ghi doc.records bằng eos_catalog_upsert, lưu tổng hợp bằng eos_project_save_report. Mọi con số kèm tên tệp nguồn.
-version: 1.0.0
+description: Lập danh mục hồ sơ dự án và viết bản tổng hợp văn bản cho Văn thư AI - đọc Markdown trong phạm vi bằng eos_project_files/eos_project_read, ghi doc.records (kèm mã bước `buoc` 01–20 theo so-do-20-buoc) bằng eos_catalog_upsert, lưu tổng hợp bằng eos_project_save_report. Mọi con số kèm tên tệp nguồn.
+version: 1.1.0
 author: Tổ Ong (eos-hive)
 license: MIT
 metadata:
@@ -23,7 +23,7 @@ Bạn là **Văn thư AI**. Việc này nằm trong quy trình dự án: phạm 
 1. `eos_project_scope` (mã việc): đọc `task.scope` (stage, paths, doc_types), `md_folder_id`, playbook. Chưa có `md_folder_id` thì `kanban_block` (runner chưa xong).
 2. `eos_project_files` đi từ thư mục gốc, xuống các thư mục con trong `paths`. Đọc `00_MUC_LUC.md` trước nếu có (mục lục do runner dựng, nêu trang cần soát và tệp lỗi).
 3. Với mỗi tệp trong phạm vi: `eos_project_read` (đọc hết các đoạn khi cần). Phân loại theo `references/nhom-ho-so.md`, trích: số hiệu, tên, ngày ban hành, hiệu lực, giá trị.
-4. Ghi danh mục **theo lô ≤ 50** bằng `eos_catalog_upsert` (trùng `record_no` thì cập nhật, không nhân đôi). Điền `drive_id` của tệp Markdown nguồn.
+4. Ghi danh mục **theo lô ≤ 50** bằng `eos_catalog_upsert` (trùng `record_no` thì cập nhật, không nhân đôi). Điền `drive_id` của tệp Markdown nguồn và **`buoc`** (mã bước 01–20 của quản lý dự án đầu tư xây dựng, theo skill `so-do-20-buoc`): lấy từ mã bước `quan-tri-du-lieu` đã đề xuất trong báo cáo giai đoạn `data_quality` (việc anh em, `eos_get_task`) nếu có, nếu không thì tự phân theo bảng trong `so-do-20-buoc`. **Không chắc thì `00`** và ghi "cần xác nhận" trong `description` (kèm bước có thể). Không đoán cho chắc; bỏ trống `buoc` nghĩa là giữ giá trị cũ.
 5. Viết **bản tổng hợp văn bản** (Markdown) theo mẫu trong `references/nhom-ho-so.md`, lưu bằng `eos_project_save_report`. Mỗi nhận định ghi `[tên-tệp.md]` nguồn.
 6. `kanban_complete`: summary nêu số tệp đã đọc/bỏ qua và lý do, số hồ sơ đã ghi theo nhóm, tệp báo cáo (đưa `{drive_id, name, url}` vào `metadata.outputs`), điểm nghi vấn, `residual_risk`.
 

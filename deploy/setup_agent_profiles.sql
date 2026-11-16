@@ -1,7 +1,7 @@
 -- Hồ sơ AI agent theo công ty (docs/17): chức danh, mô tả, người phụ trách theo bảng phân vai. KHÔNG chạy tự động.
 -- Dùng: psql -v company=<uuid-công-ty> -v owner_email=<email-người-phụ-trách> -f deploy/setup_agent_profiles.sql        (cần migration 0023)
 -- Chạy lại không tạo trùng. Quy tắc cập nhật: mô tả luôn đặt theo bảng; chức danh và người phụ trách chỉ đặt khi đang TRỐNG (không ghi đè chỉnh tay trên giao diện);
--- nhận việc Kanban (company_agents.enabled): nhan-su, phap-che luôn đặt false. mai: BẬT ở chế độ "nội bộ" (config.internal = true, auto_done = true): chỉ nhận thẻ "phân tích yêu cầu tạo việc bằng AI"
+-- nhận việc Kanban (company_agents.enabled): nhan-su luôn đặt false. phap-che và ks-kinh-te-xd KHÔNG bị script ép tắt (bật/tắt qua agent.agents.active, xem deploy/setup_agents.sql và setup_law.sql). mai: BẬT ở chế độ "nội bộ" (config.internal = true, auto_done = true): chỉ nhận thẻ "phân tích yêu cầu tạo việc bằng AI"
 -- (docs/18, Phần D); không hiện trong ô chọn agent, không giao tay hay chia việc cho Mai được.
 -- Không tạo core.memberships cho agent (Mai đã có membership từ trước, cần cho công cụ MCP của người; script này không đụng tới). Không đổi max_level, can_delegate, skills.
 \set ON_ERROR_STOP on
@@ -25,7 +25,8 @@ INSERT INTO _roles VALUES
  ('quan-tri-du-lieu', 'Quản trị dữ liệu', 'Kiểm chất lượng dữ liệu, nạp kho tri thức; chỉ nạp thông tin đã duyệt.', false),
  ('ho-so-runner', 'Xử lý hồ sơ (Z2)', 'Đọc Drive, chuyển Markdown, OCR trong thư mục dự án.', false),
  ('nhan-su', 'Nhân sự', 'Nháp chấm công, KPI; chưa có skill.', true),
- ('phap-che', 'Pháp chế', 'Rà soát pháp lý hồ sơ, không kết luận thay luật sư; chưa có profile.', true);
+ ('phap-che', 'Pháp chế', 'Rà soát pháp lý hồ sơ và quản lý KB pháp luật theo yêu cầu của chủ sở hữu (nạp văn bản, kiểm hiệu lực, đánh dấu hết hiệu lực); không kết luận thay luật sư.', false),
+ ('ks-kinh-te-xd', 'Kinh tế xây dựng', 'Thực hiện 20 bước quản lý dự án đầu tư xây dựng: bảng kiểm từng bước, soạn hồ sơ nháp, kiểm tra hồ sơ, theo dõi tiến độ pháp lý, đề xuất việc; không ký, không nộp, không gửi ra ngoài.', false);
 
 UPDATE agent.agents g SET description = r.descr FROM _roles r WHERE g.code = r.code AND g.description IS DISTINCT FROM r.descr;
 UPDATE agent.company_agents ca SET title = r.title
