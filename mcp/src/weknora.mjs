@@ -31,13 +31,17 @@ export function templateConfig(tpl) {
 
 // Tìm KB theo tên, chưa có thì tạo với cấu hình sao chép từ KB mẫu. Trả {id, created, extra_config_ignored}.
 // WeKnora cũ (v0.8.x) không có Wiki: nếu từ chối trường mở rộng (400/422) thì tạo lại chỉ với cấu hình lõi và ghi log, không làm hỏng lượt nạp.
-export async function ensureKb(name, description, log = console.warn) {
+export async function ensureKb(name, description, log = console.warn, { wiki = false } = {}) {
   const all = await listKbs();
   const same = all.find((k) => k.name === name);
   if (same) return { id: same.id, created: false };
   const tpl = all.find((k) => k.name === TEMPLATE_KB());
   if (!tpl) throw new Error(`Không thấy KB mẫu "${TEMPLATE_KB()}" để sao chép cấu hình (đặt WEKNORA_TEMPLATE_KB)`);
   const { core, extra } = templateConfig(tpl);
+  if (wiki) {   // KB pháp luật luôn bật Wiki (nếu bản WeKnora hỗ trợ; bản cũ từ chối thì lùi về cấu hình lõi bên dưới)
+    extra.indexing_strategy = { ...(extra.indexing_strategy || {}), wiki_enabled: true };
+    extra.wiki_config = extra.wiki_config || { auto_generate: true, extraction_granularity: 'focused' };
+  }
   const mk = (body) => wk('POST', '/knowledge-bases', { name, description: description || '', type: 'document', ...core, ...body });
   let j, ignored = false;
   try { j = await mk(extra); }

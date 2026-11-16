@@ -54,7 +54,8 @@ drive.post('/upload/drive/v3/files', express.raw({ type: '*/*', limit: '20mb' })
   const text = req.body.toString('utf8');
   const meta = JSON.parse(text.split('\r\n\r\n')[1].split('\r\n')[0]);
   const id = `U${++seq}`.padEnd(14, 'x');
-  files.set(id, { id, ...meta, mimeType: 'text/markdown', size: String(req.body.length) });
+  const parts = text.split('\r\n\r\n'); const content = parts.slice(2).join('\r\n\r\n').replace(/\r\n--eos[0-9a-f]+--$/, '');
+  files.set(id, { id, ...meta, mimeType: 'text/markdown', size: String(req.body.length), content });
   res.json({ id, name: meta.name, mimeType: 'text/markdown', size: '42', webViewLink: `https://drive.google.com/file/d/${id}/view` });
 });
 const driveSrv = await new Promise((ok) => { const s = drive.listen(0, '127.0.0.1', () => ok(s)); });
@@ -80,7 +81,8 @@ wk.put('/api/v1/knowledge/:id', (req, res) => {
   if (!wkMetaSupported) return res.status(404).json({ message: 'not found' });
   wkCalls.push(['meta', req.params.id, req.body]); res.json({ data: { id: req.params.id } });
 });
-wk.post('/api/v1/knowledge-bases', (req, res) => { wkCalls.push(['kb', req.body]); res.json({ data: { id: 'wkkb-new-0001' } }); });
+let wkKbSeq = 0;
+wk.post('/api/v1/knowledge-bases', (req, res) => { wkCalls.push(['kb', req.body]); res.json({ data: { id: `wkkb-new-${String(++wkKbSeq).padStart(4, '0')}` } }); });
 wk.post('/api/v1/knowledge-bases/:id/knowledge/manual', (req, res) => { wkCalls.push(['doc', req.params.id, req.body]); res.json({ data: { id: `wkdoc-${wkCalls.length}` } }); });
 const wkSrv = await new Promise((ok) => { const s = wk.listen(0, '127.0.0.1', () => ok(s)); });
 Object.assign(process.env, { WEKNORA_BASE_URL: `http://127.0.0.1:${wkSrv.address().port}/api/v1`, WEKNORA_API_KEY: 'wk-test-key' });
@@ -199,7 +201,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_law_ingest', 'eos_law_mark', 'eos_law_save', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -438,6 +440,69 @@ try {
     await sql("DELETE FROM kb.sources WHERE file_id = (SELECT id FROM core.files WHERE drive_id = 'MDFILE0000005')"); await sql("DELETE FROM agent.kb_ingest_claims WHERE drive_id = 'MDFILE0000005'");
     const old2 = json(await call({ file_ids: ['MDFILE0000005'] })); assert.equal(old2.ingested, 1); assert.equal(wkCalls.filter((c) => c[0] === 'meta').length, putsAfter, 'đã có cờ thì không gọi PUT');
     await kb.close();
+  });
+  await step('Pha 5: luồng pháp luật (phap-che): nguồn chính thống, lưu thư mục pháp luật, nạp KB có Wiki + metadata, chạy lại không trùng, đánh dấu hết hiệu lực, chặn sai người/sai phạm vi', async () => {
+    wkMetaSupported = true; { const w = await import('../src/weknora.mjs'); w.state.metadataUnsupported = false; w.state.logged = false; }   // bước Pha 4 đã mô phỏng WeKnora cũ: quay lại bản mới
+    const law = await connect(process.env.TOKEN_LAW);
+    const names = (await law.listTools()).tools.map((t) => t.name);
+    assert.ok(['eos_law_save', 'eos_law_ingest', 'eos_law_mark'].every((n) => names.includes(n))); assert.ok(!names.some((n) => /law.*(delete|remove|xoa|purge)/i.test(n)), 'không có công cụ xóa pháp luật');
+    const ROOTU = 'cccccccc-0000-0000-0000-0000000000ad', MINH = 'cccccccc-0000-0000-0000-000000000001';
+    const mkLaw = async (creator, card) => {
+      const t = (await sql(`INSERT INTO work.tasks (company_id, title, assignee_id, created_by, source) VALUES ('33333333-3333-3333-3333-333333333333', 'Nạp văn bản pháp luật', $1, $1, 'manual') RETURNING id`, [creator]))[0].id;
+      await sql(`INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by) VALUES ($1, NULL, 'nap-van-ban-phap-luat', '{"stage":"law_ingest","agent":"phap-che","kb":"phap-luat","items":["123/2024/NĐ-CP"]}', 'user:test')`, [t]);
+      await sql("UPDATE work.tasks SET agent_id = (SELECT id FROM agent.agents WHERE code = 'phap-che') WHERE id = $1", [t]);
+      const ob = (await sql("SELECT id FROM agent.outbox WHERE task_id = $1 AND kind = 'dispatch'", [t]))[0];
+      await sql('SELECT agent.outbox_ack($1, $2)', [ob.id, card]); await sql("SELECT agent.ingest_event('eos-demo', $1, 'claimed', $2)", [card, 'k-' + card]);
+      return t;
+    };
+    const lt = await mkLaw(ROOTU, 't_law_mcp');
+    const doc = (so, extra = '', body = 'Điều 1. Phạm vi điều chỉnh. Nghị định này quy định chi tiết một số điều của Luật. '.repeat(6)) =>
+      `---\nso_hieu: ${so}\nten: Nghị định quy định chi tiết thi hành\nco_quan: Chính phủ\nngay_ban_hanh: 2024-01-02\ntinh_trang: con_hieu_luc\nnguon: https://vbpl.vn/van-ban/1\nngay_tra: 2026-11-01\nbuoc: 06, 09\nlinh_vuc: xây dựng\n${extra}---\n\n# Chương I\n${body}`;
+    const L = (name, args) => law.callTool({ name, arguments: { task: lt, ...args } });
+    // phạm vi mã: agent khác không có law_ingest
+    const kbTok = await connect(process.env.TOKEN_KB);
+    const denied = await kbTok.callTool({ name: 'eos_law_save', arguments: { task: lt, content: doc('1/2024/NĐ-CP') } }); assert.equal(denied.isError, true); assert.match(text(denied), /phạm vi "law_ingest"/); await kbTok.close();
+    // nguồn không chính thống / thiếu trường / định dạng sai bị từ chối ở máy chủ
+    const badSrc = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('https://vbpl.vn/van-ban/1', 'https://luatvietnam.vn/van-ban/1') });
+    assert.equal(badSrc.isError, true); assert.match(text(badSrc), /nguồn chính thống/);
+    const lookalike = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('https://vbpl.vn/van-ban/1', 'https://vbpl.vn.evil.example/x') }); assert.equal(lookalike.isError, true);
+    const noField = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('co_quan: Chính phủ\n', '') }); assert.equal(noField.isError, true); assert.match(text(noField), /thiếu "co_quan"/);
+    const badStatus = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('con_hieu_luc', 'het_han') }); assert.equal(badStatus.isError, true); assert.match(text(badStatus), /tinh_trang/);
+    // lưu vào thư mục pháp luật (tên = số hiệu không dấu), lưu lại cùng nội dung thì dùng lại
+    const v1 = doc('123/2024/NĐ-CP');
+    const s1 = json(await L('eos_law_save', { content: v1 })); assert.equal(s1.saved, true); assert.equal(s1.name, '123-2024-ND-CP.md');
+    assert.deepEqual(files.get(s1.drive_id).parents, ['LAWFOLDER0001']); assert.match(files.get(s1.drive_id).content, /^---\nso_hieu: 123\/2024\/NĐ-CP/);
+    const s1b = json(await L('eos_law_save', { content: v1 })); assert.equal(s1b.existing, true); assert.equal(s1b.drive_id, s1.drive_id);
+    // nạp: KB sai tên, tệp ngoài thư mục pháp luật, rồi nạp thật (tạo KB bật Wiki, metadata)
+    const wrongKb = await L('eos_law_ingest', { kb: 'du-an-x', file_ids: [s1.drive_id] }); assert.equal(wrongKb.isError, true); assert.match(text(wrongKb), /không thuộc danh sách KB pháp luật/);
+    const before = wkCalls.length;
+    const r1 = json(await L('eos_law_ingest', { kb: 'phap-luat', file_ids: [s1.drive_id, 'MDFILE0000001'] }));
+    assert.equal(r1.ingested, 1, JSON.stringify(r1)); assert.equal(r1.kb_created, true); assert.equal(r1.failed.length, 1); assert.match(r1.failed[0].error, /ngoài thư mục pháp luật/);
+    const kbCall = wkCalls.slice(before).find((c) => c[0] === 'kb')[1]; assert.equal(kbCall.name, 'phap-luat'); assert.equal(kbCall.indexing_strategy.wiki_enabled, true); assert.equal(kbCall.wiki_config.auto_generate, true);
+    const docCall = wkCalls.slice(before).find((c) => c[0] === 'doc'); assert.equal(docCall[2].title, '123/2024/NĐ-CP - Nghị định quy định chi tiết thi hành'); assert.match(docCall[2].content, /^Số hiệu: 123\/2024\/NĐ-CP\nTên: .*\nCơ quan ban hành: Chính phủ/); assert.match(docCall[2].content, /Nguồn: https:\/\/vbpl\.vn\/van-ban\/1 \(tra ngày 2026-11-01\)/);
+    const m1 = wkCalls.slice(before).find((c) => c[0] === 'meta')[2].custom_metadata;
+    assert.deepEqual([m1.so_hieu, m1.tinh_trang, m1.nguon, m1.buoc, m1.linh_vuc], ['123/2024/NĐ-CP', 'con_hieu_luc', 'https://vbpl.vn/van-ban/1', '06,09', 'xây dựng']);
+    assert.equal((await sql("SELECT count(*)::int n FROM kb.law_sources WHERE so_hieu = '123/2024/NĐ-CP'"))[0].n, 1);
+    // chạy lại: không nạp trùng
+    const docsBefore = wkCalls.filter((c) => c[0] === 'doc').length;
+    const r2 = json(await L('eos_law_ingest', { kb: 'phap-luat', file_ids: [s1.drive_id] })); assert.equal(r2.ingested, 0); assert.match(JSON.stringify(r2.skipped), /đã nạp/); assert.equal(wkCalls.filter((c) => c[0] === 'doc').length, docsBefore);
+    // phiên bản mới (cùng số hiệu, khác nội dung): tệp mới không ghi đè tệp cũ, nạp thành tài liệu mới, báo earlier_versions
+    const s2 = json(await L('eos_law_save', { content: doc('123/2024/NĐ-CP', '', 'Điều 1. Nội dung đã sửa đổi, bổ sung thêm nhiều quy định mới. '.repeat(6)) }));
+    assert.equal(s2.saved, true); assert.notEqual(s2.drive_id, s1.drive_id); assert.match(s2.name, /^123-2024-ND-CP-[0-9a-f]{8}\.md$/); assert.ok(files.has(s1.drive_id), 'tệp cũ còn nguyên');
+    const r3 = json(await L('eos_law_ingest', { kb: 'phap-luat', file_ids: [s2.drive_id] })); assert.equal(r3.ingested, 1); assert.equal(r3.kb_created, false); assert.equal(r3.earlier_versions[0].older.length, 1);
+    // đánh dấu hết hiệu lực: CSDL + custom_metadata (đủ khóa), không xóa
+    const delsBefore = wkCalls.filter((c) => c[0] === 'del').length;
+    const mk = json(await L('eos_law_mark', { kb: 'phap-luat', so_hieu: '123/2024/NĐ-CP', tinh_trang: 'het_hieu_luc', thay_the: '99/2025/NĐ-CP' }));
+    assert.equal(mk.updated, 2); assert.equal(mk.metadata.set, 2);
+    const marks = wkCalls.filter((c) => c[0] === 'meta').slice(-2).map((c) => c[2].custom_metadata);
+    assert.ok(marks.every((m) => m.tinh_trang === 'het_hieu_luc' && m.thay_the === '99/2025/NĐ-CP' && m.so_hieu === '123/2024/NĐ-CP' && m.buoc === '06,09'), JSON.stringify(marks));
+    assert.equal(wkCalls.filter((c) => c[0] === 'del').length, delsBefore, 'không có thao tác xóa');
+    assert.equal((await sql("SELECT count(*)::int n FROM kb.law_sources WHERE tinh_trang = 'het_hieu_luc'"))[0].n, 2);
+    const badMark = await L('eos_law_mark', { kb: 'phap-luat', so_hieu: 'khong-co/2020', tinh_trang: 'het_hieu_luc' }); assert.equal(badMark.isError, true);
+    // việc do thành viên thường tạo: bị từ chối dù giao đúng phap-che
+    const lt2 = await mkLaw(MINH, 't_law_mcp2');
+    const notOwner = await law.callTool({ name: 'eos_law_ingest', arguments: { task: lt2, kb: 'phap-luat', file_ids: [s1.drive_id] } }); assert.equal(notOwner.isError, true); assert.match(text(notOwner), /chủ sở hữu hoặc quản trị/);
+    await law.close();
   });
   await step('bản tin: phạm vi theo vai trò; tạo/sửa việc qua MCP với email, dự án, agent, phải duyệt', async () => {
     const ad = await connect(process.env.TOKEN_ADMIN), me = await connect(process.env.TOKEN_FULL);

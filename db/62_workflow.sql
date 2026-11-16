@@ -635,6 +635,7 @@ BEGIN
     sc := CASE WHEN a.can_delegate THEN '{read,kb,delegate,project}'::text[] ELSE '{read,kb,project}'::text[] END;
     IF a.module = 'doc' THEN sc := sc || '{draft}'::text[]; END IF;
     IF a.module = 'kb' THEN sc := sc || '{ingest}'::text[]; END IF;   -- chỉ agent phân hệ kho tri thức được nạp (eos_kb_ingest)
+    IF a.code = 'phap-che' THEN sc := sc || '{law_ingest}'::text[]; END IF;   -- chỉ phap-che nạp văn bản pháp luật (db/65_law.sql; trigger agents/mcp_tokens chặn agent khác)
   END IF;
   raw := 'eos_' || encode(gen_random_bytes(24), 'hex');
   INSERT INTO agent.mcp_tokens (user_id, agent_id, name, client, prefix, token_hash, scopes, expires_at)

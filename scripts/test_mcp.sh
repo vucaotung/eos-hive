@@ -14,6 +14,9 @@ node --test test/vanban.test.mjs >/dev/null 2>&1 || { echo "vanban: THẤT BẠI
 # Máy khách WeKnora (KB mẫu, WeKnora cũ, metadata) với máy chủ giả
 node --test test/weknora.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)" | tr '\n' ' '; echo
 node --test test/weknora.test.mjs >/dev/null 2>&1 || { echo "weknora: THẤT BẠI" >&2; exit 1; }
+# Văn bản pháp luật: nguồn chính thống, front matter, tên tệp (thuần hàm)
+node --test test/law.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)" | tr '\n' ' '; echo
+node --test test/law.test.mjs >/dev/null 2>&1 || { echo "law: THẤT BẠI" >&2; exit 1; }
 # Dữ liệu hồ sơ agent (deploy/setup_agent_profiles.sql): chạy hai lần trên CSDL thử, không tạo trùng, Mai không nhận thẻ Kanban, không đụng max_level
 P="psql $EOS_TEST_DSN -X -q -At -v ON_ERROR_STOP=1 -v company=33333333-3333-3333-3333-333333333333 -v owner_email=minh@demo.vn"
 $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null && $P -f "$ROOT/deploy/setup_agent_profiles.sql" >/dev/null
@@ -37,4 +40,10 @@ echo "$O1$O2" | grep -q -E "eos_[0-9a-f]{48}" && { echo "LỘ MÃ trong đầu r
 # ghi .env lỗi (HOME không ghi được) thì KHÔNG thu hồi mã cũ
 BEFORE=$(act dieu-phoi); PSQL="$IQ" HOME=/proc/khong-ghi-duoc PATH="$TMPH/bin:$PATH" "$ROOT/scripts/issue_agent_token.sh" --revoke-old h1 h2 dieu-phoi team_test 30 >/dev/null 2>&1 && { echo "ghi .env lỗi mà script vẫn thành công" >&2; exit 1; }
 [ "$(act dieu-phoi)" -ge "$BEFORE" ] || { echo "ghi .env lỗi mà vẫn thu hồi mã cũ" >&2; exit 1; }
-rm -rf "$TMPH"; echo "issue_agent_token --revoke-old: ĐẠT"
+echo "issue_agent_token --revoke-old: ĐẠT"
+# phap-che nhận phạm vi law_ingest, van-thu/dieu-phoi thì không (script không in mã)
+O3=$(RUN h1 h2 phap-che team_test 30); echo "$O3" | grep -q "law_ingest" || { echo "issue_agent_token phap-che: thiếu dòng phạm vi law_ingest" >&2; exit 1; }
+[ "$($IQ -c "select 'law_ingest' = any(scopes) from agent.mcp_tokens k join agent.agents g on g.id=k.agent_id where g.code='phap-che' and k.revoked_at is null order by k.created_at desc limit 1")" = "t" ] || { echo "mã phap-che không có law_ingest" >&2; exit 1; }
+O4=$(RUN h1 h2 van-thu team_test 30); echo "$O4" | grep -q "law_ingest" && { echo "van-thu không được có law_ingest" >&2; exit 1; }
+echo "issue_agent_token phap-che (law_ingest): ĐẠT"
+rm -rf "$TMPH"

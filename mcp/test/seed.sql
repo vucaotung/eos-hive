@@ -79,3 +79,10 @@ INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3
 INSERT INTO core.memberships (user_id, company_id) VALUES ('cccccccc-0000-0000-0000-0000000000a5','33333333-3333-3333-3333-333333333333');
 INSERT INTO core.user_roles (company_id, user_id, role_id) VALUES ('33333333-3333-3333-3333-333333333333','cccccccc-0000-0000-0000-0000000000a5', agent._sys_role('tro_ly_ai'));
 SELECT 'TOKEN_MAI=' || agent.mcp_token_issue_agent('mai', 30);
+-- agent pháp chế: được nạp văn bản pháp luật (phạm vi law_ingest); thư mục pháp luật của công ty
+INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000a6','pc@agent','Pháp chế AI','agent');
+INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile, max_level) VALUES
+ ('a2222222-0000-0000-0000-000000000006','cccccccc-0000-0000-0000-0000000000a6','phap-che','Pháp chế AI','specialist','doc','eos-phap-che',1);
+INSERT INTO agent.company_agents (company_id, agent_id) VALUES ('33333333-3333-3333-3333-333333333333','a2222222-0000-0000-0000-000000000006');
+UPDATE agent.company_settings SET law_md_folder_id = 'LAWFOLDER0001' WHERE company_id = '33333333-3333-3333-3333-333333333333';
+SELECT 'TOKEN_LAW=' || agent.mcp_token_issue_agent('phap-che', 30);

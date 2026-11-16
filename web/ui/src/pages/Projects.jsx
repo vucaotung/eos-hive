@@ -163,6 +163,48 @@ function IntakeDialog({ isOpen, onClose, project }) {
   );
 }
 
+// Nạp văn bản pháp luật vào KB pháp luật dùng chung: chủ sở hữu/quản trị nhập danh sách; việc giao cho Pháp chế (agent phap-che). Máy chủ kiểm quyền, KB đích và nguồn chính thống.
+const LAW_KBS = [{ value: "phap-luat", label: "phap-luat (luật, nghị định, thông tư, quyết định…)" }, { value: "tieu-chuan", label: "tieu-chuan (tiêu chuẩn, quy chuẩn)" }];
+function LawDialog({ isOpen, onClose }) {
+  const { companyId, refresh } = useApp();
+  const [f, setF] = useState({ kb_name: "phap-luat", items: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [seeded, setSeeded] = useState(false);
+  if (isOpen && !seeded) { setSeeded(true); setError(null); setF({ kb_name: "phap-luat", items: "" }); }
+  if (!isOpen && seeded) setSeeded(false);
+  const items = f.items.split("\n").map((x) => x.trim()).filter(Boolean);
+  async function create() {
+    setBusy(true); setError(null);
+    try {
+      const r = await rpc("app_law_task_create", { company_id: companyId, kb_name: f.kb_name, items });
+      refresh(); onClose(); toast.success(`Đã giao Pháp chế nạp ${r.count} văn bản (${r.id})`);
+    } catch (e) { setError(e); } finally { setBusy(false); }
+  }
+  return (
+    <Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <Modal.Container placement="auto" scroll="inside">
+        <Modal.Dialog className="sm:max-w-xl">
+          <Modal.CloseTrigger />
+          <Modal.Header><Modal.Heading>Nạp văn bản pháp luật</Modal.Heading></Modal.Header>
+          <Modal.Body>
+            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); create(); }}>
+              <p className="text-muted">Pháp chế tìm nguyên văn trên nguồn chính thống (vbpl.vn, Công báo, cổng của Chính phủ và bộ, ngành, UBND), kiểm hiệu lực rồi nạp vào kho tri thức. Việc giao cho bạn xem và duyệt. Văn bản hết hiệu lực chỉ được đánh dấu, không bị xóa.</p>
+              <SelectField label="Kho tri thức đích" value={f.kb_name} onChange={(v) => setF((s) => ({ ...s, kb_name: v }))} options={LAW_KBS} isRequired />
+              <TextAreaInput label="Danh sách văn bản (mỗi dòng một mục)" value={f.items} onChange={(v) => setF((s) => ({ ...s, items: v }))} rows={6} isRequired
+                placeholder={"Số hiệu, ví dụ: 175/2024/NĐ-CP\nhoặc link văn bản trên nguồn chính thống\nhoặc link tệp trên Drive"} description="Tối đa 50 dòng." />
+              <button type="submit" hidden />
+            </form>
+            {error && <div className="mt-4"><ErrorBox error={error} /></div>}
+          </Modal.Body>
+          <Modal.Footer><Button variant="secondary" onPress={onClose}>Hủy</Button>
+            <Button isPending={busy} isDisabled={items.length < 1 || items.length > 50} onPress={create}>Giao Pháp chế nạp</Button></Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+  );
+}
+
 // Kết quả của dự án: tiến độ từng việc và kết quả của agent, danh mục hồ sơ, báo cáo/tài liệu, kho tri thức
 const money = (n) => (n == null ? "" : new Intl.NumberFormat("vi-VN").format(n) + " đ");
 function ResultsDialog({ project, isOpen, onClose }) {
@@ -271,6 +313,7 @@ export default function Projects() {
   const { data, error, loading } = useLoad(() => companyId ? rpc("app_tasks", { company_id: companyId, days: 60 }) : Promise.resolve([]), [companyId]);
   const [editing, setEditing] = useState(undefined);              // undefined: đóng · null: tạo mới · object: sửa
   const [intake, setIntake] = useState(undefined);
+  const [law, setLaw] = useState(false);
   const [results, setResults] = useState(null);                  // dự án đang xem kết quả
   const agentLabel = (c) => lookups.agent[c]?.name || c;                // undefined: đóng · null: dự án mới · object: dự án có sẵn
   const runs = useLoad(() => companyId ? rpc("app_workflow_runs", { company_id: companyId }) : Promise.resolve([]), [companyId]);
@@ -284,7 +327,7 @@ export default function Projects() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Dự án" sub={`${org.projects.filter((p) => p.active).length} dự án đang thực hiện`}
-        actions={<>{isAdmin && <Button variant="secondary" onPress={() => setIntake(null)}><FaceRobot className="size-4" />Nạp hồ sơ dự án</Button>}{canCreate && <Button onPress={() => setEditing(null)}><Plus className="size-4" />Thêm dự án</Button>}</>} />
+        actions={<>{isAdmin && <Button variant="secondary" onPress={() => setIntake(null)}><FaceRobot className="size-4" />Nạp hồ sơ dự án</Button>}{isAdmin && <Button variant="secondary" onPress={() => setLaw(true)}><FaceRobot className="size-4" />Nạp văn bản pháp luật</Button>}{canCreate && <Button onPress={() => setEditing(null)}><Plus className="size-4" />Thêm dự án</Button>}</>} />
       <ErrorBox error={error} />
       {loading && !data ? <LoadingList rows={3} /> : rows.length ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -321,6 +364,7 @@ export default function Projects() {
       <ResultsDialog project={results} isOpen={!!results} onClose={() => setResults(null)} />
       <ProjectDialog project={editing || null} isOpen={editing !== undefined} onClose={() => setEditing(undefined)} />
       <IntakeDialog project={intake || null} isOpen={intake !== undefined} onClose={() => setIntake(undefined)} />
+      <LawDialog isOpen={law} onClose={() => setLaw(false)} />
     </div>
   );
 }

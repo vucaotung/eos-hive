@@ -11,8 +11,11 @@ echo "$OUT" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_ag
 WF=$(psql "$EOS_TEST_DSN" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/db/test_workflow.sql" 2>&1) || { echo "test_workflow THẤT BẠI" >&2; echo "$WF" | tail -12 >&2; exit 1; }
 echo "$WF" | grep -E "ok$" | sed "s/.*NOTICE: *//"
 echo "$WF" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_workflow THẤT BẠI" >&2; echo "$WF" | tail -20 >&2; exit 1; }
+LAW=$(psql "$EOS_TEST_DSN" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/db/test_law.sql" 2>&1) || { echo "test_law THẤT BẠI" >&2; echo "$LAW" | tail -12 >&2; exit 1; }
+echo "$LAW" | grep -E "ok$" | sed "s/.*NOTICE: *//"
+echo "$LAW" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_law THẤT BẠI" >&2; echo "$LAW" | tail -20 >&2; exit 1; }
 T=$(psql "$EOS_TEST_DSN" -X -At -c "select count(*) from information_schema.tables where table_type='BASE TABLE' and table_schema in ('core','work','doc','hr','crm','kb','agent') and table_name not like 'audit_log_20%'")
 V=$(psql "$EOS_TEST_DSN" -X -At -c "select count(*) from information_schema.views where table_schema in ('core','work','doc','hr','crm','kb','agent')")
-echo "Bảng: $T, view: $V (chuẩn 0.6.x: 121 và 5)"
-[ "$T" = 121 ] && [ "$V" = 5 ] || { echo "Số bảng/view lệch chuẩn" >&2; exit 1; }
+echo "Bảng: $T, view: $V (chuẩn 0.6.x: 122 và 5)"
+[ "$T" = 122 ] && [ "$V" = 5 ] || { echo "Số bảng/view lệch chuẩn" >&2; exit 1; }
 echo "test_db: ĐẠT"

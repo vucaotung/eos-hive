@@ -47,6 +47,13 @@ test('WeKnora cũ từ chối trường mở rộng (400): tạo lại chỉ v�
   assert.equal(r.created, true); assert.equal(r.extra_config_ignored, true); assert.equal(logs.length, 1);
   assert.equal(calls.filter((c) => c[0] === 'POST').length, 2); assert.ok(!('wiki_config' in calls.filter((c) => c[0] === 'POST')[1][2]));
 });
+test('KB pháp luật (wiki: true) luôn bật Wiki, kể cả khi KB mẫu không có cấu hình Wiki', async () => {
+  reset(); tplExtra = false; rejectExtra = false;
+  await wk.ensureKb('phap-luat', '', console.warn, { wiki: true });
+  assert.equal(created().indexing_strategy.wiki_enabled, true); assert.equal(created().wiki_config.auto_generate, true);
+  reset(); tplExtra = true; await wk.ensureKb('tieu-chuan', '', console.warn, { wiki: true });
+  assert.equal(created().wiki_config.auto_generate, true, 'giữ wiki_config của KB mẫu');
+});
 test('cleanMetadata: tối đa 20 khóa, khóa ≤ 64 ký tự, giá trị ≤ 1000 ký tự, kiểu hợp lệ', () => {
   const big = {}; for (let i = 0; i < 30; i++) big['k' + i] = i;
   assert.equal(Object.keys(wk.cleanMetadata(big)).length, 20);

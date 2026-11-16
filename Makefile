@@ -8,9 +8,9 @@ test-mcp: ## Kiểm thử đầu–cuối máy chủ MCP (sau test-db)
 	scripts/test_mcp.sh
 ui: ## Dựng giao diện React (web/ui → web/public); phải commit kết quả
 	cd web/ui && ([ -d node_modules ] || npm ci --ignore-scripts --no-audit --no-fund) && npm run build
-test-migration: ## Migration 0030 và 0033 áp hai lần trên CSDL trước 0030 và khớp lược đồ mới (cần quyền CREATE DATABASE)
+test-migration: ## Migration 0030 và 0.6 (0031…) áp hai lần trên CSDL trước 0030 và khớp lược đồ mới (cần quyền CREATE DATABASE)
 	scripts/check_migration_30.sh
-	scripts/check_migration_33.sh
+	scripts/check_migrations_v06.sh
 test-web: ## Kiểm thử đầu–cuối máy chủ web + API (Google giả lập)
 	scripts/test_web.sh
 test-bridge: ## Kiểm thử cầu nối với Hermes giả lập (cần postgrest)

@@ -9,7 +9,7 @@ head -n 1 db/test_schema.sql >/dev/null
 EXT="CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS citext;"
 for d in "$OLD" "$NEW"; do psql "$d" -X -q -c "$EXT" >/dev/null 2>&1; done
 load "$OLD" "${DB_FILES[@]:0:12}"
-load "$NEW" "${DB_FILES[@]}"
+load "$NEW" "${DB_FILES[@]:0:13}"
 for i in 1 2; do psql "$OLD" -X -q -v ON_ERROR_STOP=1 -f db/migrations/0030_creation_features.sql >/dev/null || { echo "lần $i áp migration lỗi" >&2; exit 1; }; done
 Q="select proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' || md5(pg_get_functiondef(p.oid)) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('agent','work') order by 1"
 diff <(psql "$OLD" -X -At -c "$Q") <(psql "$NEW" -X -At -c "$Q") >/dev/null && echo "hàm: giống hệt lược đồ dựng mới" || { echo "hàm LỆCH giữa migration và lược đồ mới" >&2; exit 1; }

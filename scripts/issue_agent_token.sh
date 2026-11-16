@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Cấp mã MCP cho một agent hệ thống (để worker đọc việc) và ghi vào .env của profile Hermes tương ứng, KHÔNG in ra.
+# Phạm vi mã do CSDL quyết định theo agent: phap-che nhận thêm `law_ingest` (nạp văn bản pháp luật); chỉ phap-che, trigger ở CSDL chặn agent khác.
 # Dùng: scripts/issue_agent_token.sh [--revoke-old] vps169 vps173 <mã-agent> <profile-hermes> [số-ngày=90]
 #   --revoke-old: SAU KHI mã mới đã ghi thành công vào .env của profile, thu hồi mọi mã còn hiệu lực KHÁC của cùng agent (mã agent gắn với đúng một profile Hermes,
 #   bảng mã không lưu profile). Thu hồi sau cùng, nên ghi .env lỗi thì mã cũ vẫn dùng được. Chỉ dùng khi agent có MỘT nơi dùng mã (đúng profile này): nơi khác đang dùng mã cũ sẽ mất quyền.
@@ -28,6 +29,9 @@ ENC=$(printf '%s' "$REMOTE" | base64 -w0)     # chuyển script bằng đối s�
 OUT=$(ssh -o BatchMode=yes "$A" "set -euo pipefail; $PSQL" <<<"$SQL" \
  | ssh -o BatchMode=yes "$B" "PROFILE='$PROFILE' bash -c \"\$(echo $ENC | base64 -d)\"")
 echo "$OUT" | grep -v '^PREFIX='
+# Phạm vi của mã vừa cấp (không phải bí mật): để người cấp thấy phap-che đã có law_ingest
+SCOPES=$(ssh -o BatchMode=yes "$A" "set -euo pipefail; $PSQL" <<<"SELECT array_to_string(k.scopes, ',') FROM agent.mcp_tokens k JOIN agent.agents g ON g.id = k.agent_id WHERE g.code = '$CODE' AND k.revoked_at IS NULL ORDER BY k.created_at DESC LIMIT 1;")
+echo "Phạm vi mã: ${SCOPES:-?}"
 if [ "$REVOKE_OLD" = 1 ]; then
   NEW=$(echo "$OUT" | sed -n 's/^PREFIX=\([0-9a-f]\{8\}\)$/\1/p' | head -1)
   [[ "$NEW" =~ ^[0-9a-f]{8}$ ]] || { echo "Không biết tiền tố mã mới, KHÔNG thu hồi mã cũ." >&2; exit 1; }

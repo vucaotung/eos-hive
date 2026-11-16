@@ -2,7 +2,8 @@
 import { z } from 'zod';
 import { asUser, logCall, DbError } from './db.mjs';
 import { GUIDE, TOPICS } from './guide.mjs';
-import { uploadResult, fileInsideFolder, driveIdFromUrl, MAX_BYTES, listFolder, readText, readImage, isFolder } from './drive.mjs';
+import { uploadResult, fileInsideFolder, driveIdFromUrl, MAX_BYTES, listFolder, readText, readImage, isFolder, uploadToFolder } from './drive.mjs';
+import * as law from './law.mjs';
 import { renderVanBan, vanBanShape, DOCX_MIME } from './vanban.mjs';
 import { createHash } from 'node:crypto';
 import * as weknora from './weknora.mjs';
@@ -511,6 +512,94 @@ function registerAgentTools(server, ident, tool, call, tracked) {
     }
     return { result: { kb: tg.kb_name, weknora_kb_id: kbId, kb_created: created, ingested: done.length, skipped, failed, metadata: { set: metaSet, unsupported: metaUnsupported || undefined, failed: metaFailed.length ? metaFailed : undefined }, kb_extra_config_ignored: extraIgnored || undefined }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), files: a.file_ids?.length }));
+
+
+  // ---------- Văn bản pháp luật (db/65_law.sql): chỉ agent phap-che, chỉ trong việc law_ingest do chủ sở hữu/quản trị tạo. KHÔNG có công cụ xóa. ----------
+  const kbName = z.string().min(2).max(60).describe('Tên KB pháp luật đích, thuộc danh sách của công ty (mặc định: phap-luat hoặc tieu-chuan)');
+
+  tool('eos_law_save', 'law_ingest', {
+    title: 'Lưu văn bản pháp luật (.md) vào thư mục pháp luật của công ty',
+    description: 'Chỉ trong việc law_ingest. Truyền NGUYÊN VĂN văn bản dạng Markdown (giữ chương/điều/khoản/điểm) kèm front matter bắt buộc: so_hieu, ten, co_quan, ngay_ban_hanh (YYYY-MM-DD), tinh_trang (con_hieu_luc|het_mot_phan|het_hieu_luc|chua_hieu_luc), nguon (đường dẫn https tới nguồn CHÍNH THỐNG), ngay_tra (ngày bạn tra); tùy chọn: loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc (mã bước 00–20, cách nhau dấu phẩy). Máy chủ từ chối nguồn không chính thống (vbpl.vn, Công báo, cổng chinhphu.vn, *.gov.vn…). Tên tệp = số hiệu không dấu; cùng nội dung đã có thì dùng lại, không ghi đè. Tối đa 5 MB.',
+    inputSchema: { task: taskRef, content: z.string().min(150).max(6_000_000) },
+  }, async ({ task, content }) => {
+    const id = toId(task);
+    const v = law.validateLaw(content);
+    if (v.errors.length) throw new DbError('Văn bản chưa đạt:\n- ' + v.errors.join('\n- '), 'P0001');
+    const bytes = Buffer.from(content, 'utf8'), sha = law.sha256(bytes);
+    let fname = law.lawFilename(v.law.so_hieu);
+    const tg = await call('SELECT agent.mcp_law_save_target($1,$2,$3) AS r', [id, fname, sha]);
+    if (tg.existing_drive_id) return { result: { saved: false, existing: true, drive_id: tg.existing_drive_id, name: fname, url: tg.existing_url, so_hieu: v.law.so_hieu, note: 'Cùng số hiệu và cùng nội dung đã có trong thư mục pháp luật; dùng drive_id này.' }, entity: { type: 'task', id: String(id) } };
+    if (tg.name_taken) fname = fname.replace(/\.md$/, `-${sha.slice(0, 8)}.md`);   // cùng tên, khác nội dung: tệp mới, không ghi đè tệp cũ
+    const f = await tracked(id, fname, async () => {
+      try { return await uploadToFolder({ folderId: tg.law_md_folder_id, filename: fname, mime: 'text/markdown', bytes, description: `Enterprise OS · pháp luật · T-${id}` }); }
+      catch (e) { if ([403, 404].includes(e.status)) throw new DbError('Tài khoản agent không ghi được vào thư mục pháp luật. Chủ sở hữu cần chia sẻ thư mục quyền "Người chỉnh sửa" cho tài khoản Drive của hệ thống. Dùng kanban_block để báo.', 'P0001'); throw e; }
+    }, async (u) => { await call('SELECT agent.mcp_law_save_done($1,$2::jsonb) AS r', [id, JSON.stringify({ drive_id: u.driveId, name: u.name, url: u.url, bytes: u.size, sha256: sha, so_hieu: v.law.so_hieu })]); return u; });
+    return { result: { saved: true, drive_id: f.driveId, name: f.name, url: f.url, so_hieu: v.law.so_hieu, bytes: f.size }, entity: { type: 'task', id: String(id) } };
+  }, (a) => ({ task: toId(a.task), chars: a.content?.length }));
+
+  tool('eos_law_ingest', 'law_ingest', {
+    title: 'Nạp văn bản pháp luật từ thư mục pháp luật vào KB pháp luật',
+    description: 'Chỉ trong việc law_ingest. Truyền kb và 1–20 file_id (từ eos_law_save) nằm trong thư mục pháp luật. Máy chủ kiểm lại front matter và nguồn chính thống, bỏ qua văn bản cùng số hiệu cùng nội dung đã nạp, tạo KB nếu chưa có (sao chép cấu hình từ KB mẫu, bật Wiki), nạp qua knowledge/manual, ghi custom_metadata (so_hieu, tinh_trang, nguon, buoc, linh_vuc) và danh mục kb.law_sources. Phiên bản mới của cùng số hiệu được nạp thành tài liệu mới; bản cũ được giữ nguyên (không xóa), kết quả nêu earlier_versions để bạn đánh dấu bằng eos_law_mark nếu cần.',
+    inputSchema: { task: taskRef, kb: kbName, file_ids: z.array(z.string().regex(/^[A-Za-z0-9_-]{10,}$/)).min(1).max(20) },
+  }, async ({ task, kb, file_ids }) => {
+    const id = toId(task);
+    if (!weknora.configured()) throw new DbError('Máy chủ MCP chưa cấu hình WeKnora (WEKNORA_BASE_URL, WEKNORA_API_KEY). Dùng kanban_block để báo người quản trị.', 'P0001');
+    const tg = await call('SELECT agent.mcp_law_target($1,$2) AS r', [id, kb]);
+    const claim = await call('SELECT agent.mcp_law_ingest_claim($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify([...new Set(file_ids)])]);
+    const mine = new Set(claim.claimed), release = new Set(mine);
+    const done = [], skipped = [...claim.busy], failed = [], metaFailed = [], earlier = [];
+    let kbId = tg.weknora_kb_id, created = false, metaSet = 0, metaUnsupported = false;
+    try {
+      for (const fid of file_ids) {
+        if (!mine.has(fid)) continue;
+        try { await insideMd(fid, tg.law_md_folder_id); } catch (e) { failed.push({ file_id: fid, error: 'Tệp nằm ngoài thư mục pháp luật của công ty' }); continue; }
+        let f; try { f = await readText(fid); } catch (e) { failed.push({ file_id: fid, error: e.message }); continue; }
+        const v = law.validateLaw(f.text);
+        if (v.errors.length) { failed.push({ file_id: fid, name: f.name, error: v.errors.join('; ') }); continue; }
+        const L = v.law, md5 = law.md5(f.text);
+        const ver = await call('SELECT agent.mcp_law_version($1,$2,$3,$4) AS r', [id, kb, L.so_hieu, md5]);
+        if (ver.same) { skipped.push({ file_id: fid, name: f.name, so_hieu: L.so_hieu, reason: 'đã nạp (cùng số hiệu, cùng nội dung)', weknora_doc_id: ver.same }); continue; }
+        if (!tg.kb_ready && !(kbId && !String(kbId).startsWith('pending:'))) {
+          if (!claim.create_kb) { failed.push({ file_id: fid, error: 'KB đang được tạo bởi lần gọi khác, thử lại sau ít giây' }); continue; }
+          try { ({ id: kbId, created } = await weknora.ensureKb(kb, tg.description, console.warn, { wiki: true })); }
+          catch (e) { throw new DbError(`Không tạo được KB pháp luật: ${e.message}`, 'P0001'); }
+          tg.kb_ready = true;
+          await call('SELECT agent.mcp_law_ingest_commit($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify({ weknora_kb_id: kbId, items: [] })]);
+          release.add('__create__');
+        }
+        try {
+          const docId = await weknora.addMarkdown(kbId, `${L.so_hieu} - ${L.ten}`.slice(0, 200), law.lawKbContent(L));
+          const m = await weknora.setMetadata(docId, law.lawMetadata({ ...L, drive_link: `https://drive.google.com/file/d/${fid}/view` }));
+          if (m.ok) metaSet++; else if (m.reason === 'unsupported') metaUnsupported = true; else metaFailed.push({ file_id: fid, error: m.reason });
+          done.push({ weknora_doc_id: docId, drive_id: fid, so_hieu: L.so_hieu, ten: L.ten, loai: L.loai, co_quan: L.co_quan, ngay_ban_hanh: L.ngay_ban_hanh, ngay_hieu_luc: L.ngay_hieu_luc, tinh_trang: L.tinh_trang,
+            thay_the: L.thay_the, sua_doi: L.sua_doi, linh_vuc: L.linh_vuc, buoc: L.buoc, nguon: L.nguon, ngay_tra: L.ngay_tra, phien_ban: md5 });
+          if (ver.earlier.length) earlier.push({ so_hieu: L.so_hieu, older: ver.earlier });
+          release.delete(fid);
+        } catch (e) { failed.push({ file_id: fid, name: f.name, error: e.message }); }
+      }
+      if (done.length) await call('SELECT agent.mcp_law_ingest_commit($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify({ weknora_kb_id: kbId, items: done })]);
+    } finally {
+      if (mine.size || release.size) await call('SELECT agent.mcp_law_ingest_finish($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify({ done: done.map((d) => d.drive_id), release: [...release] })]).catch(() => {});
+    }
+    return { result: { kb, weknora_kb_id: kbId, kb_created: created, ingested: done.length, docs: done.map((d) => ({ so_hieu: d.so_hieu, weknora_doc_id: d.weknora_doc_id, tinh_trang: d.tinh_trang })), skipped, failed, earlier_versions: earlier.length ? earlier : undefined,
+      metadata: { set: metaSet, unsupported: metaUnsupported || undefined, failed: metaFailed.length ? metaFailed : undefined } }, entity: { type: 'task', id: String(id) } };
+  }, (a) => ({ task: toId(a.task), kb: a.kb, files: a.file_ids?.length }));
+
+  tool('eos_law_mark', 'law_ingest', {
+    title: 'Đánh dấu tình trạng hiệu lực của văn bản pháp luật đã nạp',
+    description: 'Chỉ trong việc law_ingest. Cập nhật tinh_trang (con_hieu_luc|het_mot_phan|het_hieu_luc|chua_hieu_luc) và thay_the (số hiệu văn bản thay thế) của văn bản đã nạp vào KB pháp luật (CSDL và custom_metadata ở WeKnora). KHÔNG xóa gì: văn bản hết hiệu lực vẫn nằm trong KB, chỉ được đánh dấu. Chỉ đánh dấu khi đã đối chiếu nguồn chính thống.',
+    inputSchema: { task: taskRef, kb: kbName, so_hieu: z.string().min(2).max(120), tinh_trang: z.enum(law.LAW_STATUS), thay_the: z.string().max(120).optional() },
+  }, async ({ task, kb, so_hieu, tinh_trang, thay_the }) => {
+    const id = toId(task);
+    const r = await call('SELECT agent.mcp_law_mark($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify({ so_hieu, tinh_trang, thay_the })]);
+    const meta = { set: 0, unsupported: undefined, failed: [] };
+    if (!weknora.configured()) meta.skipped = 'WeKnora chưa cấu hình trên máy chủ MCP';
+    else for (const d of r.docs || []) {
+      const m = await weknora.setMetadata(d.weknora_doc_id, law.lawMetadata({ ...d, drive_link: d.drive_id ? `https://drive.google.com/file/d/${d.drive_id}/view` : '' }));
+      if (m.ok) meta.set++; else if (m.reason === 'unsupported') meta.unsupported = true; else meta.failed.push({ weknora_doc_id: d.weknora_doc_id, error: m.reason });
+    }
+    return { result: { so_hieu, tinh_trang, updated: r.updated, metadata: meta }, entity: { type: 'task', id: String(id) } };
+  }, (a) => ({ task: toId(a.task), kb: a.kb, so_hieu: a.so_hieu, tinh_trang: a.tinh_trang }));
 
   // ---------- Runner (Z2): nhận việc, báo cáo, đăng ký dữ liệu. Chỉ mã có phạm vi `runner` ----------
   tool('eos_runner_claim', 'runner', {

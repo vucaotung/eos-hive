@@ -142,3 +142,19 @@ export async function readImage(fileId, maxBytes = IMAGE_MAX_BYTES) {
   if (bytes.length > maxBytes) { const err = new Error(`Ảnh quá ${maxBytes / 1048576} MB`); err.status = 413; throw err; }
   return { name: meta.name, mime: meta.mimeType, bytes, parent: (meta.parents || [])[0] || null };
 }
+
+// Tải một tệp thẳng vào MỘT thư mục (không tạo thư mục con, không ghi đè: Drive cho phép trùng tên nên người gọi tự tránh trùng). Dùng cho thư mục pháp luật.
+export async function uploadToFolder({ folderId, filename, mime, bytes, description = 'Enterprise OS' }) {
+  if (bytes.length > MAX_BYTES) throw new Error(`Tệp quá ${MAX_BYTES / 1048576} MB`);
+  const boundary = 'eos' + Math.random().toString(16).slice(2);
+  const meta = JSON.stringify({ name: filename, parents: [folderId], description });
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`),
+    bytes,
+    Buffer.from(`\r\n--${boundary}--`),
+  ]);
+  const f = await gapi('/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink', {
+    method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
+  });
+  return { driveId: f.id, name: f.name, mime: f.mimeType || mime, size: Number(f.size || bytes.length), url: f.webViewLink };
+}

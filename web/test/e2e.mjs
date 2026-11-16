@@ -449,6 +449,25 @@ try {
     assert.equal((await minh.ok('app_workflow_runs', { company_id: CO })).length, 1, 'người theo dõi thấy lần chạy của mình');
     assert.equal((await (await as('ketoan@demo.vn')).ok('app_workflow_runs', { company_id: CO })).length, 0);
   });
+  await step('nạp văn bản pháp luật: chỉ chủ sở hữu/quản trị tạo việc; kiểm KB đích, thư mục pháp luật, agent phap-che; việc giao phap-che với phạm vi law_ingest', async () => {
+    const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
+    const body = { company_id: CO, kb_name: 'phap-luat', items: ['175/2024/NĐ-CP', 'https://vbpl.vn/van-ban/1', ''] };
+    assert.equal((await minh.rpc('app_law_task_create', body)).status, 403, 'thành viên thường không tạo được');
+    assert.equal((await (await as('ketoan@demo.vn')).rpc('app_law_task_create', body)).status, 403);
+    assert.equal((await adm.rpc('app_law_task_create', body)).status, 400, 'chưa cấu hình thư mục pháp luật / chưa có phap-che');
+    await sql("UPDATE agent.company_settings SET law_md_folder_id = 'LAWFOLDER0001' WHERE company_id = $1", [CO]);
+    assert.equal((await adm.rpc('app_law_task_create', body)).status, 400, 'phap-che chưa bật cho công ty');
+    await sql("INSERT INTO core.users (id, email, name, kind) VALUES ('cccccccc-0000-0000-0000-0000000000b1','phap-che@agent','Pháp chế AI','agent') ON CONFLICT DO NOTHING");
+    await sql("INSERT INTO agent.agents (id, user_id, code, name, kind, module, hermes_profile) VALUES ('a2222222-0000-0000-0000-0000000000b1','cccccccc-0000-0000-0000-0000000000b1','phap-che','Pháp chế AI','specialist','doc','eos-phap-che') ON CONFLICT DO NOTHING");
+    await sql("INSERT INTO agent.company_agents (company_id, agent_id) VALUES ($1, 'a2222222-0000-0000-0000-0000000000b1') ON CONFLICT DO NOTHING", [CO]);
+    assert.equal((await adm.rpc('app_law_task_create', { ...body, kb_name: 'du-an-x' })).status, 400, 'KB ngoài danh sách');
+    assert.equal((await adm.rpc('app_law_task_create', { ...body, items: [] })).status, 400, 'danh sách rỗng');
+    assert.equal((await adm.rpc('app_law_task_create', { ...body, items: 'một chuỗi' })).status, 400);
+    const r = await adm.ok('app_law_task_create', body); assert.equal(r.count, 2); assert.match(r.id, /^T-\d+$/);
+    const t = (await sql("SELECT t.agent_role, t.created_by, t.assignee_id, g.code, ts.scope, ts.run_id FROM work.tasks t JOIN agent.agents g ON g.id = t.agent_id JOIN agent.task_scopes ts ON ts.task_id = t.id WHERE t.id = $1", [r.task_id]))[0];
+    assert.equal(t.code, 'phap-che'); assert.equal(t.agent_role, 'nap-van-ban-phap-luat'); assert.equal(t.run_id, null); assert.equal(t.scope.stage, 'law_ingest'); assert.equal(t.scope.kb, 'phap-luat'); assert.equal(t.scope.items.length, 2); assert.equal(t.created_by, ID.adm); assert.equal(t.assignee_id, ID.adm, 'người tạo xem và duyệt');
+    assert.equal((await sql("SELECT count(*)::int n FROM agent.outbox WHERE task_id = $1 AND kind = 'dispatch'", [r.task_id]))[0].n, 1, 'có thẻ chờ gửi cho phap-che');
+  });
   await step('tạo việc nâng cao qua web: nhãn, phụ thuộc, nhắc, mẫu, nhân bản, hàng loạt, cảnh báo trùng, định kỳ hằng năm; job nhắc không gọi được từ web', async () => {
     const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn');
     const a = await adm.ok('app_task_create_ex', { company_id: CO, title: 'Chuẩn bị hồ sơ đấu thầu', tags: ['đấu thầu', '#Gấp'], checklist: ['Bản scan', 'Con dấu'], subtasks: ['Thu thập chứng chỉ'],
