@@ -282,6 +282,7 @@ CREATE TABLE doc.records (
   executed_value  bigint CHECK (executed_value >= 0),
   variance        bigint GENERATED ALWAYS AS (executed_value - contract_value) STORED,
   status          text NOT NULL DEFAULT 'active' CHECK (status IN ('draft','active','expiring','expired','closed','cancelled')),
+  buoc            text CHECK (buoc IS NULL OR buoc ~ '^(0[0-9]|1[0-9]|20)$'),   -- bước 01–20 của quản lý dự án đầu tư xây dựng (00 = văn bản chung / chưa chắc)
   incoming_id     bigint REFERENCES doc.incoming(id),   -- hồ sơ hình thành từ công văn đến (nếu có)
   outgoing_id     bigint REFERENCES doc.outgoing(id),
   search_key      text GENERATED ALWAYS AS (core.norm(coalesce(record_no,'') || ' ' || title || ' ' || coalesce(description,''))) STORED,
@@ -291,5 +292,6 @@ CREATE TABLE doc.records (
   CHECK (expires_on IS NULL OR issued_on IS NULL OR expires_on >= issued_on)
 );
 CREATE INDEX records_company_idx ON doc.records (company_id, category_id, status);
+CREATE INDEX records_buoc_idx ON doc.records (project_id, buoc) WHERE buoc IS NOT NULL;
 CREATE INDEX records_expiry_idx ON doc.records (company_id, expires_on) WHERE status IN ('active','expiring');
 CREATE INDEX records_search_idx ON doc.records USING gin (search_key gin_trgm_ops);

@@ -14,6 +14,9 @@ echo "$WF" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_wor
 LAW=$(psql "$EOS_TEST_DSN" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/db/test_law.sql" 2>&1) || { echo "test_law THẤT BẠI" >&2; echo "$LAW" | tail -12 >&2; exit 1; }
 echo "$LAW" | grep -E "ok$" | sed "s/.*NOTICE: *//"
 echo "$LAW" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_law THẤT BẠI" >&2; echo "$LAW" | tail -20 >&2; exit 1; }
+MT=$(psql "$EOS_TEST_DSN" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/db/test_maint.sql" 2>&1) || { echo "test_maint THẤT BẠI" >&2; echo "$MT" | tail -12 >&2; exit 1; }
+echo "$MT" | grep -E "ok$" | sed "s/.*NOTICE: *//"
+echo "$MT" | grep -q "tất cả kiểm thử đều đạt" || { echo "test_maint THẤT BẠI" >&2; echo "$MT" | tail -20 >&2; exit 1; }
 T=$(psql "$EOS_TEST_DSN" -X -At -c "select count(*) from information_schema.tables where table_type='BASE TABLE' and table_schema in ('core','work','doc','hr','crm','kb','agent') and table_name not like 'audit_log_20%'")
 V=$(psql "$EOS_TEST_DSN" -X -At -c "select count(*) from information_schema.views where table_schema in ('core','work','doc','hr','crm','kb','agent')")
 echo "Bảng: $T, view: $V (chuẩn 0.6.x: 122 và 5)"

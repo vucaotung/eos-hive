@@ -201,7 +201,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_law_ingest', 'eos_law_mark', 'eos_law_save', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_law_ingest', 'eos_law_list', 'eos_law_mark', 'eos_law_save', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -498,6 +498,8 @@ try {
     assert.ok(marks.every((m) => m.tinh_trang === 'het_hieu_luc' && m.thay_the === '99/2025/NĐ-CP' && m.so_hieu === '123/2024/NĐ-CP' && m.buoc === '06,09'), JSON.stringify(marks));
     assert.equal(wkCalls.filter((c) => c[0] === 'del').length, delsBefore, 'không có thao tác xóa');
     assert.equal((await sql("SELECT count(*)::int n FROM kb.law_sources WHERE tinh_trang = 'het_hieu_luc'"))[0].n, 2);
+    const lst = json(await L('eos_law_list', { kb: 'phap-luat' })); assert.equal(lst.total, 2); assert.ok(lst.items.every((x) => x.so_hieu === '123/2024/NĐ-CP' && x.tinh_trang === 'het_hieu_luc' && x.thay_the === '99/2025/NĐ-CP'));
+    assert.equal(json(await L('eos_law_list', { kb: 'phap-luat', tinh_trang: 'con_hieu_luc' })).total, 0);
     const badMark = await L('eos_law_mark', { kb: 'phap-luat', so_hieu: 'khong-co/2020', tinh_trang: 'het_hieu_luc' }); assert.equal(badMark.isError, true);
     // việc do thành viên thường tạo: bị từ chối dù giao đúng phap-che
     const lt2 = await mkLaw(MINH, 't_law_mcp2');

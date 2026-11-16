@@ -138,12 +138,44 @@ BEGIN
       FROM agent.workflow_runs r WHERE r.company_id = cid AND (agent._role_of(me.id, cid) IN ('owner','admin') OR r.supervisor = me.id)), '[]');
 END $$;
 
+-- Phạm vi của việc đứng riêng (không thuộc lần chạy): wiki_lint (quan-tri-du-lieu, theo dự án) và law_review (phap-che, theo KB pháp luật). Chỉ ĐỌC.
+CREATE OR REPLACE FUNCTION agent._standalone_scope(p_task bigint, a agent.agents, ts agent.task_scopes) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
+DECLARE t work.tasks; pr core.projects; b kb.bases; r agent.workflow_runs; stg text := ts.scope->>'stage'; s agent.company_settings;
+BEGIN
+  IF ts.scope->>'agent' IS DISTINCT FROM a.code OR (stg = 'wiki_lint' AND a.code <> 'quan-tri-du-lieu') OR (stg = 'law_review' AND a.code <> 'phap-che') THEN
+    RAISE EXCEPTION 'Việc % không giao cho agent %', stg, a.code USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO t FROM work.tasks WHERE id = p_task;
+  IF stg = 'wiki_lint' THEN
+    SELECT * INTO pr FROM core.projects WHERE company_id = t.company_id AND slug = ts.scope->>'project';
+    IF pr.id IS NULL THEN RAISE EXCEPTION 'Phạm vi wiki_lint cần "project" (slug dự án) thuộc công ty'; END IF;
+    SELECT * INTO b FROM kb.bases WHERE company_id = t.company_id AND project_id = pr.id AND scope = 'project' ORDER BY created_at DESC LIMIT 1;
+    SELECT * INTO r FROM agent.workflow_runs WHERE project_id = pr.id ORDER BY id DESC LIMIT 1;
+    RETURN jsonb_build_object('standalone', true, 'run', NULL, 'project', jsonb_build_object('id', pr.id, 'name', pr.name, 'slug', pr.slug, 'code', pr.code),
+      'task', jsonb_build_object('id', p_task, 'skill', ts.skill, 'scope', ts.scope), 'agent', a.code,
+      'md_folder_id', r.md_folder_id,   -- thư mục Markdown của lần nạp gần nhất (chỉ đọc, để đối chiếu Wiki với tài liệu)
+      'kb', CASE WHEN b.id IS NULL THEN NULL ELSE jsonb_build_object('name', b.name, 'weknora_kb_id', b.weknora_kb_id, 'ready', b.weknora_kb_id NOT LIKE 'pending:%') END,
+      'supervisor', (SELECT name FROM core.users WHERE id = coalesce(r.supervisor, t.assignee_id)), 'playbook', 'Rà Wiki KB dự án: chỉ đọc Wiki (MCP WeKnora chỉ đọc), không sửa Wiki; báo cáo bằng eos_project_save_report.', 'tasks', '[]'::jsonb);
+  END IF;
+  SELECT * INTO s FROM agent.company_settings WHERE company_id = t.company_id;
+  RETURN jsonb_build_object('standalone', true, 'run', NULL, 'project', NULL, 'task', jsonb_build_object('id', p_task, 'skill', ts.skill, 'scope', ts.scope), 'agent', a.code,
+    'md_folder_id', NULL, 'law_md_folder_id', s.law_md_folder_id, 'law_kb_names', to_jsonb(s.law_kb_names),
+    'kb', (SELECT jsonb_agg(jsonb_build_object('name', k.name, 'weknora_kb_id', k.weknora_kb_id, 'ready', k.weknora_kb_id NOT LIKE 'pending:%')) FROM kb.bases k WHERE k.company_id = t.company_id AND k.scope = 'shared_legal'),
+    'supervisor', (SELECT name FROM core.users WHERE id = t.assignee_id),
+    'playbook', 'Rà hiệu lực KB pháp luật: đối chiếu từng dòng kb.law_sources (eos_law_list) với nguồn chính thống theo skill tra-cuu-phap-luat; CHỈ báo cáo và đề xuất (eos_project_save_report). Đánh dấu hay nạp mới cần việc law_ingest do chủ sở hữu tạo.', 'tasks', '[]'::jsonb);
+END $$;
+
 -- ---------- Công cụ cho agent: bối cảnh, phạm vi, danh mục ----------
 CREATE OR REPLACE FUNCTION agent.mcp_project_scope(p_task bigint) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
 DECLARE a agent.agents := agent._agent_for_task(p_task); rid bigint := agent._run_of_task(p_task); r agent.workflow_runs; pr core.projects; wf agent.workflows; ts agent.task_scopes; b kb.bases;
 BEGIN
-  IF rid IS NULL THEN RAISE EXCEPTION 'Việc T-% không thuộc quy trình dự án nào', p_task; END IF;
+  IF rid IS NULL THEN
+    SELECT * INTO ts FROM agent.task_scopes WHERE task_id = p_task;
+    IF ts.task_id IS NOT NULL AND ts.scope->>'stage' IN ('wiki_lint', 'law_review') THEN RETURN agent._standalone_scope(p_task, a, ts); END IF;   -- việc định kỳ rà Wiki / rà hiệu lực: không thuộc lần chạy nào
+    RAISE EXCEPTION 'Việc T-% không thuộc quy trình dự án nào', p_task;
+  END IF;
   SELECT * INTO r FROM agent.workflow_runs WHERE id = rid;
   SELECT * INTO pr FROM core.projects WHERE id = r.project_id;
   SELECT * INTO wf FROM agent.workflows WHERE code = r.workflow_code;
@@ -176,20 +208,21 @@ BEGIN
   FOR it IN SELECT * FROM jsonb_array_elements(p_items) LOOP
     cname := left(btrim(coalesce(it->>'category', '')), 80); ttl := left(btrim(coalesce(it->>'title', '')), 300); rno := nullif(left(btrim(coalesce(it->>'record_no', '')), 120), '');
     IF cname = '' OR length(ttl) < 3 THEN RAISE EXCEPTION 'Mỗi hồ sơ cần category và title (từ 3 ký tự)'; END IF;
+    IF coalesce(it->>'buoc', '') <> '' AND (it->>'buoc') !~ '^(0[0-9]|1[0-9]|20)$' THEN RAISE EXCEPTION 'buoc phải từ 00 đến 20 (00 = văn bản chung hoặc chưa chắc)'; END IF;
     SELECT id INTO cat FROM doc.record_categories WHERE company_id = r.company_id AND name = cname;
     IF cat IS NULL THEN INSERT INTO doc.record_categories (company_id, name) VALUES (r.company_id, cname) RETURNING id INTO cat; END IF;
     rec := NULL;
     IF rno IS NOT NULL THEN SELECT id INTO rec FROM doc.records WHERE company_id = r.company_id AND project_id = r.project_id AND record_no = rno; END IF;
     IF rec IS NULL THEN
-      INSERT INTO doc.records (company_id, category_id, record_no, title, description, department_id, project_id, owner_id, issued_on, expires_on, contract_value, executed_value, status, created_by)
+      INSERT INTO doc.records (company_id, category_id, record_no, title, description, department_id, project_id, owner_id, issued_on, expires_on, contract_value, executed_value, status, buoc, created_by)
       VALUES (r.company_id, cat, rno, ttl, left(it->>'description', 4000), pr.department_id, r.project_id, r.supervisor,
               nullif(it->>'issued_on', '')::date, nullif(it->>'expires_on', '')::date, nullif(it->>'contract_value', '')::bigint, nullif(it->>'executed_value', '')::bigint,
-              coalesce(nullif(it->>'status', ''), 'active'), a.user_id) RETURNING id INTO rec;
+              coalesce(nullif(it->>'status', ''), 'active'), nullif(it->>'buoc', ''), a.user_id) RETURNING id INTO rec;
       n_new := n_new + 1;
     ELSE
       UPDATE doc.records SET category_id = cat, title = ttl, description = coalesce(left(it->>'description', 4000), description), issued_on = coalesce(nullif(it->>'issued_on', '')::date, issued_on),
              expires_on = coalesce(nullif(it->>'expires_on', '')::date, expires_on), contract_value = coalesce(nullif(it->>'contract_value', '')::bigint, contract_value),
-             executed_value = coalesce(nullif(it->>'executed_value', '')::bigint, executed_value), updated_at = now() WHERE id = rec;
+             executed_value = coalesce(nullif(it->>'executed_value', '')::bigint, executed_value), buoc = coalesce(nullif(it->>'buoc', ''), buoc), updated_at = now() WHERE id = rec;
       n_upd := n_upd + 1;
     END IF;
     -- tệp nguồn: chỉ tệp đã được runner đăng ký cho công ty này

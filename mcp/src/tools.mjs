@@ -403,12 +403,12 @@ function registerAgentTools(server, ident, tool, call, tracked) {
 
   tool('eos_catalog_upsert', 'project', {
     title: 'Ghi danh mục hồ sơ của dự án',
-    description: 'Ghi 1–50 hồ sơ vào danh mục (doc.records) của dự án: category (nhóm, tự tạo nếu chưa có), title, record_no (số hồ sơ/số hợp đồng; trùng số thì cập nhật), description, issued_on/expires_on (YYYY-MM-DD), contract_value/executed_value (đồng), status (draft|active|expiring|expired|closed|cancelled), drive_id (tệp Markdown nguồn đã được runner đăng ký). Chỉ ghi điều có trong hồ sơ; không đoán số liệu.',
+    description: 'Ghi 1–50 hồ sơ vào danh mục (doc.records) của dự án: category (nhóm, tự tạo nếu chưa có), title, record_no (số hồ sơ/số hợp đồng; trùng số thì cập nhật), description, issued_on/expires_on (YYYY-MM-DD), contract_value/executed_value (đồng), status (draft|active|expiring|expired|closed|cancelled), buoc (mã bước 01–20 của quản lý dự án đầu tư xây dựng theo skill so-do-20-buoc; 00 = văn bản chung hoặc chưa chắc; bỏ trống thì giữ giá trị cũ), drive_id (tệp Markdown nguồn đã được runner đăng ký). Chỉ ghi điều có trong hồ sơ; không đoán số liệu.',
     inputSchema: { task: taskRef, items: z.array(z.object({
       category: z.string().min(1).max(80), title: z.string().min(3).max(300), record_no: z.string().max(120).optional(), description: z.string().max(4000).optional(),
       issued_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), expires_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       contract_value: z.number().int().min(0).optional(), executed_value: z.number().int().min(0).optional(),
-      status: z.enum(['draft', 'active', 'expiring', 'expired', 'closed', 'cancelled']).optional(), drive_id: z.string().regex(/^[A-Za-z0-9_-]{6,}$/).optional(),
+      status: z.enum(['draft', 'active', 'expiring', 'expired', 'closed', 'cancelled']).optional(), buoc: z.string().regex(/^(0[0-9]|1[0-9]|20)$/).optional(), drive_id: z.string().regex(/^[A-Za-z0-9_-]{6,}$/).optional(),
     })).min(1).max(50) },
   }, async ({ task, items }) => ({ result: await call('SELECT agent.mcp_catalog_upsert($1,$2) AS r', [toId(task), JSON.stringify(items)]), entity: { type: 'task', id: String(toId(task)) } }),
   (a) => ({ task: toId(a.task), items: a.items?.length }));
@@ -600,6 +600,14 @@ function registerAgentTools(server, ident, tool, call, tracked) {
     }
     return { result: { so_hieu, tinh_trang, updated: r.updated, metadata: meta }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), kb: a.kb, so_hieu: a.so_hieu, tinh_trang: a.tinh_trang }));
+
+
+  tool('eos_law_list', 'law_ingest', {
+    title: 'Liệt kê văn bản pháp luật đã nạp (chỉ đọc)',
+    description: 'Chỉ agent phap-che, trong việc law_ingest hoặc law_review do chủ sở hữu/quản trị tạo. Trả danh mục kb.law_sources của một KB pháp luật: so_hieu, ten, co_quan, ngay_ban_hanh, tinh_trang, thay_the, sua_doi, buoc, nguon, ngay_tra, weknora_doc_id, phien_ban. Lọc theo tinh_trang; limit ≤ 200, offset để lấy tiếp. Dùng để kiểm trùng trước khi nạp và để rà hiệu lực định kỳ.',
+    inputSchema: { task: taskRef, kb: kbName, tinh_trang: z.enum(law.LAW_STATUS).optional(), limit: z.number().int().min(1).max(200).default(100), offset: z.number().int().min(0).max(100000).default(0) }, annotations: { readOnlyHint: true },
+  }, async ({ task, kb, tinh_trang, limit, offset }) => ({ result: await call('SELECT agent.mcp_law_list($1,$2,$3::jsonb) AS r', [toId(task), kb, JSON.stringify({ tinh_trang, limit, offset })]), entity: { type: 'task', id: String(toId(task)) } }),
+  (a) => ({ task: toId(a.task), kb: a.kb }));
 
   // ---------- Runner (Z2): nhận việc, báo cáo, đăng ký dữ liệu. Chỉ mã có phạm vi `runner` ----------
   tool('eos_runner_claim', 'runner', {

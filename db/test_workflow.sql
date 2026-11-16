@@ -115,6 +115,17 @@ DO $$ DECLARE c constant uuid := '77777777-7777-7777-7777-777777777777'; own con
   ASSERT (SELECT count(*) FROM doc.records WHERE project_id = (SELECT project_id FROM agent.workflow_runs WHERE id = run)) = 2, '2 hồ sơ trong danh mục dự án';
   ASSERT (SELECT contract_value = 1500000000 AND executed_value = 900000000 AND owner_id = sup FROM doc.records WHERE record_no = 'HD-01/2026'), 'giá trị giữ nguyên khi cập nhật; người theo dõi là người phụ trách hồ sơ';
   ASSERT (SELECT count(*) FROM core.attachments WHERE entity_type = 'record' AND role = 'source') = 2, 'hồ sơ gắn tệp nguồn';
+  -- mã bước 01–20 (0032): ghi khi tạo/cập nhật, giữ khi cập nhật không gửi buoc, bước ngoài 00–20 bị từ chối
+  ca := agent.mcp_catalog_upsert(k_vt, '[{"category":"Pháp lý","record_no":"GPXD-01","title":"Giấy phép xây dựng","buoc":"12"},{"category":"Hợp đồng","record_no":"HD-01/2026","title":"Hợp đồng thi công gói thầu 1 (đã sửa)","buoc":"13"}]');
+  ASSERT (SELECT buoc FROM doc.records WHERE record_no = 'GPXD-01') = '12' AND (SELECT buoc FROM doc.records WHERE record_no = 'HD-01/2026') = '13', 'buoc ghi khi tạo và khi cập nhật';
+  PERFORM agent.mcp_catalog_upsert(k_vt, '[{"category":"Pháp lý","record_no":"GPXD-01","title":"Giấy phép xây dựng (sửa)"}]');
+  ASSERT (SELECT buoc FROM doc.records WHERE record_no = 'GPXD-01') = '12', 'cập nhật không gửi buoc thì giữ nguyên';
+  PERFORM agent.mcp_catalog_upsert(k_vt, '[{"category":"Pháp lý","title":"Tờ trình chung","buoc":"00"}]');
+  ASSERT (SELECT buoc FROM doc.records WHERE title = 'Tờ trình chung') = '00', '00 = văn bản chung';
+  BEGIN PERFORM agent.mcp_catalog_upsert(k_vt, '[{"category":"Pháp lý","title":"Sai bước","buoc":"21"}]'); ASSERT false, 'bước 21'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN PERFORM agent.mcp_catalog_upsert(k_vt, '[{"category":"Pháp lý","title":"Sai bước 2","buoc":"7"}]'); ASSERT false, 'bước một chữ số'; EXCEPTION WHEN raise_exception THEN NULL; END;
+  BEGIN UPDATE doc.records SET buoc = '99' WHERE record_no = 'GPXD-01'; ASSERT false, 'CHECK cột buoc'; EXCEPTION WHEN check_violation THEN NULL; END;
+  DELETE FROM doc.records WHERE record_no = 'GPXD-01' OR title IN ('Tờ trình chung');
   BEGIN PERFORM agent.mcp_catalog_upsert(k_vt, '[{"category":"","title":"x"}]'); ASSERT false, 'thiếu nhóm'; EXCEPTION WHEN raise_exception THEN NULL; END;
   BEGIN PERFORM agent.mcp_catalog_upsert(k_z2, '[{"category":"Khác","title":"Hồ sơ lạ"}]'); ASSERT false, 'văn thư không có thẻ cho việc của runner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN PERFORM agent.mcp_catalog_upsert(k_vt, (SELECT jsonb_agg(jsonb_build_object('category','A','title','Hồ sơ ' || g)) FROM generate_series(1, 51) g)); ASSERT false, 'quá 50 mục'; EXCEPTION WHEN raise_exception THEN NULL; END;
