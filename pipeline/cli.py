@@ -52,7 +52,7 @@ def main(argv=None, client_factory=None):
         elif args.cmd == 'run':
             from .run import run_project
             s = run_project(args.slug, cfg)
-            print(f"run: tổng {s['total']}, có Markdown {s['ok']}, lỗi {s['error']}, không chuyển đổi {s['skip']}, cần soát OCR {s['need_ocr']}")
+            print(f"run: tổng {s['total']}, có Markdown {s['ok']}, ảnh nén {s['images']}, lỗi {s['error']}, không chuyển đổi {s['skip']}, cần soát OCR {s['need_ocr']}")
         else:
             if not SAFE_ID.match(args.folder_id):
                 print('id thư mục Drive không hợp lệ', file=sys.stderr)

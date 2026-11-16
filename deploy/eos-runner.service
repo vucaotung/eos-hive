@@ -2,7 +2,9 @@
 # Chạy bằng user hệ thống `eos-runner` (không đăng nhập được). Từ 0.6 pipeline là Python (pipeline/, `python -m pipeline`), tải/đẩy Drive bằng Drive API, KHÔNG dùng rclone.
 # /etc/eos/runner.env (quyền 600, chủ eos-runner) do CHỦ SỞ HỮU tự điền: EOS_RUNNER_TOKEN và GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
 # (mặc định, chờ Tùng xác nhận: dùng tài khoản Google ai666 có quyền Người chỉnh sửa trên thư mục nguồn; nên tạo OAuth client riêng cho runner, đừng dùng chung khóa của MCP).
-# Cài phụ thuộc vào venv: python3 -m venv /opt/apps/enterprise-os/venv && /opt/apps/enterprise-os/venv/bin/pip install -r pipeline/requirements.txt ; cần thêm gói apt: libreoffice-core libreoffice-writer libreoffice-calc (đọc .doc/.xls).
+# Cài phụ thuộc vào venv: python3 -m venv /opt/apps/enterprise-os/venv && /opt/apps/enterprise-os/venv/bin/pip install -r pipeline/requirements.txt ; cần thêm gói apt: libreoffice-core libreoffice-writer libreoffice-calc (đọc .doc/.xls), tesseract-ocr (OCR).
+# OCR: Tesseract `vie` bản BEST (chốt ở Pha 2; PaddleOCR bị loại vì bảng ký tự thiếu chữ Việt có dấu). Gói apt tesseract-ocr-vie là bản fast, nên tải vie.traineddata bản best (≈12 MB, github.com/tesseract-ocr/tessdata_best)
+# vào /opt/apps/enterprise-os/tessdata cùng eng.traineddata, osd.traineddata và thư mục configs/ (chép từ /usr/share/tesseract-ocr/*/tessdata), rồi đặt TESSDATA_DIR như dưới đây. Việc này làm ở Pha 8.
 # MemoryMax: đặt theo RAM đo ở Pha 0 (RAM trống của VPS 169 trừ phần WeKnora/Postgres/MCP); ví dụ máy 8 GB thì 3G. Sửa __MEMORY_MAX__ trước khi cài.
 [Unit]
 Description=Enterprise OS runner ho-so (VPS 169)
@@ -17,6 +19,8 @@ Environment=PYTHONUNBUFFERED=1
 Environment=DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline
 Environment=WORK_DIR=/var/lib/eos-runner/work
 Environment=SOFFICE_BIN=/usr/bin/soffice
+Environment=TESSERACT_CMD=/usr/bin/tesseract
+Environment=TESSDATA_DIR=/opt/apps/enterprise-os/tessdata
 Environment=HOME=/var/lib/eos-runner
 WorkingDirectory=/var/lib/eos-runner
 ExecStart=/opt/apps/enterprise-os/venv/bin/python /opt/apps/enterprise-os/runner/eos_z2_runner.py

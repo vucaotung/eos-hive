@@ -29,7 +29,16 @@ class Config:
         # SOFFICE_BIN đặt (kể cả rỗng) thì dùng đúng giá trị đó; không đặt thì tự dò đường dẫn thông dụng
         self.soffice = e['SOFFICE_BIN'] if 'SOFFICE_BIN' in e else _find_soffice()
         self.pandoc = e.get('PANDOC_BIN') or ''
-        self.tesseract = e.get('TESSERACT_CMD') or ''
+        self.tesseract = e['TESSERACT_CMD'] if 'TESSERACT_CMD' in e else _find_tesseract()
+        self.tessdata = e.get('TESSDATA_DIR') or ''             # thư mục chứa vie.traineddata (bản best); trống = mặc định của Tesseract
+        self.ocr_lang = e.get('OCR_LANG') or 'vie'
+        self.ocr_dpi = int(e.get('OCR_DPI', '300') or 300)
+        self.ocr_max_side_px = int(e.get('OCR_MAX_SIDE_PX', '4500') or 4500)   # trang khổ lớn bị giảm dpi để không tốn RAM
+        self.ocr_review_below = float(e.get('OCR_REVIEW_BELOW', '0.80') or 0.80)
+        self.ocr_timeout = int(e.get('OCR_TIMEOUT', '180') or 180)
+        self.image_max_side = int(e.get('IMAGE_MAX_SIDE', '2000') or 2000)
+        self.image_quality = int(e.get('IMAGE_QUALITY', '85') or 85)
+        self.image_max_bytes = int(e.get('IMAGE_MAX_MB', '10') or 10) * 1048576
         self.max_source_mb = int(e.get('MAX_SOURCE_MB', '300') or 300)
         self.text_min_chars = int(e.get('PDF_TEXT_MIN_CHARS', '30') or 30)   # trang có ≥ ngần này ký tự = có lớp chữ
         self.soffice_timeout = int(e.get('SOFFICE_TIMEOUT', '300') or 300)
@@ -56,6 +65,14 @@ def _find_soffice():
         if Path(p).exists():
             return p
     return ''
+
+
+def _find_tesseract():
+    import shutil
+    for p in ('C:/Program Files/Tesseract-OCR/tesseract.exe', '/usr/bin/tesseract'):
+        if Path(p).exists():
+            return p
+    return shutil.which('tesseract') or ''
 
 
 def load_env_file(path):

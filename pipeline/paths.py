@@ -55,9 +55,13 @@ def long_path(path):
     return '\\\\?\\UNC\\' + p[2:] if p.startswith('\\\\') else '\\\\?\\' + p
 
 
-def md_name(rel_posix, collide):
-    """Tên tệp Markdown cho một nguồn. `collide`=True khi cùng thư mục có nguồn khác trùng tên gốc
-    (ví dụ a.docx và a.pdf): giữ cả phần mở rộng, thành `a.docx.md` / `a.pdf.md`."""
+def out_name(rel_posix, collide, ext='.md'):
+    """Tên tệp đầu ra cho một nguồn. `collide`=True khi cùng thư mục có nguồn khác trùng tên gốc
+    (ví dụ a.docx và a.pdf, hoặc a.png và a.docx): giữ cả phần mở rộng, thành `a.docx.md` / `a.png.jpg`."""
     d, _, base = rel_posix.rpartition('/')
     stem = base if collide else (base.rpartition('.')[0] or base)
-    return (d + '/' if d else '') + stem + '.md'
+    return (d + '/' if d else '') + stem + ext
+
+
+def md_name(rel_posix, collide):
+    return out_name(rel_posix, collide, '.md')

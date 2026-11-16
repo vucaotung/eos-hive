@@ -60,7 +60,8 @@ def long_text(n):
 class Base(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp(prefix='eos-pl-'))
-        self.cfg = Config({'WORK_DIR': str(self.root / 'work'), 'SOFFICE_BIN': ''})
+        # TESSERACT_CMD rỗng: kết quả không phụ thuộc máy có Tesseract hay không (OCR có test riêng)
+        self.cfg = Config({'WORK_DIR': str(self.root / 'work'), 'SOFFICE_BIN': '', 'TESSERACT_CMD': ''})
         self.addCleanup(shutil.rmtree, self.root, True)
 
     def src(self):
@@ -152,9 +153,9 @@ class ConvertTest(Base):
 
     def test_pdf_pages_text_and_scan(self):
         r = self.conv('d.pdf', lambda p: make_pdf(p, [long_text(5), None, long_text(4)]))
-        self.assertEqual((r.status, r.route, r.pages, r.scan_pages), ('ok', 'C_scan', 3, [2]))
+        self.assertEqual((r.status, r.route, r.pages, r.scan_pages), ('ok', 'C_scan', 3, [2]), 'không có Tesseract: trang scan được đánh dấu, không im lặng')
         self.assertIn('[[trang 1]]', r.text); self.assertIn('[[trang 2]]', r.text); self.assertIn('[[trang 3]]', r.text)
-        self.assertIn('cần OCR', r.text)
+        self.assertIn('cần OCR', r.text); self.assertIn('TESSERACT_CMD', r.note)
 
     def test_pdf_all_text_is_native(self):
         r = self.conv('e.pdf', lambda p: make_pdf(p, [long_text(5)]))
@@ -162,7 +163,7 @@ class ConvertTest(Base):
 
     def test_skip_rules(self):
         for n, why in [('x.dwg', 'khong_tai'), ('x.DGN', 'khong_tai'), ('v.mp4', 'khong_tai'), ('z.zip', 'khong_tai'),
-                       ('l.gdoc', 'lien_ket_google'), ('p.jpg', 'anh_cho_pha_3')]:
+                       ('l.gdoc', 'lien_ket_google')]:
             r = convert.convert_file(self.root / n, n, self.cfg, self.root)
             self.assertEqual((r.status, r.reason), ('skip', why), n)
 
