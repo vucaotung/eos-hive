@@ -52,6 +52,7 @@ BEGIN
   ASSERT (res->>'standalone')::boolean AND res->'project'->>'slug' = 'du-an-a' AND res->'kb'->>'weknora_kb_id' = 'wkkb-proj-0001' AND res->>'md_folder_id' = 'MDROOT0000001' AND res->'task'->'scope'->>'stage' = 'wiki_lint', 'phạm vi wiki_lint: ' || res::text;
   BEGIN PERFORM agent.mcp_catalog_upsert(tid, '[{"category":"x","title":"Hồ sơ thử"}]'); ASSERT false, 'wiki_lint không ghi danh mục'; EXCEPTION WHEN raise_exception THEN NULL; END;
   BEGIN PERFORM agent.mcp_tag_step(tid, '[{"drive_id":"ABCDEFGHIJ","buoc":"01"}]'); ASSERT false, 'wiki_lint không gắn mã bước'; EXCEPTION WHEN raise_exception OR insufficient_privilege THEN NULL; END;
+  ASSERT NOT has_function_privilege('public', 'agent.mcp_tag_step(bigint,jsonb)'::regprocedure, 'EXECUTE') AND NOT has_function_privilege('public', 'agent._data_quality_ctx(bigint)'::regprocedure, 'EXECUTE'), 'hàm của 0033 không cho PUBLIC chạy (security_audit.sh)';
   BEGIN PERFORM agent.mcp_kb_ingest_target(tid); ASSERT false, 'wiki_lint không nạp kho'; EXCEPTION WHEN raise_exception OR insufficient_privilege THEN NULL; END;
   BEGIN PERFORM agent.mcp_law_target(tid, 'phap-luat'); ASSERT false, 'quan-tri-du-lieu không dùng luồng pháp luật'; EXCEPTION WHEN raise_exception OR insufficient_privilege THEN NULL; END;
   PERFORM pg_temp.as_agent('van-thu');

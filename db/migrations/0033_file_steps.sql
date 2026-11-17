@@ -64,5 +64,7 @@ BEGIN
     'file_steps', coalesce((SELECT jsonb_object_agg(fs.drive_id, jsonb_build_object('buoc', fs.buoc, 'giai_doan', kb.step_phase(fs.buoc))) FROM kb.file_steps fs WHERE fs.run_id = r.id), '{}'));
 END $$;
 
+-- Hàm mới mặc định cho PUBLIC chạy (Postgres): thu lại, chỉ mcp_svc gọi mcp_tag_step (phát hiện bằng scripts/security_audit.sh khi triển khai 0.6.0)
+REVOKE ALL ON FUNCTION agent._data_quality_ctx(bigint), agent.mcp_tag_step(bigint, jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION agent.mcp_tag_step(bigint, jsonb) TO mcp_svc;
 COMMIT;
