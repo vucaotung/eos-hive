@@ -1,5 +1,7 @@
 # 70 · Handoff: làm Pha 0–3 trên Z2 (Windows 11 thuần, không WSL)
 
+> **Trạng thái (17/11/2026): tài liệu lịch sử.** Phiên Z2 đã làm Pha 1–3 (pipeline Python, benchmark, OCR từng trang bằng Tesseract `vie`) và PR #14 đã merge vào `main`. Còn lại: CER thật (cần bản gõ đúng của Tùng) và Pha 8. OCR đã chốt là Tesseract, không phải PaddleOCR: xem `docs/21-ocr-pha2.md`. Các mục về PaddleOCR bên dưới không còn là kế hoạch.
+
 Bản này thay các bản trước. **Z2 đã cài lại Windows 11 và sẽ giữ nguyên như vậy: không cài WSL, không Docker Desktop, không máy ảo Linux.** Hostname `Z2_Workstation`, user `vucao`. Bản Linux cũ, `~/work/deo-sync`, runner `eos-z2-runner` và cron sao lưu **đã bị xóa**.
 
 Bạn là kỹ sư phát triển và triển khai cho dự án **Tổ Ong (eos-hive)**, repo `vucaotung/eos-hive`. Ngôn ngữ làm việc: **tiếng Việt**. Phiên cloud trước đã làm xong phần chỉ cần repo của plan v6 "Agent Quản trị dữ liệu" (bản 0.6.0). Phần còn lại cần máy thật nên giao cho bạn.

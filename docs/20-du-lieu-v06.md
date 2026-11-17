@@ -79,5 +79,6 @@ Dẹo Work ──giao việc──▶ Điều phối ──chia việc kèm scop
 - Giao diện chọn KB đích ghi cứng `phap-luat`/`tieu-chuan`; máy chủ kiểm theo `law_kb_names`.
 - Bước hiện tại của dự án chỉ là **đề xuất** của AI; người theo dõi quyết định. Bảng 20 bước là bản khung cần duyệt, không phải trích dẫn pháp luật; căn cứ pháp lý luôn tra lúc dùng (`tra-cuu-phap-luat`).
 - `ks-kinh-te-xd` ở chế độ chat không ghi Drive/CSDL; muốn lưu phải tạo việc.
-- Bản tổng wiki cho Tùng chưa tự động (mục 5). OCR PaddleOCR, nén ảnh, front matter mới chưa có (Pha 2–3).
+- Bản tổng wiki cho Tùng chưa tự động (mục 5).
+- OCR là Tesseract `vie` (bản best), **chưa có CER thật** trên bản gõ đúng; còn lỗi lẻ và trang scan xấu cho độ tin cậy thấp, chưa tiền xử lý ảnh (nghiêng, nhị phân hóa). Chi tiết: `docs/21-ocr-pha2.md`.
 - `make test-bridge` cần `postgrest`; chưa chạy trong môi trường phát triển của đợt này.
