@@ -66,12 +66,17 @@ Kiểm: `\d doc.records` có cột `buoc`; `select to_regclass('kb.law_sources')
 Cài lại logrotate/housekeeping nếu `scripts/` đổi (xem `docs/17` mục thứ tự triển khai).
 
 ## Bước 5 — Runner hồ sơ trên VPS 169
-1. Phụ thuộc pipeline (hỏi nếu apt đòi gỡ gói khác): `rclone`, LibreOffice, pandoc, poppler, `python3-venv`; môi trường Python của `pipeline/` (theo `pipeline/README.md`) kèm PaddleOCR (**đúng model đã chốt ở Pha 2**).
+1. **Phụ thuộc pipeline** (hỏi nếu apt đòi gỡ gói khác; không cần pandoc, poppler hay PaddleOCR: OCR là **Tesseract `vie`**, xem `docs/21-ocr-pha2.md`):
+   ```bash
+   ssh vps169 'sudo apt-get install -y rclone libreoffice-core libreoffice-writer libreoffice-calc tesseract-ocr python3-venv'
+   ssh vps169 'sudo python3 -m venv /opt/apps/enterprise-os/venv && sudo /opt/apps/enterprise-os/venv/bin/pip install -r /opt/apps/enterprise-os/pipeline/requirements.txt'
+   ```
+   Dữ liệu `vie` **bản best** (gói apt `tesseract-ocr-vie` là bản fast, không dùng): tạo `/opt/apps/enterprise-os/tessdata`, chép vào đó `eng.traineddata`, `osd.traineddata` và thư mục `configs/` từ thư mục tessdata của Tesseract (đường dẫn in ở đầu `tesseract --list-langs`), rồi tải `vie.traineddata` (≈12 MB) từ `github.com/tesseract-ocr/tessdata_best/raw/main/vie.traineddata` (VPS 169 phải ra được github.com; không được thì tải ở máy khác và chuyển bằng `scp`). Kiểm: `tesseract --tessdata-dir /opt/apps/enterprise-os/tessdata --list-langs | grep vie`. `deploy/eos-runner.service` đã trỏ `TESSERACT_CMD`, `TESSDATA_DIR`, `SOFFICE_BIN` và dùng python trong venv.
 2. User hệ thống: `sudo useradd --system --create-home --home-dir /var/lib/eos-runner --shell /usr/sbin/nologin eos-runner`.
 3. ⛔ **rclone với OAuth client riêng, tài khoản ai666 — chủ sở hữu tự đăng nhập** (`sudo -u eos-runner rclone config`, cần trình duyệt: dùng `rclone authorize` ở máy có trình duyệt rồi dán token). Bạn chỉ kiểm `rclone lsd gdrive:` chạy được và thư mục thử có quyền **Người chỉnh sửa**.
 4. Mã runner: `scripts/issue_runner_token.sh vps169` (ghi `/etc/eos/runner.env`, 600, chủ `eos-runner`; điều chỉnh đường dẫn nếu script ghi chỗ khác, ghi lại điều đã chỉnh).
 5. Service: sửa `__MEMORY_MAX__` trong `deploy/eos-runner.service` theo RAM đo ở Bước 0 (RAM trống trừ dự phòng cho Postgres, WeKnora, MCP), chép vào `/etc/systemd/system/`, `systemctl daemon-reload`.
-6. Chạy thử một lần sạch: `sudo -u eos-runner env $(cat /etc/eos/runner.env | xargs) DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline python3 /opt/apps/enterprise-os/runner/eos_z2_runner.py --once` (không in mã). Kỳ vọng "không có việc" hoặc xử lý đúng một việc thử.
+6. Chạy thử một lần sạch (không in mã: nạp tệp env bằng `.` trong shell con): `sudo -u eos-runner bash -c 'set -a; . /etc/eos/runner.env; set +a; export HOME=/var/lib/eos-runner WORK_DIR=/var/lib/eos-runner/work DEO_SYNC_DIR=/opt/apps/enterprise-os/pipeline SOFFICE_BIN=/usr/bin/soffice TESSERACT_CMD=/usr/bin/tesseract TESSDATA_DIR=/opt/apps/enterprise-os/tessdata; /opt/apps/enterprise-os/venv/bin/python /opt/apps/enterprise-os/runner/eos_z2_runner.py --once'`. Kỳ vọng "không có việc" hoặc xử lý đúng một việc thử. Kiểm thêm một PDF scan nhỏ qua OCR: trang có dấu `[[trang N]]`, độ tin cậy ghi trong `00_MUC_LUC.md`, trang dưới 0,80 nằm ở mục "Cần soát".
 7. `systemctl enable --now eos-runner`; kiểm `systemctl status`, `journalctl -u eos-runner -n 30`, thư mục tạm trống sau khi chạy.
 8. Z2 đã cài lại Windows 11 nên **không còn runner Z2 để tắt hay để dự phòng**. Chạy một dự án thử trên runner VPS 169 (đối chiếu số tệp `.md` và mục lục với `_md_deo` đã có trên Drive do pipeline cũ sinh ra); không đạt thì `systemctl disable --now eos-runner` và báo, chưa có đường xử lý hồ sơ nào khác cho đến khi sửa xong.
 

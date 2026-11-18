@@ -8,7 +8,7 @@ Bản mã và tài liệu này **chưa gồm** các phần cần máy thật (Z2
 | # | Nội dung | Trong bản 0.6.0 | Còn thiếu / cần máy thật |
 | --- | --- | --- | --- |
 | 1 | Runner hồ sơ chuyển từ Z2 lên VPS 169 | `deploy/eos-runner.service`, `scripts/issue_runner_token.sh` dùng chung | đưa `deo-sync` vào git (`pipeline/`), `DEO_SYNC_DIR` mặc định, cài và chạy trên VPS 169 (Pha 1, 8) |
-| 2 | OCR | Pha 2 đã benchmark: **chốt Tesseract `vie` (bản best)**; PaddleOCR PP-OCRv5/v6 bị loại vì bảng ký tự thiếu phần lớn chữ Việt có dấu (`ops-log/pha2-benchmark.md`). Pha 3: OCR từng trang, độ tin cậy từng trang, ngưỡng "cần soát" 0,80 | CER thật (chờ bản gõ đúng của Tùng); cài Tesseract + dữ liệu `vie` best trên VPS 169 (Pha 8) |
+| 2 | OCR | Pha 2 đã benchmark: **chốt Tesseract `vie` (bản best)**; PaddleOCR PP-OCRv5/v6 bị loại vì bảng ký tự thiếu phần lớn chữ Việt có dấu (`ops-log/pha2-benchmark.md`). Pha 3: OCR từng trang, độ tin cậy từng trang, ngưỡng "cần soát" 0,80 | Tùng đã chốt giữ Tesseract và không đo CER thật (18/11/2026); cài Tesseract + dữ liệu `vie` best trên VPS 169 (Pha 8) |
 | 3 | Nạp ảnh vào kho tri thức | `eos_kb_ingest` nạp ảnh ≤ 10 MB qua `knowledge/file`, `custom_metadata`, mã bước; pipeline (Pha 3) nén ảnh, đổi HEIC, giữ ngày chụp, front matter `buoc`/`giai_doan` để trống | chạy thử với Drive thật và WeKnora thật (Pha 8) |
 | 4 | Wiki WeKnora qua KB mẫu | `ensureKb` sao chép `indexing_strategy`, `wiki_config`, `vlm_config`; `deploy/weknora/*.txt` | nâng WeKnora v0.8.2 → v0.9.0, tạo KB `_mau-du-an` (Pha 8) |
 | 5 | Hồ sơ theo khung 20 bước | `doc.records.buoc` (0032), `kb.file_steps` + `eos_project_tag_step` (0033), skill `so-do-20-buoc`, `qlda-*` | duyệt bảng khung (Tùng và `ks-kinh-te-xd`) |
@@ -79,5 +79,6 @@ Dẹo Work ──giao việc──▶ Điều phối ──chia việc kèm scop
 - Giao diện chọn KB đích ghi cứng `phap-luat`/`tieu-chuan`; máy chủ kiểm theo `law_kb_names`.
 - Bước hiện tại của dự án chỉ là **đề xuất** của AI; người theo dõi quyết định. Bảng 20 bước là bản khung cần duyệt, không phải trích dẫn pháp luật; căn cứ pháp lý luôn tra lúc dùng (`tra-cuu-phap-luat`).
 - `ks-kinh-te-xd` ở chế độ chat không ghi Drive/CSDL; muốn lưu phải tạo việc.
-- Bản tổng wiki cho Tùng chưa tự động (mục 5). OCR PaddleOCR, nén ảnh, front matter mới chưa có (Pha 2–3).
+- Bản tổng wiki cho Tùng chưa tự động (mục 5).
+- OCR là Tesseract `vie` (bản best), được Tùng chốt giữ (18/11/2026); **không có CER thật** theo quyết định của Tùng; còn lỗi lẻ và trang scan xấu cho độ tin cậy thấp, chưa tiền xử lý ảnh (nghiêng, nhị phân hóa). Chi tiết: `docs/21-ocr-pha2.md`.
 - `make test-bridge` cần `postgrest`; chưa chạy trong môi trường phát triển của đợt này.
