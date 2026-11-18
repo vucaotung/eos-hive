@@ -1,5 +1,7 @@
 # 21 · OCR cho hồ sơ scan: Pha 2 (benchmark) và lựa chọn Tesseract
 
+> **Quyết định (18/11/2026, Tùng): giữ Tesseract `vie` (bản best) làm OCR của pipeline. Tùng quyết định không làm bản gõ đúng và không đo CER thật.** Hệ quả ghi ở mục "Giới hạn đã biết".
+
 Tài liệu này ghi lại **căn cứ và giới hạn** của việc chọn OCR cho pipeline hồ sơ (v0.6). Mọi số liệu dưới đây lấy từ `pipeline/README.md` do phiên Z2 viết; **bằng chứng gốc (`ops-log/pha2-benchmark.md`) nằm trên máy Z2 và không có trong repo** (thư mục `ops-log/` nằm trong `.gitignore`). Ai đã có tệp đó nên đưa bản tóm tắt vào đây.
 
 ## Đã so sánh
@@ -11,15 +13,15 @@ Tesseract `vie` (bản best), PaddleOCR PP-OCRv5 `lang=vi` (mô hình Latin) và
 - Số đo thời gian và RAM đo trên Z2 (Windows): chỉ tham khảo; production là CPU của VPS 169.
 
 ## Giới hạn đã biết
-- **Chưa có CER thật.** Kế hoạch yêu cầu bạn (Tùng) chốt model sau khi xem bảng so sánh có CER trên bản gõ đúng của 5 trang. Bản gõ đó chưa có, nên lựa chọn dựa trên độ phủ ký tự và tốc độ. **Trạng thái: chờ Tùng xác nhận.**
+- **Không có CER thật, theo quyết định của Tùng (18/11/2026).** Kế hoạch ban đầu đo CER trên bản gõ đúng của 5 trang; Tùng quyết định không làm. Lựa chọn Tesseract dựa trên độ phủ bảng ký tự và tốc độ, nên **chưa có số đo tỉ lệ lỗi ký tự, lỗi dấu, số tiền hay số văn bản đọc sai** trên hồ sơ thật. Chất lượng được kiểm soát bằng ngưỡng tin cậy 0,80 (trang kém vào "Cần soát" cho người soát tay) và việc người theo dõi đọc lại các trang quan trọng. Nếu sau này phát hiện sai số tiền hoặc số hiệu mà độ tin cậy vẫn cao, cần xem lại: khung đo `pipeline/bench/` đã sẵn sàng chấm CER khi có bản gõ đúng.
 - Còn lỗi lẻ ("KÉT QUÁ", địa chỉ email); trang có con dấu, nghiêng cho độ tin cậy thấp (mẫu 0,45). Chưa tiền xử lý ảnh (nghiêng, nhị phân hóa).
 - Các trang dưới ngưỡng tin cậy **0,80** vào mục "Cần soát" của `00_MUC_LUC.md` (biến `OCR_REVIEW_BELOW`); đây là chỗ người soát tay.
 - PP-OCRv6 (phát hành 2026-06) có thể cập nhật bảng ký tự sau; nên đo lại khi có bản mới.
 
 ## Việc còn lại
-1. Tùng đưa bản gõ đúng của 5 trang scan KDC Thành Lập, rồi chạy lại `ocr_bench` với `truth` để có CER thật; xác nhận hoặc đổi lựa chọn.
-2. Cài Tesseract và dữ liệu `vie` (bản best) trên VPS 169: `prompts/60-trien-khai-v06.md` Bước 5.
-3. Đưa tóm tắt `ops-log/pha2-benchmark.md` vào đây.
+1. Cài Tesseract và dữ liệu `vie` (bản best) trên VPS 169: `prompts/60-trien-khai-v06.md` Bước 5.
+2. Đưa tóm tắt `ops-log/pha2-benchmark.md` vào đây (mục "Số đo Pha 2"; tệp gốc nằm trên máy Z2, ngoài repo).
+3. Tùy chọn, khi có bản gõ đúng: chạy lại `ocr_bench` với `truth` để có CER thật.
 
 ## Chạy lại benchmark (Z2 Windows, venv riêng)
 ```powershell

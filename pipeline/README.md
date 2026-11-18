@@ -54,6 +54,6 @@ Test OCR thật chỉ chạy khi máy có Tesseract kèm `vie` (đặt `TESSDATA
 Benchmark OCR: `python -m pipeline.bench.ocr_bench` (venv riêng `pipeline/bench/requirements.txt`); kết quả Pha 2 ở `ops-log/pha2-benchmark.md`.
 
 ## Giới hạn đã biết
-- Chưa có CER thật cho Tesseract: chờ bản gõ đúng của người dùng. Tesseract còn lỗi lẻ ("KÉT QUÁ", địa chỉ email); các trang như vậy được bắt bởi ngưỡng tin cậy 0,80.
+- Không có CER thật cho Tesseract, theo quyết định của Tùng (18/11/2026; xem `docs/21-ocr-pha2.md`). Tesseract còn lỗi lẻ ("KÉT QUÁ", địa chỉ email); các trang như vậy được bắt bởi ngưỡng tin cậy 0,80.
 - Chế độ `--source-dir` không có `drive_id`/`drive_link`; chế độ Drive API có.
 - Bản scan xấu (con dấu, nghiêng) cho độ tin cậy thấp (mẫu: 0,45); tiền xử lý ảnh (nghiêng, nhị phân hóa) chưa làm.
