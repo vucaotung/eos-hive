@@ -544,7 +544,7 @@ function registerAgentTools(server, ident, tool, call, tracked) {
   const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
   tool('eos_law_save_from_source', 'law_ingest', {
     title: 'Lưu văn bản pháp luật: máy chủ tự tải nguyên văn từ tệp trên nguồn chính thống',
-    description: 'Chỉ trong việc law_ingest. Dùng cho văn bản dài hoặc khi có tệp toàn văn (DOCX, DOC, PDF có lớp chữ, hoặc trang HTML toàn văn) trên nguồn chính thống: bạn KHÔNG chép lại nguyên văn. Truyền file_url (đường dẫn https trực tiếp tới tệp, thuộc nguồn chính thống: vbpl.vn, congbao.chinhphu.vn, datafiles.chinhphu.vn, *.cdnchinhphu.vn, *.gov.vn…) và thông tin nhận diện bạn đã kiểm: so_hieu (đúng như trong văn bản, vd. "135/2025/QH15"), ten, co_quan, ngay_ban_hanh, tinh_trang, nguon (trang chính thống của văn bản), ngay_tra; tùy chọn loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc. Máy chủ tải tệp (≤ 30 MB, kiểm tên miền ở mọi chuyển hướng), chuyển Markdown, từ chối trang scan cần OCR, bản lỗi font và tệp không chứa số hiệu, rồi lưu như eos_law_save. Kết quả có so_dieu, so_ky_tu và đoạn đầu/cuối: ĐỐI CHIẾU với văn bản trước khi eos_law_ingest. Ưu tiên bản Công báo số (DOCX/PDF Unicode).',
+    description: 'Chỉ trong việc law_ingest. Dùng cho văn bản dài hoặc khi có tệp toàn văn (DOCX, DOC, PDF có lớp chữ, hoặc trang HTML toàn văn) trên nguồn chính thống: bạn KHÔNG chép lại nguyên văn. Truyền file_url (đường dẫn https trực tiếp tới tệp, thuộc nguồn chính thống: vbpl.vn, congbao.chinhphu.vn, datafiles.chinhphu.vn, *.cdnchinhphu.vn, *.gov.vn…) và thông tin nhận diện bạn đã kiểm: so_hieu (đúng như trong văn bản, vd. "135/2025/QH15"), ten, co_quan, ngay_ban_hanh, tinh_trang, nguon (trang chính thống của văn bản), ngay_tra; tùy chọn loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc. Máy chủ tải tệp (≤ 30 MB, kiểm tên miền ở mọi chuyển hướng), chuyển Markdown theo cấu trúc (# Chương/Phụ lục, ## Mục, ### Điều, khoản và điểm thành đoạn riêng, bảng giữ dạng bảng, không giữ số trang), ghi văn bản dẫn chiếu vào dan_chieu, từ chối trang scan cần OCR, bản lỗi font và tệp không chứa số hiệu, rồi lưu như eos_law_save. Kết quả có so_dieu, so_ky_tu, dan_chieu và đoạn đầu/cuối: ĐỐI CHIẾU với văn bản trước khi eos_law_ingest. Ưu tiên bản Công báo số (DOCX/PDF Unicode).',
     inputSchema: {
       task: taskRef, file_url: z.string().url().max(2000),
       so_hieu: z.string().min(2).max(120), ten: z.string().min(3).max(500), co_quan: z.string().min(2).max(200), ngay_ban_hanh: ymd,
@@ -568,9 +568,10 @@ function registerAgentTools(server, ident, tool, call, tracked) {
     const bad = lawsrc.checkConverted(meta.so_hieu, conv.text);
     if (bad.length) throw new DbError('Tệp chưa dùng được:\n- ' + bad.join('\n- '), 'P0001');
     // 3. Lưu như eos_law_save
-    const saved = await saveLaw(id, lawsrc.buildLawMarkdown(meta, conv.text));
+    const dan_chieu = lawsrc.otherRefs(meta.so_hieu, conv.refs);
+    const saved = await saveLaw(id, lawsrc.buildLawMarkdown({ ...meta, dan_chieu }, conv.text));
     const body = conv.text.trim();
-    return { result: { ...saved, file_url: got.finalUrl, loai_tep: kind, so_trang: conv.pages ?? null, so_ky_tu: body.length, so_dieu: lawsrc.countDieu(body),
+    return { result: { ...saved, file_url: got.finalUrl, loai_tep: kind, so_ky_tu: body.length, so_dieu: lawsrc.countDieu(body), dan_chieu,
       doan_dau: body.slice(0, 600), doan_cuoi: body.slice(-400),
       note: 'Đối chiếu số hiệu, tên, số điều và đoạn đầu/cuối với văn bản gốc trước khi eos_law_ingest. Sai tệp thì báo trong báo cáo, không nạp.' }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: toId(a.task), so_hieu: a.so_hieu, file_url: String(a.file_url || '').slice(0, 300) }));

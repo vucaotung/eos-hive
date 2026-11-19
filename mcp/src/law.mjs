@@ -72,7 +72,7 @@ export function validateLaw(text, { domains } = {}) {
   if (errors.length) return { errors, law: null };
   return { errors, law: {
     so_hieu: so, ten: fm.ten.trim(), loai: fm.loai || '', co_quan: fm.co_quan.trim(), ngay_ban_hanh: fm.ngay_ban_hanh, ngay_hieu_luc: fm.ngay_hieu_luc || '', tinh_trang: fm.tinh_trang,
-    thay_the: fm.thay_the || '', sua_doi: fm.sua_doi || '', linh_vuc: fm.linh_vuc || '', buoc: b.list, nguon: fm.nguon.trim(), ngay_tra: fm.ngay_tra, body,
+    thay_the: fm.thay_the || '', sua_doi: fm.sua_doi || '', linh_vuc: fm.linh_vuc || '', dan_chieu: fm.dan_chieu || '', buoc: b.list, nguon: fm.nguon.trim(), ngay_tra: fm.ngay_tra, body,
   } };
 }
 
@@ -87,7 +87,7 @@ export function lawFilename(soHieu) {
 export function lawKbContent(l) {
   const head = [`Số hiệu: ${l.so_hieu}`, `Tên: ${l.ten}`, l.loai && `Loại: ${l.loai}`, `Cơ quan ban hành: ${l.co_quan}`, `Ngày ban hành: ${l.ngay_ban_hanh}`,
     l.ngay_hieu_luc && `Ngày hiệu lực: ${l.ngay_hieu_luc}`, `Tình trạng: ${l.tinh_trang}`, l.thay_the && `Văn bản thay thế: ${l.thay_the}`, l.sua_doi && `Sửa đổi, bổ sung bởi: ${l.sua_doi}`,
-    l.linh_vuc && `Lĩnh vực: ${l.linh_vuc}`, `Nguồn: ${l.nguon} (tra ngày ${l.ngay_tra})`].filter(Boolean).join('\n');
+    l.linh_vuc && `Lĩnh vực: ${l.linh_vuc}`, l.dan_chieu && `Văn bản dẫn chiếu: ${l.dan_chieu}`, `Nguồn: ${l.nguon} (tra ngày ${l.ngay_tra})`].filter(Boolean).join('\n');
   return `${head}\n\n${l.body}`;
 }
 

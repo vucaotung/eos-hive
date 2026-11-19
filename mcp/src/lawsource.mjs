@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { sourceAllowed, lawDomains, LAW_REQUIRED } from './law.mjs';
 
 export const FILE_MAX_BYTES = 30 * 1024 * 1024;
-export const LAW_OPTIONAL = ['loai', 'ngay_hieu_luc', 'thay_the', 'sua_doi', 'linh_vuc', 'buoc'];
+export const LAW_OPTIONAL = ['loai', 'ngay_hieu_luc', 'thay_the', 'sua_doi', 'linh_vuc', 'buoc', 'dan_chieu'];
 // Tệp toàn văn của cổng Chính phủ nằm ở tên miền con (datafiles.chinhphu.vn) và CDN của cổng (*.cdnchinhphu.vn)
 export const DEFAULT_FILE_EXTRA = ['*.chinhphu.vn', '*.cdnchinhphu.vn'];
 
@@ -96,13 +96,15 @@ export function vietQuality(text) {
 
 const fold = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().replace(/\s+/g, '');
 export const bodyHasSoHieu = (soHieu, body) => fold(body).includes(fold(soHieu));
+// Văn bản dẫn chiếu (bộ chuyển trả refs): bỏ chính văn bản, tối đa 50
+export const otherRefs = (soHieu, refs) => [...new Set((refs || []).map(String))].filter((r) => fold(r) !== fold(soHieu)).slice(0, 50);
 
 // Số điều khác nhau có tiêu đề ("Điều 1.", "# **Điều 1.**", "**Điều 39.** dính cuối đoạn trước"); bỏ qua dẫn chiếu giữa câu ("theo Điều 4 của …")
 export const countDieu = (body) => new Set([...String(body).matchAll(/(?:^|\n|\*\*)[ \t#*_]*Điều\s+(\d+)[a-zđ]?[\s*_]*[.:]/gu)].map((m) => +m[1])).size;
 
 // Ghép front matter (chỉ khóa đã biết, một dòng mỗi khóa) với thân văn bản
 export function buildLawMarkdown(meta, body) {
-  const one = (v) => String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
+  const one = (v) => (Array.isArray(v) ? v.join(', ') : String(v ?? '')).replace(/[\r\n]+/g, ' ').trim();
   const lines = [...LAW_REQUIRED, ...LAW_OPTIONAL].filter((k) => one(meta[k]) !== '').map((k) => `${k}: ${one(meta[k])}`);
   return `---\n${lines.join('\n')}\n---\n\n${String(body).replace(/^﻿/, '').trim()}\n`;
 }

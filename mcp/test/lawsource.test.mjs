@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { fetchOfficial, sniffKind, vietQuality, bodyHasSoHieu, countDieu, buildLawMarkdown, checkConverted, privateIp, fileDomains, convertFile } from '../src/lawsource.mjs';
+import { otherRefs, fetchOfficial, sniffKind, vietQuality, bodyHasSoHieu, countDieu, buildLawMarkdown, checkConverted, privateIp, fileDomains, convertFile } from '../src/lawsource.mjs';
 import { validateLaw } from '../src/law.mjs';
 
 const pub = async () => [{ address: '203.162.1.1', family: 4 }];
@@ -103,4 +103,14 @@ test('gọi bộ chuyển pipeline.law_convert', async () => {
   assert.equal(f.seen.opts.env.TESSERACT_CMD, ''); assert.equal(f.seen.opts.cwd, '/app'); assert.ok(!('GOOGLE_REFRESH_TOKEN' in f.seen.opts.env), 'không truyền bí mật của MCP');
   await assert.rejects(convertFile(Buffer.from('x'), 'pdf', { spawnImpl: fakeSpawn(JSON.stringify({ ok: false, error: 'Tệp có 3 trang scan' }), { code: 1 }).impl }), /trang scan/);
   await assert.rejects(convertFile(Buffer.from('x'), 'pdf', { spawnImpl: fakeSpawn('Traceback ...', { code: 1, err: 'ModuleNotFoundError' }).impl }), /không trả JSON/);
+});
+
+test('văn bản dẫn chiếu: bỏ chính văn bản, không trùng, ghi một dòng trong front matter và nội dung nạp', async () => {
+  const refs = otherRefs('135/2025/QH15', ['135/2025/QH15', '50/2014/QH13', '207/2026/NĐ-CP', '50/2014/QH13']);
+  assert.deepEqual(refs, ['50/2014/QH13', '207/2026/NĐ-CP']);
+  const md = buildLawMarkdown({ so_hieu: '135/2025/QH15', ten: 'Luật Xây dựng', co_quan: 'Quốc hội', ngay_ban_hanh: '2025-12-10', tinh_trang: 'chua_hieu_luc',
+    nguon: 'https://congbao.chinhphu.vn/van-ban/x', ngay_tra: '2026-11-19', dan_chieu: refs }, VI.repeat(5));
+  assert.ok(md.includes('\ndan_chieu: 50/2014/QH13, 207/2026/NĐ-CP\n'));
+  const { lawKbContent } = await import('../src/law.mjs');
+  assert.match(lawKbContent(validateLaw(md).law), /Văn bản dẫn chiếu: 50\/2014\/QH13, 207\/2026\/NĐ-CP/);
 });
