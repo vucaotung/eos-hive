@@ -53,7 +53,11 @@ BEGIN
   -- 2. Chưa có thẻ chạy thì agent chưa gọi được; sau khi nhận thẻ thì gọi được
   PERFORM pg_temp.as_agent('phap-che');
   BEGIN PERFORM agent.mcp_law_target(tid, 'phap-luat'); ASSERT false, 'chưa có thẻ đang chạy'; EXCEPTION WHEN OTHERS THEN NULL; END;
-  PERFORM agent.outbox_ack(ob, 't_law1'); PERFORM agent.ingest_event('eos-law', 't_law1', 'claimed', 'k-law-1');
+  PERFORM agent.outbox_ack(ob, 't_law1');
+  -- thẻ đã có trên Hermes (todo) nhưng cầu nối chưa kịp ghi running: worker đã chạy thì vẫn gọi được (0036)
+  ASSERT (SELECT status FROM agent.cards WHERE task_id = tid) = 'todo', 'thẻ todo sau khi cầu nối tạo';
+  PERFORM agent.mcp_law_target(tid, 'phap-luat');
+  PERFORM agent.ingest_event('eos-law', 't_law1', 'claimed', 'k-law-1');
 
   -- 3. Agent khác không gọi được (kể cả khi có thẻ cho việc khác); KB ngoài danh sách bị từ chối
   PERFORM pg_temp.as_agent('van-thu');

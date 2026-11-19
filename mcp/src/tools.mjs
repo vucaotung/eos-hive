@@ -4,6 +4,7 @@ import { asUser, logCall, DbError } from './db.mjs';
 import { GUIDE, TOPICS } from './guide.mjs';
 import { uploadResult, fileInsideFolder, driveIdFromUrl, MAX_BYTES, listFolder, readText, readImage, isFolder, uploadToFolder } from './drive.mjs';
 import * as law from './law.mjs';
+import * as lawsrc from './lawsource.mjs';
 import { renderVanBan, vanBanShape, DOCX_MIME } from './vanban.mjs';
 import { createHash } from 'node:crypto';
 import * as weknora from './weknora.mjs';
@@ -517,25 +518,62 @@ function registerAgentTools(server, ident, tool, call, tracked) {
   // ---------- Văn bản pháp luật (db/65_law.sql): chỉ agent phap-che, chỉ trong việc law_ingest do chủ sở hữu/quản trị tạo. KHÔNG có công cụ xóa. ----------
   const kbName = z.string().min(2).max(60).describe('Tên KB pháp luật đích, thuộc danh sách của công ty (mặc định: phap-luat hoặc tieu-chuan)');
 
-  tool('eos_law_save', 'law_ingest', {
-    title: 'Lưu văn bản pháp luật (.md) vào thư mục pháp luật của công ty',
-    description: 'Chỉ trong việc law_ingest. Truyền NGUYÊN VĂN văn bản dạng Markdown (giữ chương/điều/khoản/điểm) kèm front matter bắt buộc: so_hieu, ten, co_quan, ngay_ban_hanh (YYYY-MM-DD), tinh_trang (con_hieu_luc|het_mot_phan|het_hieu_luc|chua_hieu_luc), nguon (đường dẫn https tới nguồn CHÍNH THỐNG), ngay_tra (ngày bạn tra); tùy chọn: loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc (mã bước 00–20, cách nhau dấu phẩy). Máy chủ từ chối nguồn không chính thống (vbpl.vn, Công báo, cổng chinhphu.vn, *.gov.vn…). Tên tệp = số hiệu không dấu; cùng nội dung đã có thì dùng lại, không ghi đè. Tối đa 5 MB.',
-    inputSchema: { task: taskRef, content: z.string().min(150).max(6_000_000) },
-  }, async ({ task, content }) => {
-    const id = toId(task);
+  // Lưu một văn bản đã có front matter vào thư mục pháp luật (dùng chung cho eos_law_save và eos_law_save_from_source)
+  const saveLaw = async (id, content) => {
     const v = law.validateLaw(content);
     if (v.errors.length) throw new DbError('Văn bản chưa đạt:\n- ' + v.errors.join('\n- '), 'P0001');
     const bytes = Buffer.from(content, 'utf8'), sha = law.sha256(bytes);
     let fname = law.lawFilename(v.law.so_hieu);
     const tg = await call('SELECT agent.mcp_law_save_target($1,$2,$3) AS r', [id, fname, sha]);
-    if (tg.existing_drive_id) return { result: { saved: false, existing: true, drive_id: tg.existing_drive_id, name: fname, url: tg.existing_url, so_hieu: v.law.so_hieu, note: 'Cùng số hiệu và cùng nội dung đã có trong thư mục pháp luật; dùng drive_id này.' }, entity: { type: 'task', id: String(id) } };
+    if (tg.existing_drive_id) return { saved: false, existing: true, drive_id: tg.existing_drive_id, name: fname, url: tg.existing_url, so_hieu: v.law.so_hieu, note: 'Cùng số hiệu và cùng nội dung đã có trong thư mục pháp luật; dùng drive_id này.' };
     if (tg.name_taken) fname = fname.replace(/\.md$/, `-${sha.slice(0, 8)}.md`);   // cùng tên, khác nội dung: tệp mới, không ghi đè tệp cũ
     const f = await tracked(id, fname, async () => {
       try { return await uploadToFolder({ folderId: tg.law_md_folder_id, filename: fname, mime: 'text/markdown', bytes, description: `Enterprise OS · pháp luật · T-${id}` }); }
       catch (e) { if ([403, 404].includes(e.status)) throw new DbError('Tài khoản agent không ghi được vào thư mục pháp luật. Chủ sở hữu cần chia sẻ thư mục quyền "Người chỉnh sửa" cho tài khoản Drive của hệ thống. Dùng kanban_block để báo.', 'P0001'); throw e; }
     }, async (u) => { await call('SELECT agent.mcp_law_save_done($1,$2::jsonb) AS r', [id, JSON.stringify({ drive_id: u.driveId, name: u.name, url: u.url, bytes: u.size, sha256: sha, so_hieu: v.law.so_hieu })]); return u; });
-    return { result: { saved: true, drive_id: f.driveId, name: f.name, url: f.url, so_hieu: v.law.so_hieu, bytes: f.size }, entity: { type: 'task', id: String(id) } };
-  }, (a) => ({ task: toId(a.task), chars: a.content?.length }));
+    return { saved: true, drive_id: f.driveId, name: f.name, url: f.url, so_hieu: v.law.so_hieu, bytes: f.size };
+  };
+
+  tool('eos_law_save', 'law_ingest', {
+    title: 'Lưu văn bản pháp luật (.md) vào thư mục pháp luật của công ty',
+    description: 'Chỉ trong việc law_ingest, cho văn bản NGẮN bạn đã có trọn nguyên văn. Văn bản dài (luật, nghị định) hoặc có tệp DOCX/PDF/HTML trên nguồn chính thống: dùng eos_law_save_from_source (máy chủ tự tải, bạn không phải chép lại). Truyền NGUYÊN VĂN văn bản dạng Markdown (giữ chương/điều/khoản/điểm) kèm front matter bắt buộc: so_hieu, ten, co_quan, ngay_ban_hanh (YYYY-MM-DD), tinh_trang (con_hieu_luc|het_mot_phan|het_hieu_luc|chua_hieu_luc), nguon (đường dẫn https tới nguồn CHÍNH THỐNG), ngay_tra (ngày bạn tra); tùy chọn: loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc (mã bước 00–20, cách nhau dấu phẩy). Máy chủ từ chối nguồn không chính thống (vbpl.vn, Công báo, cổng chinhphu.vn, *.gov.vn…). Tên tệp = số hiệu không dấu; cùng nội dung đã có thì dùng lại, không ghi đè. Tối đa 5 MB.',
+    inputSchema: { task: taskRef, content: z.string().min(150).max(6_000_000) },
+  }, async ({ task, content }) => ({ result: await saveLaw(toId(task), content), entity: { type: 'task', id: String(toId(task)) } }),
+  (a) => ({ task: toId(a.task), chars: a.content?.length }));
+
+  const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  tool('eos_law_save_from_source', 'law_ingest', {
+    title: 'Lưu văn bản pháp luật: máy chủ tự tải nguyên văn từ tệp trên nguồn chính thống',
+    description: 'Chỉ trong việc law_ingest. Dùng cho văn bản dài hoặc khi có tệp toàn văn (DOCX, DOC, PDF có lớp chữ, hoặc trang HTML toàn văn) trên nguồn chính thống: bạn KHÔNG chép lại nguyên văn. Truyền file_url (đường dẫn https trực tiếp tới tệp, thuộc nguồn chính thống: vbpl.vn, congbao.chinhphu.vn, datafiles.chinhphu.vn, *.cdnchinhphu.vn, *.gov.vn…) và thông tin nhận diện bạn đã kiểm: so_hieu (đúng như trong văn bản, vd. "135/2025/QH15"), ten, co_quan, ngay_ban_hanh, tinh_trang, nguon (trang chính thống của văn bản), ngay_tra; tùy chọn loai, ngay_hieu_luc, thay_the, sua_doi, linh_vuc, buoc. Máy chủ tải tệp (≤ 30 MB, kiểm tên miền ở mọi chuyển hướng), chuyển Markdown, từ chối trang scan cần OCR, bản lỗi font và tệp không chứa số hiệu, rồi lưu như eos_law_save. Kết quả có so_dieu, so_ky_tu và đoạn đầu/cuối: ĐỐI CHIẾU với văn bản trước khi eos_law_ingest. Ưu tiên bản Công báo số (DOCX/PDF Unicode).',
+    inputSchema: {
+      task: taskRef, file_url: z.string().url().max(2000),
+      so_hieu: z.string().min(2).max(120), ten: z.string().min(3).max(500), co_quan: z.string().min(2).max(200), ngay_ban_hanh: ymd,
+      tinh_trang: z.enum(law.LAW_STATUS), nguon: z.string().url().max(2000), ngay_tra: ymd,
+      loai: z.string().max(60).optional(), ngay_hieu_luc: ymd.optional(), thay_the: z.string().max(500).optional(), sua_doi: z.string().max(500).optional(),
+      linh_vuc: z.string().max(200).optional(), buoc: z.string().max(100).optional(),
+    },
+  }, async ({ task, file_url, ...meta }) => {
+    const id = toId(task);
+    const userErr = (e) => new DbError(String(e?.message || e), 'P0001');
+    // 1. Kiểm thông tin nhận diện và quyền (việc law_ingest hợp lệ) TRƯỚC khi tải gì
+    const pre = law.validateLaw(lawsrc.buildLawMarkdown(meta, 'Điều 1. (kiểm trước khi tải) '.repeat(5)));
+    if (pre.errors.length) throw new DbError('Thông tin văn bản chưa đạt:\n- ' + pre.errors.join('\n- '), 'P0001');
+    await call('SELECT agent.mcp_law_save_target($1,$2,$3) AS r', [id, law.lawFilename(meta.so_hieu), '0'.repeat(64)]);
+    // 2. Tải, nhận dạng, chuyển đổi, kiểm chất lượng
+    let got, conv;
+    try { got = await lawsrc.fetchOfficial(file_url); } catch (e) { throw userErr(`Không tải được tệp: ${e.message}`); }
+    const kind = lawsrc.sniffKind(got.bytes, got.contentType);
+    if (!kind) throw new DbError(`Tệp tại ${got.finalUrl} không phải DOCX, DOC, PDF hay HTML (${got.contentType || 'không rõ loại'}). Cần đường dẫn trực tiếp tới tệp toàn văn.`, 'P0001');
+    try { conv = await lawsrc.convertFile(got.bytes, kind); } catch (e) { throw userErr(`Không chuyển được tệp ${kind.toUpperCase()}: ${e.message}`); }
+    const bad = lawsrc.checkConverted(meta.so_hieu, conv.text);
+    if (bad.length) throw new DbError('Tệp chưa dùng được:\n- ' + bad.join('\n- '), 'P0001');
+    // 3. Lưu như eos_law_save
+    const saved = await saveLaw(id, lawsrc.buildLawMarkdown(meta, conv.text));
+    const body = conv.text.trim();
+    return { result: { ...saved, file_url: got.finalUrl, loai_tep: kind, so_trang: conv.pages ?? null, so_ky_tu: body.length, so_dieu: lawsrc.countDieu(body),
+      doan_dau: body.slice(0, 600), doan_cuoi: body.slice(-400),
+      note: 'Đối chiếu số hiệu, tên, số điều và đoạn đầu/cuối với văn bản gốc trước khi eos_law_ingest. Sai tệp thì báo trong báo cáo, không nạp.' }, entity: { type: 'task', id: String(id) } };
+  }, (a) => ({ task: toId(a.task), so_hieu: a.so_hieu, file_url: String(a.file_url || '').slice(0, 300) }));
 
   tool('eos_law_ingest', 'law_ingest', {
     title: 'Nạp văn bản pháp luật từ thư mục pháp luật vào KB pháp luật',
