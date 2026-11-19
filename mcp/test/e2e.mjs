@@ -201,7 +201,7 @@ try {
   const ag = await connect(process.env.TOKEN_AGENT);
   await step('worker agent: chỉ có công cụ đọc, chia việc và soạn dự thảo', async () => {
     const tools = (await ag.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_law_ingest', 'eos_law_list', 'eos_law_mark', 'eos_law_save', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
+    assert.deepEqual(tools, ['eos_catalog_upsert', 'eos_delegate', 'eos_draft_document', 'eos_get_task', 'eos_guide', 'eos_kb_ingest', 'eos_law_ingest', 'eos_law_list', 'eos_law_mark', 'eos_law_save', 'eos_law_save_from_source', 'eos_project_files', 'eos_project_read', 'eos_project_save_report', 'eos_project_scope', 'eos_project_tag_step', 'eos_runner_claim', 'eos_runner_report', 'eos_runner_setup']);
     assert.match(text(await ag.callTool({ name: 'eos_guide', arguments: {} })), /kanban_complete/);
   });
   await step('worker đọc việc có thẻ chạy, bị chặn với việc khác', async () => {
@@ -468,6 +468,12 @@ try {
     const lookalike = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('https://vbpl.vn/van-ban/1', 'https://vbpl.vn.evil.example/x') }); assert.equal(lookalike.isError, true);
     const noField = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('co_quan: Chính phủ\n', '') }); assert.equal(noField.isError, true); assert.match(text(noField), /thiếu "co_quan"/);
     const badStatus = await L('eos_law_save', { content: doc('1/2024/NĐ-CP').replace('con_hieu_luc', 'het_han') }); assert.equal(badStatus.isError, true); assert.match(text(badStatus), /tinh_trang/);
+    // máy chủ tự tải: tệp ngoài nguồn chính thống hoặc nguon sai bị từ chối TRƯỚC khi tải (không gọi mạng)
+    const meta = { so_hieu: '1/2024/NĐ-CP', ten: 'Nghị định mẫu', co_quan: 'Chính phủ', ngay_ban_hanh: '2024-01-02', tinh_trang: 'con_hieu_luc', nguon: 'https://vbpl.vn/van-ban/1', ngay_tra: '2026-11-01' };
+    const fsBad = await L('eos_law_save_from_source', { ...meta, file_url: 'https://thuvienphapluat.vn/a.docx' }); assert.equal(fsBad.isError, true); assert.match(text(fsBad), /không thuộc danh sách/);
+    const fsNguon = await L('eos_law_save_from_source', { ...meta, nguon: 'https://luatvietnam.vn/x', file_url: 'https://vbpl.vn/a.docx' }); assert.equal(fsNguon.isError, true); assert.match(text(fsNguon), /nguồn chính thống/);
+    const fsTok = await connect(process.env.TOKEN_KB);
+    const fsDenied = await fsTok.callTool({ name: 'eos_law_save_from_source', arguments: { task: lt, ...meta, file_url: 'https://vbpl.vn/a.docx' } }); assert.equal(fsDenied.isError, true); assert.match(text(fsDenied), /phạm vi "law_ingest"/); await fsTok.close();
     // lưu vào thư mục pháp luật (tên = số hiệu không dấu), lưu lại cùng nội dung thì dùng lại
     const v1 = doc('123/2024/NĐ-CP');
     const s1 = json(await L('eos_law_save', { content: v1 })); assert.equal(s1.saved, true); assert.equal(s1.name, '123-2024-ND-CP.md');

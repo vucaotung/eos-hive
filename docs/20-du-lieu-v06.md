@@ -39,7 +39,7 @@ Dẹo Work ──giao việc──▶ Điều phối ──chia việc kèm scop
 
 ## 4. Luồng văn bản pháp luật (`phap-che`)
 1. Chủ sở hữu hoặc quản trị (người thật) tạo việc: Dẹo Work → Dự án → **Nạp văn bản pháp luật** (`app_law_task_create`): danh sách số hiệu/link, KB đích (`phap-luat` hoặc `tieu-chuan`). Mai chỉ tạo **việc nháp** nhắc chủ sở hữu, không nạp.
-2. `phap-che` (skill `nap-van-ban-phap-luat`, `tra-cuu-phap-luat`): tìm nguyên văn trên nguồn chính thống, kiểm hiệu lực, soạn Markdown, `eos_law_save` → `eos_law_ingest` → `eos_law_mark` cho văn bản bị thay thế.
+2. `phap-che` (skill `nap-van-ban-phap-luat`, `tra-cuu-phap-luat`): tìm nguyên văn trên nguồn chính thống, kiểm hiệu lực, lưu bằng `eos_law_save_from_source` (máy chủ tự tải tệp toàn văn DOCX/DOC/PDF/HTML từ nguồn chính thống, chuyển Markdown bằng `pipeline/law_convert.py`; agent không chép lại nguyên văn) hoặc `eos_law_save` (văn bản ngắn tự soạn) → `eos_law_ingest` → `eos_law_mark` cho văn bản bị thay thế.
 3. Máy chủ MCP kiểm: người tạo việc là người thật có vai trò owner/admin, đúng agent, đúng giai đoạn `law_ingest`, KB thuộc `agent.company_settings.law_kb_names`, tệp nằm trong `law_md_folder_id`, front matter đủ trường, **nguồn thuộc danh sách chính thống** (`LAW_SOURCE_DOMAINS`, mặc định `vbpl.vn`, `congbao.chinhphu.vn`, `vanban.chinhphu.vn`, `chinhphu.vn`, `dichvucong.gov.vn`, `*.gov.vn`).
 4. Dữ liệu: `kb.law_sources` (`so_hieu`, `tinh_trang`, `thay_the`, `buoc`, `nguon_url`, `ngay_tra`, `phien_ban` md5…), unique `(weknora_kb_id, so_hieu, phien_ban)`; chạy lại không nạp trùng.
 5. KB pháp luật **dùng chung mọi công ty** theo cấu hình mặc định (mặc định, chờ Tùng xác nhận): mỗi công ty trỏ cùng tên KB.
@@ -60,7 +60,7 @@ Dẹo Work ──giao việc──▶ Điều phối ──chia việc kèm scop
 | `eos-dieu-phoi` | `dieu-phoi` | không | có | `eos_delegate` |
 | `eos-van-thu` | `van-thu` | không (ghi danh mục `doc.records`) | có | `eos_catalog_upsert`, soạn dự thảo |
 | `eos-quan-tri-du-lieu` | `quan-tri-du-lieu` | `eos_kb_ingest`, `eos_project_tag_step` | có (cả Wiki để `wiki_lint`) | `eos_project_*` |
-| `eos-phap-che` | `phap-che` | `eos_law_save`, `eos_law_ingest`, `eos_law_mark` | có | web (SearXNG), `eos_law_list`; không terminal, không file, không nền tảng chat |
+| `eos-phap-che` | `phap-che` | `eos_law_save`, `eos_law_save_from_source`, `eos_law_ingest`, `eos_law_mark` | có | web (SearXNG), `eos_law_list`; không terminal, không file, không nền tảng chat |
 | `ks-kinh-te-xd` | `ks-kinh-te-xd` | không | có | web, MCP Enterprise OS (đọc dự án, `eos_project_save_report`), kênh chat Telegram (allowlist chỉ ID của Tùng, mặc định, chờ xác nhận); **terminal tắt** |
 | `team_admin` (Mai) | `mai` | không | có | tạo việc nháp cho người |
 - Phạm vi mã MCP: `law_ingest` chỉ cấp cho `phap-che` (CSDL: trigger trên `agent.agents` và `agent.mcp_tokens`); `ingest` chỉ cho agent module kb.

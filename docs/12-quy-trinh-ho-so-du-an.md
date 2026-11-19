@@ -31,7 +31,7 @@ Các giai đoạn 2–4 phụ thuộc giai đoạn 1 (`after`). Việc con do đ
 | `eos_project_save_report` | `project` | lưu `.md` vào Drive người theo dõi, gắn vào việc |
 | `eos_kb_ingest` | `ingest` (chỉ agent phân hệ kho tri thức) | nạp tối đa 20 tệp Markdown hoặc ảnh/lần vào WeKnora; chỉ trong việc có `stage=kb_ingest` giao đúng agent đó |
 | `eos_project_tag_step` | `project` (chỉ `quan-tri-du-lieu`, stage `data_quality`) | ghi mã bước 01–20 cho từng tệp vào `kb.file_steps` |
-| `eos_law_save`, `eos_law_ingest`, `eos_law_mark`, `eos_law_list` | `law_ingest` (chỉ `phap-che`) | luồng văn bản pháp luật, xem `docs/20` |
+| `eos_law_save`, `eos_law_save_from_source`, `eos_law_ingest`, `eos_law_mark`, `eos_law_list` | `law_ingest` (chỉ `phap-che`) | luồng văn bản pháp luật, xem `docs/20` |
 | `eos_delegate` (thêm `scope`) | `delegate` | điều phối |
 | `eos_runner_claim`, `eos_runner_report`, `eos_runner_setup` | `runner` | chỉ runner |
 Mã của **người** không có `project`/`runner` (ràng buộc ở CSDL). Mã agent do `scripts/issue_agent_token.sh` cấp; mã runner do `scripts/issue_runner_token.sh`.

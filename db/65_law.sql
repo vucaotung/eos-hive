@@ -86,7 +86,7 @@ CREATE INDEX IF NOT EXISTS law_sources_status_idx ON kb.law_sources (company_id,
 REVOKE ALL ON kb.law_sources FROM PUBLIC;
 
 -- ---------- Ngữ cảnh: việc nạp pháp luật hợp lệ ----------
--- (1) việc giao đúng agent phap-che và agent này có thẻ đang chạy cho CHÍNH việc đó; (2) phạm vi stage = law_ingest;
+-- (1) việc giao đúng agent phap-che và agent này có thẻ đang mở (todo/ready/running: cầu nối ghi running chậm vài giây sau khi worker đã chạy) cho CHÍNH việc đó; (2) phạm vi stage = law_ingest;
 -- (3) người tạo việc là NGƯỜI THẬT có vai trò chủ sở hữu hoặc quản trị của công ty; (4) việc chưa đóng.
 CREATE OR REPLACE FUNCTION agent._law_ctx(p_task bigint) RETURNS work.tasks
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
@@ -94,7 +94,7 @@ DECLARE a agent.agents := agent._agent_for_task(p_task); t work.tasks; ts agent.
 BEGIN
   IF a.code <> 'phap-che' THEN RAISE EXCEPTION 'Chỉ agent phap-che được nạp văn bản pháp luật' USING ERRCODE = '42501'; END IF;
   SELECT * INTO t FROM work.tasks WHERE id = p_task;
-  IF NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('ready', 'running')) THEN
+  IF NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('todo', 'ready', 'running')) THEN
     RAISE EXCEPTION 'Agent % chưa có thẻ đang chạy cho chính việc T-%', a.code, p_task USING ERRCODE = '42501';
   END IF;
   SELECT * INTO ts FROM agent.task_scopes WHERE task_id = p_task;
