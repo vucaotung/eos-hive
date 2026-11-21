@@ -7,7 +7,7 @@ let calls = [], tplExtra = true, rejectExtra = false, putStatus = 200;
 const srv = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => {
     const body = b && req.headers['content-type']?.includes('json') ? JSON.parse(b) : null;
-    calls.push([req.method, req.url, body]);
+    calls.push([req.method, req.url, body, req.headers['accept-language']]);
     const send = (st, j) => { res.writeHead(st, { 'content-type': 'application/json' }); res.end(JSON.stringify(j)); };
     if (req.headers['x-api-key'] !== 'k') return send(401, { message: 'bad key' });
     if (req.method === 'GET' && req.url === '/api/v1/knowledge-bases') {
@@ -69,3 +69,10 @@ test('setMetadata: lỗi tạm thời (500) báo lại nhưng không đặt cờ
   assert.equal(calls.length, n, 'không gọi PUT nữa'); assert.equal(logs.length, 1, 'log một lần');
 });
 test.after(() => srv.close());
+
+test('mọi lệnh gọi WeKnora gửi Accept-Language: Vietnamese (thiếu thì WeKnora mặc định zh-CN, Wiki ra tiếng Trung)', async () => {
+  reset(); await wk.listKbs();
+  assert.equal(calls[0][3], 'Vietnamese');
+  process.env.WEKNORA_DOC_LANGUAGE = 'English'; reset(); await wk.listKbs(); delete process.env.WEKNORA_DOC_LANGUAGE;
+  assert.equal(calls[0][3], 'English');
+});

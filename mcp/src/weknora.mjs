@@ -3,13 +3,16 @@
 const base = () => (process.env.WEKNORA_BASE_URL || '').replace(/\/+$/, '');
 export const configured = () => Boolean(base() && process.env.WEKNORA_API_KEY);
 export const TEMPLATE_KB = () => process.env.WEKNORA_TEMPLATE_KB || 'kdc-thanh-lap';   // KB mẫu: sao chép cấu hình mô hình nhúng và chia đoạn
+// Ngôn ngữ xử lý tài liệu (Wiki, tóm tắt, câu hỏi gợi ý). WeKnora lấy từ Accept-Language, thiếu thì mặc định zh-CN (Wiki ra tiếng Trung).
+// Mã lạ được đưa nguyên vào prompt ("Write in {{.Language}}"), nên gửi tên đầy đủ "Vietnamese". Biến WEKNORA_LANGUAGE trên máy WeKnora (nếu đặt) vẫn thắng.
+export const DOC_LANGUAGE = () => process.env.WEKNORA_DOC_LANGUAGE || 'Vietnamese';
 
 // body: object → JSON; FormData → multipart (tự đặt Content-Type kèm boundary)
 async function wk(method, path, body) {
   const form = typeof FormData !== 'undefined' && body instanceof FormData;
   const r = await fetch(`${base()}${path}`, {
     method, signal: AbortSignal.timeout(90_000),
-    headers: { 'X-API-Key': process.env.WEKNORA_API_KEY, Accept: 'application/json', ...(body && !form ? { 'Content-Type': 'application/json' } : {}) },
+    headers: { 'X-API-Key': process.env.WEKNORA_API_KEY, Accept: 'application/json', 'Accept-Language': DOC_LANGUAGE(), ...(body && !form ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? (form ? body : JSON.stringify(body)) : undefined,
   });
   const text = await r.text();

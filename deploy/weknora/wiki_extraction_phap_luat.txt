@@ -5,3 +5,4 @@ QUY TẮC GỘP TRANG WIKI (KB pháp luật)
 4. Thông tin trùng thì gộp, giữ một nguồn chính và liệt kê nguồn phụ.
 5. Số hiệu, ngày ban hành, ngày hiệu lực khác nhau giữa các nguồn: ghi cả hai kèm nguồn, đánh dấu "mâu thuẫn", không tự chọn.
 6. Mỗi trang văn bản liên kết tới trang lĩnh vực và các bước 01-20 liên quan (dùng liên kết [[...]]). Không diễn giải hay suy luận ngoài nguyên văn.
+NGÔN NGỮ: viết toàn bộ nội dung trang Wiki bằng TIẾNG VIỆT (tiêu đề, tóm tắt, thân trang); giữ nguyên số hiệu, tên cơ quan và trích dẫn như trong văn bản.

@@ -37,8 +37,9 @@ BEGIN
   BEGIN INSERT INTO work.recurrences (company_id, title, freq, next_run, agent_code, created_by) VALUES (c, 'x', 'weekly', today, 'phap-che', own); ASSERT false, 'agent_code cần scope'; EXCEPTION WHEN check_violation THEN NULL; END;
 
   -- 2. Việc định kỳ rà Wiki: sinh việc giao quan-tri-du-lieu, phạm vi không gắn lần chạy
-  INSERT INTO work.recurrences (company_id, title, description, project_id, assignee_id, freq, weekdays, next_run, active, agent_code, scope, created_by)
-  VALUES (c, 'Rà Wiki dự án A (hằng tuần)', 'Rà Wiki KB dự án', pid, tv, 'weekly', ARRAY[1], today, true, 'quan-tri-du-lieu', '{"stage":"wiki_lint","project":"du-an-a","skill":"bao-tri-wiki"}', own) RETURNING id INTO rid;
+  -- (skip_holidays = false: kiểm không phụ thuộc ngày chạy; chạy vào thứ Bảy/CN/ngày lễ thì mẫu mặc định không sinh việc)
+  INSERT INTO work.recurrences (company_id, title, description, project_id, assignee_id, freq, weekdays, next_run, active, skip_holidays, agent_code, scope, created_by)
+  VALUES (c, 'Rà Wiki dự án A (hằng tuần)', 'Rà Wiki KB dự án', pid, tv, 'weekly', ARRAY[1], today, true, false, 'quan-tri-du-lieu', '{"stage":"wiki_lint","project":"du-an-a","skill":"bao-tri-wiki"}', own) RETURNING id INTO rid;
   PERFORM pg_temp.as_user(own);
   tid := work._run_recurrence(rid, today); ASSERT tid IS NOT NULL, 'tạo được việc';
   ASSERT (SELECT run_id IS NULL AND scope->>'stage' = 'wiki_lint' AND scope->>'agent' = 'quan-tri-du-lieu' AND scope->>'project' = 'du-an-a' AND skill = 'bao-tri-wiki' FROM agent.task_scopes WHERE task_id = tid), 'phạm vi wiki_lint';
@@ -64,8 +65,8 @@ BEGIN
 
   -- 4. Rà hiệu lực pháp luật: phap-che chưa bật cho công ty thì việc vẫn tạo (cho người), không giao agent
   PERFORM pg_temp.as_user(own);
-  INSERT INTO work.recurrences (company_id, title, assignee_id, freq, month_day, next_run, active, agent_code, scope, created_by)
-  VALUES (c, 'Rà hiệu lực KB pháp luật (hằng tháng)', own, 'monthly', 1, today, true, 'phap-che', '{"stage":"law_review","kb":"phap-luat","skill":"ra-hieu-luc-phap-luat"}', own) RETURNING id INTO rid2;
+  INSERT INTO work.recurrences (company_id, title, assignee_id, freq, month_day, next_run, active, skip_holidays, agent_code, scope, created_by)
+  VALUES (c, 'Rà hiệu lực KB pháp luật (hằng tháng)', own, 'monthly', 1, today, true, false, 'phap-che', '{"stage":"law_review","kb":"phap-luat","skill":"ra-hieu-luc-phap-luat"}', own) RETURNING id INTO rid2;
   tid2 := work._run_recurrence(rid2, today);
   ASSERT tid2 IS NOT NULL AND (SELECT agent_id IS NULL FROM work.tasks WHERE id = tid2) AND NOT EXISTS (SELECT 1 FROM agent.task_scopes WHERE task_id = tid2), 'agent chưa bật: việc vẫn tạo nhưng không giao';
   INSERT INTO agent.company_agents (company_id, agent_id) SELECT c, id FROM agent.agents WHERE code = 'phap-che';

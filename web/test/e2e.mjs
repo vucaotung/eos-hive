@@ -347,7 +347,7 @@ try {
   await step('việc định kỳ: tạo (đến hạn thì sinh việc ngay), danh sách theo vai trò, tạm dừng/xóa chỉ người tạo hoặc quản trị', async () => {
     const adm = await as('admin@demo.vn'), minh = await as('minh@demo.vn'), kt = await as('ketoan@demo.vn');
     const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);   // ngày theo giờ Việt Nam (+07), cùng cách tính của máy chủ
-    const r = await adm.ok('app_recurrence_save', { company_id: CO, title: 'Báo cáo định kỳ web', freq: 'daily', start: today, assignee_id: ID.minh, department_id: HC, due_offset: 1 });
+    const r = await adm.ok('app_recurrence_save', { company_id: CO, title: 'Báo cáo định kỳ web', freq: 'daily', start: today, skip_holidays: false, assignee_id: ID.minh, department_id: HC, due_offset: 1 });   // skip_holidays = false: chạy thứ Bảy/CN/ngày lễ vẫn sinh việc
     assert.ok(r.id && r.created_task, 'đến hạn nên có việc đầu tiên');
     const list = await minh.ok('app_recurrences', { company_id: CO }); const mine = list.find((x) => x.id === r.id);
     assert.ok(mine, 'người được giao thấy mẫu'); assert.equal(mine.can_edit, false); assert.equal(new Date(mine.next_run) > new Date(today), true, 'next_run đã tiến sang ngày sau');
