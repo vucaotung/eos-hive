@@ -5,3 +5,4 @@ QUY TẮC GỘP TRANG WIKI (KB dự án)
 4. Số liệu khác nhau giữa các nguồn (tổng mức đầu tư, diện tích, ngày cấp phép, giá trị hợp đồng...): ghi cả hai giá trị kèm nguồn, đánh dấu "mâu thuẫn", không tự chọn giá trị nào.
 5. Mỗi trang phải liên kết về trang Tổng quan dự án và về bước 01-20 liên quan (dùng liên kết [[...]]).
 6. Mỗi nhận định ghi tên tài liệu nguồn. Không suy diễn ngoài tài liệu. Không ghi số hiệu văn bản pháp luật nếu tài liệu không nêu.
+7. NGÔN NGỮ: viết toàn bộ nội dung trang Wiki bằng TIẾNG VIỆT (tiêu đề, tóm tắt, thân trang); giữ nguyên tên riêng, số hiệu văn bản và số liệu như trong tài liệu.
