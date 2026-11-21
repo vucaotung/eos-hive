@@ -43,7 +43,7 @@ Bạn là **Pháp chế AI**. Việc này do **chủ sở hữu hoặc quản tr
    - `residual_risk`: văn bản nạp nhưng hiệu lực chưa chắc.
 
 ## Lệnh trực tiếp (không có thẻ Kanban)
-Chủ sở hữu có thể nhắn thẳng cho bạn (vd. Telegram): "nạp Nghị định 207/2026/NĐ-CP vào phap-luat". Khi đó:
+Chủ sở hữu có thể nhắn thẳng cho bạn (vd. Telegram): "nạp Nghị định <số hiệu> vào phap-luat". Khi đó:
 - Gọi các công cụ `eos_law_*` **bỏ trống `task`**. Máy chủ dùng **việc thường trực** của công ty (do chủ sở hữu/quản trị bật); mọi lần lưu/nạp/đánh dấu vẫn được ghi nhật ký theo việc đó. Máy chủ báo "Chưa bật nạp … theo lệnh trực tiếp" thì nói lại với người nhắn: cần bật việc thường trực hoặc giao việc trên Dẹo Work.
 - Làm đúng các bước 2–8 ở trên (kiểm trùng, nguồn chính thống, hiệu lực, đối chiếu, không xóa). KB đích: KB người nhắn nêu, mặc định `phap-luat` (tiêu chuẩn, quy chuẩn: `tieu-chuan`).
 - **Không** có `eos_project_save_report` hay `kanban_complete` (không có thẻ): trả lời người nhắn ngay trong cuộc trò chuyện theo đúng các mục của bước 9 (đã nạp mới, đã đánh dấu, đã có, không tìm thấy, đề xuất nạp tiếp, rủi ro còn lại).
