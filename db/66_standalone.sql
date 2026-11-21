@@ -53,11 +53,11 @@ END $$;
 -- ---------- eos_law_list: phap-che đọc danh mục văn bản đã nạp (law_ingest hoặc law_review); chỉ đọc ----------
 CREATE OR REPLACE FUNCTION agent.mcp_law_list(p_task bigint, p_kb text, p jsonb DEFAULT '{}') RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
-DECLARE a agent.agents := agent._agent_for_task(p_task); t work.tasks; ts agent.task_scopes; cr core.users; b kb.bases; lim int := least(greatest(coalesce((p->>'limit')::int, 100), 1), 200); off int := greatest(coalesce((p->>'offset')::int, 0), 0); total int;
+DECLARE a agent.agents := agent._law_agent(p_task); t work.tasks; ts agent.task_scopes; cr core.users; b kb.bases; lim int := least(greatest(coalesce((p->>'limit')::int, 100), 1), 200); off int := greatest(coalesce((p->>'offset')::int, 0), 0); total int;
 BEGIN
   IF a.code <> 'phap-che' THEN RAISE EXCEPTION 'Chỉ agent phap-che đọc danh mục văn bản pháp luật' USING ERRCODE = '42501'; END IF;
   SELECT * INTO t FROM work.tasks WHERE id = p_task;
-  IF NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('todo', 'ready', 'running')) THEN RAISE EXCEPTION 'Agent % chưa có thẻ đang chạy cho chính việc T-%', a.code, p_task USING ERRCODE = '42501'; END IF;
+  IF NOT agent._law_standing_ok(p_task, a) AND NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('todo', 'ready', 'running')) THEN RAISE EXCEPTION 'Agent % chưa có thẻ đang chạy cho chính việc T-%', a.code, p_task USING ERRCODE = '42501'; END IF;
   SELECT * INTO ts FROM agent.task_scopes WHERE task_id = p_task;
   IF ts.task_id IS NULL OR ts.scope->>'stage' NOT IN ('law_ingest', 'law_review') OR ts.scope->>'agent' IS DISTINCT FROM a.code THEN RAISE EXCEPTION 'Chỉ đọc danh mục pháp luật trong việc law_ingest hoặc law_review' USING ERRCODE = '42501'; END IF;
   SELECT * INTO cr FROM core.users WHERE id = t.created_by;

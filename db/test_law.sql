@@ -138,6 +138,37 @@ BEGIN
   PERFORM pg_temp.as_agent('phap-che');
   BEGIN PERFORM agent.mcp_law_target(tid, 'phap-luat'); ASSERT false, 'sai giai đoạn'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
+  -- 7b. Việc thường trực (nạp theo lệnh trực tiếp, không thẻ Kanban; 0037)
+  DECLARE sid bigint; BEGIN
+    PERFORM pg_temp.as_user(tv);
+    BEGIN PERFORM agent.app_law_standing_enable(jsonb_build_object('company_id', c)); ASSERT false, 'thành viên thường không bật được'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    PERFORM pg_temp.as_agent('phap-che');
+    BEGIN PERFORM agent.mcp_law_standing(); ASSERT false, 'chưa bật thì báo rõ'; EXCEPTION WHEN raise_exception THEN NULL; END;
+    PERFORM pg_temp.as_user(own);
+    r := agent.app_law_standing_enable(jsonb_build_object('company_id', c)); sid := (r->>'task_id')::bigint;
+    ASSERT (r->>'created')::boolean, 'tạo việc thường trực: ' || r::text;
+    ASSERT (agent.app_law_standing_enable(jsonb_build_object('company_id', c))->>'task_id')::bigint = sid, 'bật lại: dùng lại việc cũ';
+    ASSERT (SELECT status = 'in_progress' AND agent_id = (SELECT id FROM agent.agents WHERE code = 'phap-che') FROM work.tasks WHERE id = sid), 'in_progress, giao phap-che';
+    ASSERT NOT EXISTS (SELECT 1 FROM agent.outbox WHERE task_id = sid) AND NOT EXISTS (SELECT 1 FROM agent.cards WHERE task_id = sid), 'không tạo thẻ Kanban';
+    PERFORM pg_temp.as_agent('phap-che');
+    ASSERT agent.mcp_law_standing() = sid, 'máy chủ tìm được việc thường trực';
+    res := agent.mcp_law_target(sid, 'phap-luat'); ASSERT res->>'law_md_folder_id' = 'LAWFOLDER0001', 'không thẻ vẫn gọi được: ' || res::text;
+    res := agent.mcp_law_save_target(sid, 'luat-truc-tiep.md', md5a); ASSERT res->>'law_md_folder_id' = 'LAWFOLDER0001', 'lưu theo lệnh trực tiếp';
+    ASSERT agent.mcp_upload_begin(sid, 'luat-truc-tiep.md') IS NOT NULL, 'ghi nhận tải Drive';
+    PERFORM agent.mcp_law_list(sid, 'phap-luat');
+    BEGIN PERFORM agent._agent_for_task(sid); ASSERT false, 'công cụ chung (nộp, tiến độ…) vẫn đòi thẻ'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    PERFORM pg_temp.as_agent('van-thu');
+    BEGIN PERFORM agent.mcp_law_standing(); ASSERT false, 'van-thu không dùng việc thường trực'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    BEGIN PERFORM agent.mcp_law_target(sid, 'phap-luat'); ASSERT false, 'van-thu bị chặn'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN PERFORM agent.mcp_upload_begin(sid, 'x.md'); ASSERT false, 'van-thu không tải vào việc thường trực'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    -- hủy việc = tắt
+    PERFORM pg_temp.as_user(own);
+    UPDATE work.tasks SET status = 'cancelled' WHERE id = sid;
+    PERFORM pg_temp.as_agent('phap-che');
+    BEGIN PERFORM agent.mcp_law_standing(); ASSERT false, 'đã tắt'; EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN PERFORM agent.mcp_law_target(sid, 'phap-luat'); ASSERT false, 'việc đã hủy'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END;
+
   -- 8. Phạm vi mã law_ingest chỉ cấp cho phap-che; không có hàm xóa
   PERFORM pg_temp.as_user(own);
   tk := agent.mcp_token_issue_agent('phap-che', 30);

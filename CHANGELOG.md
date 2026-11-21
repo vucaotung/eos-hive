@@ -3,6 +3,14 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.6.3 — Pháp chế nạp văn bản pháp luật theo lệnh trực tiếp, không cần thẻ Kanban (cần migration 0037, khởi động lại eos-mcp, cài lại skill)
+Chủ sở hữu muốn nhắn thẳng cho agent pháp chế (Telegram) để nạp văn bản, không phải tạo việc trên Dẹo Work. Trước đây mọi công cụ `eos_law_*` bắt buộc `task` và thẻ đang chạy.
+- **Việc thường trực** (`agent.app_law_standing_enable`, chủ sở hữu/quản trị bật một lần cho công ty): việc `law_ingest` có `scope.standing = true`, trạng thái `in_progress` nên không bao giờ sinh thẻ Kanban. Hủy việc để tắt.
+- `eos_law_save`, `eos_law_save_from_source`, `eos_law_ingest`, `eos_law_mark`, `eos_law_list`: `task` không bắt buộc; thiếu thì máy chủ dùng việc thường trực (`agent.mcp_law_standing()`), báo rõ khi chưa bật hoặc agent được bật ở nhiều công ty. Có `task` thì hành vi như cũ.
+- Chỉ các hàm pháp luật và ghi nhận tải Drive (`agent.mcp_upload_begin`) chấp nhận việc thường trực, qua `agent._law_agent`; `agent._agent_for_task` không đổi nên các công cụ khác (nộp kết quả, tiến độ, bình luận…) vẫn đòi thẻ, agent không đóng được việc thường trực. Nhật ký (`core.audit_log`, `kb.law_sources`) vẫn ghi theo mã việc.
+- Skill `nap-van-ban-phap-luat` 1.2.0: mục "Lệnh trực tiếp" (bỏ trống task, trả lời báo cáo ngay trong trò chuyện, chỉ nạp/đánh dấu).
+- Kiểm thử: `db/test_law.sql` (7b), `mcp/test/e2e.mjs` (gọi không task). E2E web: việc định kỳ `skip_holidays = false` để không hỏng vào thứ Bảy/CN.
+
 ## 0.6.2 — Wiki và tóm tắt WeKnora viết tiếng Việt (khởi động lại eos-mcp; không migration)
 Lần nạp thử thật đầu tiên vào KB dự án có Wiki (T-104, 15 tài liệu) sinh 20 trang Wiki toàn tiếng Trung. WeKnora chọn ngôn ngữ xử lý tài liệu theo `WEKNORA_LANGUAGE` → header `Accept-Language` → mặc định `zh-CN`; máy chủ MCP không gửi header nên mọi prompt Wiki ("Write ALL names… in {{.Language}}") nhận tiếng Trung, lấn át dòng hướng dẫn trong `wiki_config`.
 - Máy khách WeKnora (`mcp/src/weknora.mjs`) gửi `Accept-Language: Vietnamese` ở mọi lệnh gọi (WeKnora đưa nguyên mã lạ vào prompt); đổi được bằng `WEKNORA_DOC_LANGUAGE`.

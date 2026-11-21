@@ -702,7 +702,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, public AS
 DECLARE me uuid := core.current_user_id(); t work.tasks; new_id bigint;
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'Chưa đăng nhập' USING ERRCODE = '42501'; END IF;
-  IF (agent.current_agent()).id IS NOT NULL THEN PERFORM agent._agent_for_task(p_task);   -- agent: phải có thẻ đang chạy cho việc này
+  IF (agent.current_agent()).id IS NOT NULL THEN PERFORM agent._law_agent(p_task);   -- agent: phải có thẻ đang chạy cho việc này (hoặc việc pháp luật thường trực của phap-che, db/65_law.sql)
   ELSIF NOT work.can_view_task(me, p_task) THEN RAISE EXCEPTION 'Không có quyền với T-%', p_task USING ERRCODE = '42501';
   END IF;
   SELECT * INTO t FROM work.tasks WHERE id = p_task;
