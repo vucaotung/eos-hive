@@ -510,6 +510,17 @@ try {
     // việc do thành viên thường tạo: bị từ chối dù giao đúng phap-che
     const lt2 = await mkLaw(MINH, 't_law_mcp2');
     const notOwner = await law.callTool({ name: 'eos_law_ingest', arguments: { task: lt2, kb: 'phap-luat', file_ids: [s1.drive_id] } }); assert.equal(notOwner.isError, true); assert.match(text(notOwner), /chủ sở hữu hoặc quản trị/);
+    // lệnh trực tiếp (không task, không thẻ): chưa bật thì báo rõ; bật việc thường trực (0037) thì gọi được
+    const noStanding = await law.callTool({ name: 'eos_law_list', arguments: { kb: 'phap-luat' } }); assert.equal(noStanding.isError, true); assert.match(text(noStanding), /Chưa bật nạp văn bản pháp luật theo lệnh trực tiếp/);
+    const st = (await sql(`INSERT INTO work.tasks (company_id, title, status, assignee_id, created_by, source) VALUES ('33333333-3333-3333-3333-333333333333', 'Nạp pháp luật thường trực', 'in_progress', $1, $1, 'manual') RETURNING id`, [ROOTU]))[0].id;
+    await sql(`INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by) VALUES ($1, NULL, 'nap-van-ban-phap-luat', '{"stage":"law_ingest","agent":"phap-che","standing":true,"items":[]}', 'user:test')`, [st]);
+    await sql("UPDATE work.tasks SET agent_id = (SELECT id FROM agent.agents WHERE code = 'phap-che') WHERE id = $1", [st]);
+    assert.equal((await sql('SELECT count(*)::int n FROM agent.cards WHERE task_id = $1', [st]))[0].n, 0, 'việc thường trực không có thẻ');
+    const direct = (name, args) => law.callTool({ name, arguments: args });
+    assert.equal(json(await direct('eos_law_list', { kb: 'phap-luat' })).total, 2, 'đọc danh mục không cần task');
+    const ds = json(await direct('eos_law_save', { content: doc('7/2025/TT-BXD') })); assert.equal(ds.saved, true);
+    const di = json(await direct('eos_law_ingest', { kb: 'phap-luat', file_ids: [ds.drive_id] })); assert.equal(di.ingested, 1);
+    assert.equal((await sql("SELECT count(*)::int n FROM core.audit_log WHERE action = 'law_ingest' AND entity_id = $1", [String(st)]))[0].n, 1, 'nhật ký ghi theo việc thường trực');
     await law.close();
   });
   await step('bản tin: phạm vi theo vai trò; tạo/sửa việc qua MCP với email, dự án, agent, phải duyệt', async () => {

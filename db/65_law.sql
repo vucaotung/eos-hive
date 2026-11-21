@@ -88,13 +88,36 @@ REVOKE ALL ON kb.law_sources FROM PUBLIC;
 -- ---------- Ngữ cảnh: việc nạp pháp luật hợp lệ ----------
 -- (1) việc giao đúng agent phap-che và agent này có thẻ đang mở (todo/ready/running: cầu nối ghi running chậm vài giây sau khi worker đã chạy) cho CHÍNH việc đó; (2) phạm vi stage = law_ingest;
 -- (3) người tạo việc là NGƯỜI THẬT có vai trò chủ sở hữu hoặc quản trị của công ty; (4) việc chưa đóng.
+-- ---------- Việc thường trực: nạp theo lệnh trực tiếp, không qua thẻ Kanban (0037) ----------
+-- Chủ sở hữu/quản trị bật một lần cho công ty (agent.app_law_standing_enable): một việc law_ingest có scope.standing = true, trạng thái in_progress
+-- (không bao giờ 'todo' nên trigger điều phối không tạo thẻ). Agent phap-che gọi eos_law_* không truyền task thì máy chủ dùng việc này.
+-- CHỈ các hàm pháp luật (và ghi nhận tải Drive của chúng) chấp nhận việc thường trực; mọi công cụ khác vẫn đòi thẻ đang chạy
+-- (agent._agent_for_task không đổi) nên agent không nộp, không đóng, không sửa được việc thường trực. Tắt: hủy việc (cancelled).
+CREATE OR REPLACE FUNCTION agent._law_standing_ok(p_task bigint, a agent.agents) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+  SELECT a.id IS NOT NULL AND a.code = 'phap-che' AND EXISTS (
+    SELECT 1 FROM work.tasks t JOIN agent.task_scopes ts ON ts.task_id = t.id
+     WHERE t.id = p_task AND t.agent_id = a.id AND t.status NOT IN ('done', 'cancelled')
+       AND ts.scope->>'stage' = 'law_ingest' AND ts.scope->>'agent' = a.code AND ts.scope->>'standing' = 'true')
+$$;
+
+-- Agent đang gọi, cho luồng pháp luật: việc thường trực của chính phap-che thì không cần thẻ; còn lại như agent._agent_for_task
+CREATE OR REPLACE FUNCTION agent._law_agent(p_task bigint) RETURNS agent.agents
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE a agent.agents := agent.current_agent();
+BEGIN
+  IF a.id IS NULL THEN RAISE EXCEPTION 'Chỉ dành cho agent hệ thống' USING ERRCODE = '42501'; END IF;
+  IF agent._law_standing_ok(p_task, a) THEN RETURN a; END IF;
+  RETURN agent._agent_for_task(p_task);
+END $$;
+
 CREATE OR REPLACE FUNCTION agent._law_ctx(p_task bigint) RETURNS work.tasks
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
-DECLARE a agent.agents := agent._agent_for_task(p_task); t work.tasks; ts agent.task_scopes; cr core.users;
+DECLARE a agent.agents := agent._law_agent(p_task); t work.tasks; ts agent.task_scopes; cr core.users;
 BEGIN
   IF a.code <> 'phap-che' THEN RAISE EXCEPTION 'Chỉ agent phap-che được nạp văn bản pháp luật' USING ERRCODE = '42501'; END IF;
   SELECT * INTO t FROM work.tasks WHERE id = p_task;
-  IF NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('todo', 'ready', 'running')) THEN
+  IF NOT agent._law_standing_ok(p_task, a) AND NOT EXISTS (SELECT 1 FROM agent.cards c WHERE c.task_id = p_task AND c.agent_id = a.id AND c.status IN ('todo', 'ready', 'running')) THEN
     RAISE EXCEPTION 'Agent % chưa có thẻ đang chạy cho chính việc T-%', a.code, p_task USING ERRCODE = '42501';
   END IF;
   SELECT * INTO ts FROM agent.task_scopes WHERE task_id = p_task;
@@ -140,7 +163,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION agent.mcp_law_save_done(p_task bigint, p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
-DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._agent_for_task(p_task); fid bigint;
+DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._law_agent(p_task); fid bigint;
 BEGIN
   IF coalesce(p->>'drive_id', '') !~ '^[A-Za-z0-9_-]{6,}$' OR coalesce(p->>'url', '') !~ '^https://' THEN RAISE EXCEPTION 'drive_id hoặc url không hợp lệ'; END IF;
   INSERT INTO core.files (company_id, drive_id, name, mime_type, size_bytes, sha256, web_url, storage)
@@ -206,7 +229,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION agent.mcp_law_ingest_commit(p_task bigint, p_kb text, p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
-DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._agent_for_task(p_task); b kb.bases := agent._law_base(agent._law_ctx(p_task), p_kb);
+DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._law_agent(p_task); b kb.bases := agent._law_base(agent._law_ctx(p_task), p_kb);
         it jsonb; fid bigint; n int := 0; kid text; bu text[];
 BEGIN
   IF p ? 'weknora_kb_id' THEN
@@ -258,7 +281,7 @@ END $$;
 -- Trả các dòng đã đổi kèm đủ trường để máy chủ MCP dựng lại custom_metadata (WeKnora GHI ĐÈ CẢ OBJECT)
 CREATE OR REPLACE FUNCTION agent.mcp_law_mark(p_task bigint, p_kb text, p jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
-DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._agent_for_task(p_task); b kb.bases := agent._law_base(agent._law_ctx(p_task), p_kb); n int;
+DECLARE t work.tasks := agent._law_ctx(p_task); a agent.agents := agent._law_agent(p_task); b kb.bases := agent._law_base(agent._law_ctx(p_task), p_kb); n int;
 BEGIN
   IF coalesce(p->>'tinh_trang', '') NOT IN ('con_hieu_luc', 'het_mot_phan', 'het_hieu_luc', 'chua_hieu_luc') THEN RAISE EXCEPTION 'tinh_trang phải là con_hieu_luc, het_mot_phan, het_hieu_luc hoặc chua_hieu_luc'; END IF;
   IF length(btrim(coalesce(p->>'so_hieu', ''))) < 2 THEN RAISE EXCEPTION 'Thiếu so_hieu'; END IF;
@@ -306,7 +329,50 @@ BEGIN
   RETURN jsonb_build_object('id', 'T-' || tid, 'task_id', tid, 'count', n);
 END $$;
 
+-- ---------- Bật nạp theo lệnh trực tiếp: chủ sở hữu / quản trị tạo (hoặc lấy lại) việc thường trực của công ty ----------
+CREATE OR REPLACE FUNCTION agent.app_law_standing_enable(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = agent, work, core, kb, public AS $$
+DECLARE me core.users := agent._web_me(); cid uuid := agent._uuid(p, 'company_id'); s agent.company_settings; ag agent.agents; tid bigint;
+BEGIN
+  PERFORM agent._need_role(me.id, cid, ARRAY['owner', 'admin']);
+  IF me.kind <> 'person' THEN RAISE EXCEPTION 'Chỉ người thật bật nạp pháp luật theo lệnh trực tiếp' USING ERRCODE = '42501'; END IF;
+  SELECT * INTO s FROM agent.company_settings WHERE company_id = cid;
+  IF s.company_id IS NULL OR NOT s.enabled THEN RAISE EXCEPTION 'Agent chưa được bật cho công ty'; END IF;
+  IF s.law_md_folder_id IS NULL THEN RAISE EXCEPTION 'Chưa cấu hình thư mục Drive pháp luật của công ty (law_md_folder_id)'; END IF;
+  SELECT g.* INTO ag FROM agent.agents g JOIN agent.company_agents ca ON ca.agent_id = g.id AND ca.company_id = cid AND ca.enabled WHERE g.code = 'phap-che' AND g.active;
+  IF ag.id IS NULL THEN RAISE EXCEPTION 'Agent pháp chế (phap-che) chưa được bật cho công ty'; END IF;
+  SELECT t.id INTO tid FROM work.tasks t JOIN agent.task_scopes ts ON ts.task_id = t.id
+   WHERE t.company_id = cid AND t.agent_id = ag.id AND t.status NOT IN ('done', 'cancelled') AND ts.scope->>'stage' = 'law_ingest' AND ts.scope->>'standing' = 'true' LIMIT 1;
+  IF tid IS NOT NULL THEN RETURN jsonb_build_object('id', 'T-' || tid, 'task_id', tid, 'created', false); END IF;
+  INSERT INTO work.tasks (company_id, title, description, priority, status, assignee_id, created_by, source)
+  VALUES (cid, 'Nạp văn bản pháp luật theo lệnh trực tiếp (thường trực)',
+          'Việc neo cho các lần pháp chế nạp văn bản pháp luật khi chủ sở hữu/quản trị nhắn lệnh trực tiếp (không qua thẻ Kanban). Mỗi lần lưu/nạp/đánh dấu được ghi vào nhật ký với mã việc này. Hủy việc để tắt.',
+          'low', 'in_progress', me.id, me.id, 'manual') RETURNING id INTO tid;
+  INSERT INTO agent.task_scopes (task_id, run_id, skill, scope, created_by)
+  VALUES (tid, NULL, 'nap-van-ban-phap-luat', jsonb_build_object('stage', 'law_ingest', 'agent', 'phap-che', 'standing', true, 'items', '[]'::jsonb), 'user:' || me.id);
+  UPDATE work.tasks SET agent_id = ag.id, agent_role = 'nap-van-ban-phap-luat' WHERE id = tid;   -- in_progress: trigger điều phối không tạo thẻ
+  PERFORM agent._audit(cid, me.id, 'law_standing_enable', 'task', tid::text, 'Bật nạp văn bản pháp luật theo lệnh trực tiếp');
+  RETURN jsonb_build_object('id', 'T-' || tid, 'task_id', tid, 'created', true);
+END $$;
+
+-- Máy chủ MCP: eos_law_* gọi không có task → việc thường trực của công ty mà phap-che đang được bật. Không có hoặc nhiều công ty: báo rõ.
+CREATE OR REPLACE FUNCTION agent.mcp_law_standing() RETURNS bigint
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = agent, work, core, public AS $$
+DECLARE a agent.agents := agent.current_agent(); ids bigint[];
+BEGIN
+  IF a.id IS NULL OR a.code <> 'phap-che' THEN RAISE EXCEPTION 'Chỉ agent phap-che được nạp văn bản pháp luật' USING ERRCODE = '42501'; END IF;
+  SELECT coalesce(array_agg(t.id ORDER BY t.id), '{}') INTO ids FROM work.tasks t
+    JOIN agent.company_agents ca ON ca.company_id = t.company_id AND ca.agent_id = a.id AND ca.enabled
+   WHERE agent._law_standing_ok(t.id, a);
+  IF cardinality(ids) = 0 THEN RAISE EXCEPTION 'Chưa bật nạp văn bản pháp luật theo lệnh trực tiếp cho công ty: chủ sở hữu/quản trị cần bật (agent.app_law_standing_enable), hoặc giao việc nạp trên Dẹo Work' USING ERRCODE = 'P0001'; END IF;
+  IF cardinality(ids) > 1 THEN RAISE EXCEPTION 'Agent đang được bật ở nhiều công ty (việc thường trực %): truyền task để chọn', array_to_string(ids, ', ') USING ERRCODE = 'P0001'; END IF;
+  RETURN ids[1];
+END $$;
+
 -- ---------- Quyền ----------
+REVOKE ALL ON FUNCTION agent._law_standing_ok(bigint, agent.agents), agent._law_agent(bigint), agent.mcp_law_standing(), agent.app_law_standing_enable(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION agent.mcp_law_standing() TO mcp_svc;
+GRANT EXECUTE ON FUNCTION agent.app_law_standing_enable(jsonb) TO web_svc;
 REVOKE ALL ON FUNCTION agent._law_scope_guard(), agent._law_ctx(bigint), agent._law_base(work.tasks, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION agent.mcp_law_save_target(bigint, text, text), agent.mcp_law_save_done(bigint, jsonb), agent.mcp_law_target(bigint, text), agent.mcp_law_ingest_claim(bigint, text, jsonb),
   agent.mcp_law_version(bigint, text, text, text), agent.mcp_law_ingest_commit(bigint, text, jsonb), agent.mcp_law_ingest_finish(bigint, text, jsonb), agent.mcp_law_mark(bigint, text, jsonb),
