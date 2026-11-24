@@ -59,7 +59,7 @@ Agent kiểu `runner` (`agent.agents.executor='runner'`): việc giao cho nó **
 ## Giới hạn đã biết
 - Việc con tự đóng khi agent báo xong: người theo dõi chỉ duyệt ở việc gốc (đúng thiết kế điều phối hiện có); muốn duyệt từng việc con cần đổi `ca.auto_done`/luật việc con.
 - `phap-che` chưa có profile; Mai chưa được nối (cần tên profile).
-- Nạp qua `knowledge/manual` (văn bản): tệp chỉ có ảnh/PDF scan chưa OCR sẽ không có nội dung; WeKnora giới hạn kích thước một tài liệu thì tệp rất lớn có thể lỗi (báo trong kết quả). Chưa đọc được tệp nhị phân (PDF scan đã được OCR thành Markdown ở bước 1).
+- Nạp qua `knowledge/manual` (văn bản): tệp chỉ có ảnh/PDF scan chưa OCR sẽ không có nội dung; `knowledge/manual` từ chối nội dung > 200.000 ký tự (hằng số cứng trong WeKnora), nên **từ v0.6.4** tài liệu dài hơn được tải lên dạng tệp `.md` qua `knowledge/file` (giới hạn `MAX_FILE_SIZE_MB`, mặc định 50 MB). Chưa đọc được tệp nhị phân (PDF scan đã được OCR thành Markdown ở bước 1).
 - Chưa có màn hình xem tiến độ riêng; xem ở thẻ dự án và việc gốc.
 
 ## Kiểm thử

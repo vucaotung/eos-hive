@@ -66,6 +66,21 @@ export async function addMarkdown(kbId, title, content) {
   return id;
 }
 
+// knowledge/manual của WeKnora từ chối nội dung > 200.000 ký tự (hằng số cứng manualContentMaxLength, không cấu hình được).
+// Đường knowledge/file không có giới hạn này (chỉ MAX_FILE_SIZE_MB, mặc định 50 MB), nên văn bản dài được tải lên dạng tệp .md.
+export const MANUAL_MAX_CHARS = 200000;
+export const charLen = (s) => [...String(s)].length;   // WeKnora đếm theo rune (code point), không theo UTF-16
+export function mdFileName(title) {
+  const base = String(title || 'tai-lieu').replace(/[\\/:*?"<>|\r\n\t]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 180) || 'tai-lieu';
+  return `${base}.md`;
+}
+// Nạp Markdown: ≤ 200.000 ký tự qua knowledge/manual như cũ; dài hơn thì tải tệp .md qua knowledge/file. Trả {id, via, duplicate}.
+export async function addMarkdownAuto(kbId, title, content) {
+  if (charLen(content) <= MANUAL_MAX_CHARS) return { id: await addMarkdown(kbId, title, content), via: 'manual', duplicate: false };
+  const { id, duplicate } = await addFile(kbId, mdFileName(title), Buffer.from(String(content), 'utf8'), 'text/markdown');
+  return { id, via: 'file', duplicate };
+}
+
 // Tải một tệp (ảnh…) lên KB bằng knowledge/file. Trùng nội dung (409) thì WeKnora trả bản đã có: coi như đã nạp. Trả {id, duplicate}.
 export async function addFile(kbId, fileName, bytes, mime) {
   const fd = new FormData();

@@ -498,7 +498,7 @@ function registerAgentTools(server, ident, tool, call, tracked) {
             ({ fm, step: sibStep } = await siblingMeta(img, fid));
           } else {
             const p = weknora.prepare(f.name, f.text);
-            docId = await weknora.addMarkdown(kbId, p.title, p.content); title = p.title; pages = p.pages; fm = p.meta;
+            ({ id: docId, duplicate: dup } = await weknora.addMarkdownAuto(kbId, p.title, p.content)); title = p.title; pages = p.pages; fm = p.meta;
           }
           const meta = kbMetadata(fm, fid, steps[fid] || sibStep);
           const m = await weknora.setMetadata(docId, meta);
@@ -582,7 +582,7 @@ function registerAgentTools(server, ident, tool, call, tracked) {
 
   tool('eos_law_ingest', 'law_ingest', {
     title: 'Nạp văn bản pháp luật từ thư mục pháp luật vào KB pháp luật',
-    description: 'Trong việc law_ingest hoặc theo lệnh trực tiếp của chủ sở hữu/quản trị (bỏ trống task). Truyền kb và 1–20 file_id (từ eos_law_save) nằm trong thư mục pháp luật. Máy chủ kiểm lại front matter và nguồn chính thống, bỏ qua văn bản cùng số hiệu cùng nội dung đã nạp, tạo KB nếu chưa có (sao chép cấu hình từ KB mẫu, bật Wiki), nạp qua knowledge/manual, ghi custom_metadata (so_hieu, tinh_trang, nguon, buoc, linh_vuc) và danh mục kb.law_sources. Phiên bản mới của cùng số hiệu được nạp thành tài liệu mới; bản cũ được giữ nguyên (không xóa), kết quả nêu earlier_versions để bạn đánh dấu bằng eos_law_mark nếu cần.',
+    description: 'Trong việc law_ingest hoặc theo lệnh trực tiếp của chủ sở hữu/quản trị (bỏ trống task). Truyền kb và 1–20 file_id (từ eos_law_save) nằm trong thư mục pháp luật. Máy chủ kiểm lại front matter và nguồn chính thống, bỏ qua văn bản cùng số hiệu cùng nội dung đã nạp, tạo KB nếu chưa có (sao chép cấu hình từ KB mẫu, bật Wiki), nạp qua knowledge/manual (văn bản > 200.000 ký tự máy chủ tự tải lên dạng tệp .md qua knowledge/file, không giới hạn độ dài; kết quả ghi nap_qua), ghi custom_metadata (so_hieu, tinh_trang, nguon, buoc, linh_vuc) và danh mục kb.law_sources. Phiên bản mới của cùng số hiệu được nạp thành tài liệu mới; bản cũ được giữ nguyên (không xóa), kết quả nêu earlier_versions để bạn đánh dấu bằng eos_law_mark nếu cần.',
     inputSchema: { task: lawTaskRef, kb: kbName, file_ids: z.array(z.string().regex(/^[A-Za-z0-9_-]{10,}$/)).min(1).max(20) },
   }, async ({ task, kb, file_ids }) => {
     const id = await lawTask(task);
@@ -611,11 +611,11 @@ function registerAgentTools(server, ident, tool, call, tracked) {
           release.add('__create__');
         }
         try {
-          const docId = await weknora.addMarkdown(kbId, `${L.so_hieu} - ${L.ten}`.slice(0, 200), law.lawKbContent(L));
+          const { id: docId, via, duplicate: dup } = await weknora.addMarkdownAuto(kbId, `${L.so_hieu} - ${L.ten}`.slice(0, 200), law.lawKbContent(L));
           const m = await weknora.setMetadata(docId, law.lawMetadata({ ...L, drive_link: `https://drive.google.com/file/d/${fid}/view` }));
           if (m.ok) metaSet++; else if (m.reason === 'unsupported') metaUnsupported = true; else metaFailed.push({ file_id: fid, error: m.reason });
           done.push({ weknora_doc_id: docId, drive_id: fid, so_hieu: L.so_hieu, ten: L.ten, loai: L.loai, co_quan: L.co_quan, ngay_ban_hanh: L.ngay_ban_hanh, ngay_hieu_luc: L.ngay_hieu_luc, tinh_trang: L.tinh_trang,
-            thay_the: L.thay_the, sua_doi: L.sua_doi, linh_vuc: L.linh_vuc, buoc: L.buoc, nguon: L.nguon, ngay_tra: L.ngay_tra, phien_ban: md5 });
+            thay_the: L.thay_the, sua_doi: L.sua_doi, linh_vuc: L.linh_vuc, buoc: L.buoc, nguon: L.nguon, ngay_tra: L.ngay_tra, phien_ban: md5, nap_qua: via, ...(dup ? { duplicate: true } : {}) });
           if (ver.earlier.length) earlier.push({ so_hieu: L.so_hieu, older: ver.earlier });
           release.delete(fid);
         } catch (e) { failed.push({ file_id: fid, name: f.name, error: e.message }); }
@@ -624,7 +624,7 @@ function registerAgentTools(server, ident, tool, call, tracked) {
     } finally {
       if (mine.size || release.size) await call('SELECT agent.mcp_law_ingest_finish($1,$2,$3::jsonb) AS r', [id, kb, JSON.stringify({ done: done.map((d) => d.drive_id), release: [...release] })]).catch(() => {});
     }
-    return { result: { kb, weknora_kb_id: kbId, kb_created: created, ingested: done.length, docs: done.map((d) => ({ so_hieu: d.so_hieu, weknora_doc_id: d.weknora_doc_id, tinh_trang: d.tinh_trang })), skipped, failed, earlier_versions: earlier.length ? earlier : undefined,
+    return { result: { kb, weknora_kb_id: kbId, kb_created: created, ingested: done.length, docs: done.map((d) => ({ so_hieu: d.so_hieu, weknora_doc_id: d.weknora_doc_id, tinh_trang: d.tinh_trang, nap_qua: d.nap_qua, duplicate: d.duplicate })), skipped, failed, earlier_versions: earlier.length ? earlier : undefined,
       metadata: { set: metaSet, unsupported: metaUnsupported || undefined, failed: metaFailed.length ? metaFailed : undefined } }, entity: { type: 'task', id: String(id) } };
   }, (a) => ({ task: lawLog(a.task), kb: a.kb, files: a.file_ids?.length }));
 
