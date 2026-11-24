@@ -1,7 +1,7 @@
 ---
 name: nap-van-ban-phap-luat
 description: Nạp văn bản pháp luật vào KB pháp luật dùng chung cho Pháp chế AI (stage law_ingest, do chủ sở hữu/quản trị tạo việc) - tìm nguyên văn trên nguồn chính thống, kiểm hiệu lực, kiểm trùng, lưu bằng eos_law_save_from_source (máy chủ tự tải tệp toàn văn) hoặc eos_law_save (văn bản ngắn), rồi eos_law_ingest, eos_law_mark cho văn bản bị thay thế; báo cáo đã nạp/cập nhật/không tìm thấy/đề xuất nạp tiếp. Chỉ đánh dấu, không xóa.
-version: 1.2.0
+version: 1.3.0
 author: Tổ Ong (eos-hive)
 license: MIT
 metadata:
@@ -53,6 +53,7 @@ Chủ sở hữu có thể nhắn thẳng cho bạn (vd. Telegram): "nạp Ngh�
 ## Giới hạn công cụ với văn bản dài (bài học từ lần nạp thử)
 - `web_extract` chỉ trả **đầu + cuối** của một trang/tệp; kết quả quá ~**100.000 ký tự** bị lưu ra tệp và chỉ còn ~1.500 ký tự xem được. Luật/nghị định lớn (~130.000–140.000 ký tự) **không đọc trọn được** bằng `web_extract`, và bạn không có công cụ đọc tệp. Vì vậy **đừng tự chép văn bản dài**: dùng `eos_law_save_from_source`; `web_extract` chỉ để tìm đường dẫn tệp và kiểm thông tin nhận diện, hiệu lực.
 - Bản PDF trên `vanban.chinhphu.vn` và `moc.gov.vn` với luật mới thường là **scan hoặc lỗi font** (máy chủ sẽ từ chối). Bản **Công báo số** (`congbao.chinhphu.vn/van-ban/...`) có DOCX/PDF số hoá Unicode sạch: ưu tiên lấy `file_url` từ đây.
+- **Không có giới hạn độ dài khi nạp**: `eos_law_ingest` tự chọn đường nạp — ≤ 200.000 ký tự qua `knowledge/manual`, dài hơn máy chủ tải lên dạng tệp `.md` (`nap_qua: file` trong kết quả). Đừng chia nhỏ văn bản, đừng báo "vượt 200.000 ký tự", đừng xin cấp công cụ upload: cứ gọi `eos_law_ingest` với `file_id` đã lưu.
 - Trình xem trung gian (vd. Google Docs Viewer) **không phải nguồn chính thống**; không dùng làm `nguon` hay `file_url`.
 - Luôn **kiểm trùng + kiểm hiệu lực** trước; khi bị chặn, vẫn ghi đủ số hiệu/ngày/nguồn đã tra vào bình luận để không mất công tra lại.
 

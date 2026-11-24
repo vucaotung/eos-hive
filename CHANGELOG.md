@@ -3,6 +3,13 @@
 Theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và [Semantic Versioning](https://semver.org/lang/vi/).
 Trong giai đoạn 0.x, mọi thay đổi lược đồ CSDL có thể phá vỡ; đã triển khai thật thì phải đi qua migration (xem docs/02).
 
+## 0.6.4 — Nạp văn bản dài hơn 200.000 ký tự vào WeKnora (khởi động lại eos-mcp, cài lại skill; không migration)
+Lần nạp KB `phap-luat` ngày 24/11/2026 kẹt ba nghị định: NĐ 217/2026 (299.719 ký tự), NĐ 96/2026 (330.742), NĐ 207/2026 (205.676). `knowledge/manual` của WeKnora từ chối nội dung > 200.000 ký tự; đây là hằng số cứng `manualContentMaxLength` trong `internal/application/service/knowledge.go`, không có tham số KB hay biến môi trường để nâng.
+- `mcp/src/weknora.mjs`: `addMarkdownAuto` — ≤ 200.000 ký tự (đếm theo rune như WeKnora) vẫn nạp qua `knowledge/manual`; dài hơn thì tải tệp `.md` (UTF-8, `text/markdown`) qua `knowledge/file`, đường này chỉ bị giới hạn `MAX_FILE_SIZE_MB` (mặc định 50 MB). Tên tệp = tiêu đề tài liệu, bỏ ký tự cấm (`/`, `:`…). Trùng nội dung (409) coi như đã nạp.
+- `eos_law_ingest` và `eos_kb_ingest` dùng `addMarkdownAuto`. Kết quả `eos_law_ingest` có thêm `nap_qua` (`manual`|`file`) và `duplicate`. Profile pháp chế không cần thêm quyền hay công cụ HTTP: khóa WeKnora vẫn chỉ nằm ở máy chủ MCP.
+- Skill `nap-van-ban-phap-luat` 1.3.0: không còn giới hạn độ dài khi nạp, không chia nhỏ văn bản.
+- Kiểm thử: `mcp/test/weknora.test.mjs` (ngưỡng đúng 200.000 ký tự đi manual, dài hơn đi file, tên tệp).
+
 ## 0.6.3 — Pháp chế nạp văn bản pháp luật theo lệnh trực tiếp, không cần thẻ Kanban (cần migration 0037, khởi động lại eos-mcp, cài lại skill)
 Chủ sở hữu muốn nhắn thẳng cho agent pháp chế (Telegram) để nạp văn bản, không phải tạo việc trên Dẹo Work. Trước đây mọi công cụ `eos_law_*` bắt buộc `task` và thẻ đang chạy.
 - **Việc thường trực** (`agent.app_law_standing_enable`, chủ sở hữu/quản trị bật một lần cho công ty): việc `law_ingest` có `scope.standing = true`, trạng thái `in_progress` nên không bao giờ sinh thẻ Kanban. Hủy việc để tắt.
